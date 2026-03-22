@@ -171,7 +171,21 @@ export default function DashboardPage() {
           <WeeklyChart />
         </div>
 
-        <RecentScans logs={logs} />
+        <RecentScans
+  logs={logs}
+  onDelete={(id) => {
+    setLogs(prev => prev.filter(l => l.id !== id))
+    setTodayCalories(prev => {
+      const deleted = logs.find(l => l.id === id)
+      const today = new Date().toDateString()
+      if (deleted && new Date(deleted.logged_at).toDateString() === today) {
+        return Math.max(0, prev - (deleted.calories || 0))
+      }
+      return prev
+    })
+  }}
+/>
+
 
       </div>
     </div>
