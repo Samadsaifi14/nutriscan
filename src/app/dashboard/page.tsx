@@ -7,14 +7,13 @@ import { CalorieRing } from '@/components/dashboard/CalorieRing'
 import { WeeklyChart } from '@/components/dashboard/WeeklyChart'
 import { RecentScans } from '@/components/dashboard/RecentScans'
 
-const DAILY_GOAL = 2000
-
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [logs, setLogs] = useState<any[]>([])
   const [todayCalories, setTodayCalories] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [dailyGoal, setDailyGoal] = useState(2000)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -27,28 +26,38 @@ export default function DashboardPage() {
 
   async function fetchData() {
     const userId = (session as any)?.userId
-    console.log('Session:', JSON.stringify(session))
-    console.log('UserId:', userId)
 
     if (!userId) {
-      console.log('No userId found — stopping')
       setLoading(false)
       return
+    }
+
+    // Get user profile for personalised calorie goal
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('daily_calorie_goal, profile_completed')
+      .eq('user_id', userId)
+      .single()
+
+    // Redirect to profile setup if not completed
+    if (profile && !profile.profile_completed) {
+      router.push('/profile-setup')
+      return
+    }
+
+    if (profile?.daily_calorie_goal) {
+      setDailyGoal(profile.daily_calorie_goal)
     }
 
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
-    console.log('Fetching today logs for:', userId)
-
-    const { data: todayLogs, error: todayError } = await supabase
+    const { data: todayLogs } = await supabase
       .from('food_logs')
       .select('*')
       .eq('user_id', userId)
       .gte('logged_at', todayStart.toISOString())
       .order('logged_at', { ascending: false })
-
-    console.log('Today logs:', todayLogs, 'Error:', todayError)
 
     const totalToday = todayLogs?.reduce(
       (sum, log) => sum + (log.calories || 0), 0
@@ -56,14 +65,12 @@ export default function DashboardPage() {
 
     setTodayCalories(totalToday)
 
-    const { data: recentLogs, error: recentError } = await supabase
+    const { data: recentLogs } = await supabase
       .from('food_logs')
       .select('*')
       .eq('user_id', userId)
       .order('logged_at', { ascending: false })
       .limit(10)
-
-    console.log('Recent logs:', recentLogs, 'Error:', recentError)
 
     setLogs(recentLogs || [])
     setLoading(false)
@@ -110,22 +117,57 @@ export default function DashboardPage() {
               })}
             </p>
           </div>
-          <button
-            onClick={() => router.push('/scan')}
-            style={{
-              padding: '10px 16px',
-              background: '#16a34a',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            📷 Scan
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => router.push('/profile-setup')}
+              style={{
+                padding: '10px 14px',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              ⚙️
+            </button>
+            <button
+              onClick={() => router.push('/scan')}
+              style={{
+                padding: '10px 16px',
+                background: '#16a34a',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              📷 Scan
+            </button>
+          </div>
         </div>
+
+        {/* Personalised calorie goal indicator */}
+        {dailyGoal !== 2000 && (
+          <div style={{
+            padding: '10px 14px',
+            background: '#f0fdf4',
+            borderRadius: '10px',
+            border: '1px solid #bbf7d0',
+            marginBottom: '16px',
+            fontSize: '13px',
+            color: '#16a34a',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            🎯 Your personalised daily goal: <strong>{dailyGoal} kcal</strong>
+          </div>
+        )}
 
         <div style={{
           display: 'grid',
@@ -135,7 +177,7 @@ export default function DashboardPage() {
         }}>
           <CalorieRing
             consumed={todayCalories}
-            goal={DAILY_GOAL}
+            goal={dailyGoal}
             label="Today's Calories"
           />
 
@@ -159,9 +201,9 @@ export default function DashboardPage() {
               </p>
             </div>
             <div>
-              <p style={{ fontSize: '12px', color: '#6b7280' }}>Total logged</p>
+              <p style={{ fontSize: '12px', color: '#6b7280' }}>Daily goal</p>
               <p style={{ fontSize: '28px', fontWeight: 700, color: '#16a34a' }}>
-                {logs.length}
+                {dailyGoal}
               </p>
             </div>
           </div>
@@ -172,20 +214,19 @@ export default function DashboardPage() {
         </div>
 
         <RecentScans
-  logs={logs}
-  onDelete={(id) => {
-    setLogs(prev => prev.filter(l => l.id !== id))
-    setTodayCalories(prev => {
-      const deleted = logs.find(l => l.id === id)
-      const today = new Date().toDateString()
-      if (deleted && new Date(deleted.logged_at).toDateString() === today) {
-        return Math.max(0, prev - (deleted.calories || 0))
-      }
-      return prev
-    })
-  }}
-/>
-
+          logs={logs}
+          onDelete={(id) => {
+            setLogs(prev => prev.filter(l => l.id !== id))
+            setTodayCalories(prev => {
+              const deleted = logs.find(l => l.id === id)
+              const today = new Date().toDateString()
+              if (deleted && new Date(deleted.logged_at).toDateString() === today) {
+                return Math.max(0, prev - (deleted.calories || 0))
+              }
+              return prev
+            })
+          }}
+        />
 
       </div>
     </div>
