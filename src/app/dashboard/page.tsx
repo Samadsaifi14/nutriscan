@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { CalorieRing } from '@/components/dashboard/CalorieRing'
 import { WeeklyChart } from '@/components/dashboard/WeeklyChart'
 import { RecentScans } from '@/components/dashboard/RecentScans'
+import { SkeletonDashboard } from '@/components/Skeleton'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -16,58 +17,41 @@ export default function DashboardPage() {
   const [dailyGoal, setDailyGoal] = useState(2000)
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-    }
-    if (status === 'authenticated') {
-      fetchData()
-    }
+    if (status === 'unauthenticated') router.push('/auth/signin')
+    if (status === 'authenticated') fetchData()
   }, [status])
 
   async function fetchData() {
     const userId = (session as any)?.userId
+    if (!userId) { setLoading(false); return }
 
-    if (!userId) {
-      setLoading(false)
-      return
-    }
-
-    // Get user profile for personalised calorie goal
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('daily_calorie_goal, profile_completed')
       .eq('user_id', userId)
       .single()
 
-    // Redirect to profile setup if not completed
     if (profile && !profile.profile_completed) {
       router.push('/profile-setup')
       return
     }
 
-    if (profile?.daily_calorie_goal) {
-      setDailyGoal(profile.daily_calorie_goal)
-    }
+    if (profile?.daily_calorie_goal) setDailyGoal(profile.daily_calorie_goal)
 
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
     const { data: todayLogs } = await supabase
-      .from('food_logs')
-      .select('*')
+      .from('food_logs').select('*')
       .eq('user_id', userId)
       .gte('logged_at', todayStart.toISOString())
-      .order('logged_at', { ascending: false })
 
-    const totalToday = todayLogs?.reduce(
-      (sum, log) => sum + (log.calories || 0), 0
-    ) || 0
-
-    setTodayCalories(totalToday)
+    setTodayCalories(
+      todayLogs?.reduce((s, l) => s + (l.calories || 0), 0) || 0
+    )
 
     const { data: recentLogs } = await supabase
-      .from('food_logs')
-      .select('*')
+      .from('food_logs').select('*')
       .eq('user_id', userId)
       .order('logged_at', { ascending: false })
       .limit(10)
@@ -76,143 +60,73 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
-  if (status === 'loading' || loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'sans-serif',
-        color: '#6b7280',
-        fontSize: '15px'
-      }}>
-        Loading your dashboard...
-      </div>
-    )
-  }
+  if (status === 'loading' || loading) return <SkeletonDashboard />
+
+  const todayMeals = logs.filter(l =>
+    new Date(l.logged_at).toDateString() === new Date().toDateString()
+  ).length
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f0fdf4',
-      fontFamily: 'sans-serif',
-      padding: '24px 16px'
-    }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+    <div className="min-h-screen bg-[var(--background)] p-4 animate-fade-in">
+      <div className="max-w-2xl mx-auto">
 
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px'
-        }}>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111827' }}>
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">
               Hello, {session?.user?.name?.split(' ')[0]} 👋
             </h1>
-            <p style={{ fontSize: '13px', color: '#6b7280' }}>
+            <p className="text-sm text-[var(--muted)] mt-0.5">
               {new Date().toLocaleDateString('en-IN', {
                 weekday: 'long', month: 'long', day: 'numeric'
               })}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => router.push('/profile-setup')}
-              style={{
-                padding: '10px 14px',
-                background: '#f3f4f6',
-                color: '#374151',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              ⚙️
-            </button>
-            <button
-              onClick={() => router.push('/scan')}
-              style={{
-                padding: '10px 16px',
-                background: '#16a34a',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              📷 Scan
-            </button>
-          </div>
+          <button
+            onClick={() => router.push('/scan')}
+            className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition-colors"
+          >
+            📷 Scan
+          </button>
         </div>
 
-        {/* Personalised calorie goal indicator */}
+        {/* Personalised goal banner */}
         {dailyGoal !== 2000 && (
-          <div style={{
-            padding: '10px 14px',
-            background: '#f0fdf4',
-            borderRadius: '10px',
-            border: '1px solid #bbf7d0',
-            marginBottom: '16px',
-            fontSize: '13px',
-            color: '#16a34a',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            🎯 Your personalised daily goal: <strong>{dailyGoal} kcal</strong>
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl mb-4 text-sm text-green-700 dark:text-green-400">
+            🎯 Your daily goal: <span className="font-bold">{dailyGoal} kcal</span>
           </div>
         )}
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '12px',
-          marginBottom: '16px'
-        }}>
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <CalorieRing
             consumed={todayCalories}
             goal={dailyGoal}
             label="Today's Calories"
           />
 
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            padding: '20px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            gap: '12px'
-          }}>
+          <div className="bg-[var(--card)] rounded-2xl p-5 shadow-sm border border-[var(--card-border)] flex flex-col justify-center gap-4">
             <div>
-              <p style={{ fontSize: '12px', color: '#6b7280' }}>Meals today</p>
-              <p style={{ fontSize: '28px', fontWeight: 700, color: '#111827' }}>
-                {logs.filter(l => {
-                  const today = new Date().toDateString()
-                  return new Date(l.logged_at).toDateString() === today
-                }).length}
+              <p className="text-xs text-[var(--muted)] mb-1">Meals today</p>
+              <p className="text-3xl font-bold text-[var(--foreground)]">
+                {todayMeals}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: '12px', color: '#6b7280' }}>Daily goal</p>
-              <p style={{ fontSize: '28px', fontWeight: 700, color: '#16a34a' }}>
+              <p className="text-xs text-[var(--muted)] mb-1">Daily goal</p>
+              <p className="text-3xl font-bold text-green-600">
                 {dailyGoal}
               </p>
             </div>
           </div>
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
+        {/* Weekly chart */}
+        <div className="mb-4">
           <WeeklyChart />
         </div>
 
+        {/* Recent meals */}
         <RecentScans
           logs={logs}
           onDelete={(id) => {
