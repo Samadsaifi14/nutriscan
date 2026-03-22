@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageBase64 } = await req.json()
+    const { imageBase64, mode } = await req.json()
 
     if (!imageBase64) {
       return NextResponse.json(
@@ -11,30 +11,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    console.log('Calling Gemini Vision to read label...')
-
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              {
-                text: `You are a food label reader. Look at this image carefully.
-
-TASK 1: If you can see a barcode, extract the barcode number printed below the barcode lines.
-
-TASK 2: If you can see a nutrition label or ingredient list, extract all the information.
-
+    const prompt = mode === 'barcode_only'
+      ? `Look at this image carefully. Find the barcode (the parallel black lines with a number below them).
+Extract ONLY the barcode number printed below or beside the barcode lines.
+Return ONLY valid JSON with no markdown:
+{
+  "barcode": "<the exact number printed below the barcode, or null if not visible>",
+  "confidence": "high" or "medium" or "low"
+}`
+      : `You are a food label reader for Indian packaged food products.
+Look at this image carefully and extract ALL visible information.
 Return ONLY valid JSON with no markdown, no code fences:
 {
   "barcode": "<barcode number if visible, or null>",
-  "name": "<product name if visible, or null>",
-  "brand": "<brand name if visible, or null>",
+  "name": "<product name>",
+  "brand": "<brand name>",
   "serving_size_g": <number or null>,
-  "ingredients_text": "<full ingredients list or null>",
+  "ingredients_text": "<full ingredients list>",
   "nutrition_per_100g": {
     "calories": <number or null>,
     "protein": <number or null>,
@@ -44,11 +37,21 @@ Return ONLY valid JSON with no markdown, no code fences:
     "sodium": <number or null>,
     "fiber": <number or null>
   },
-  "additives": ["<e-number or additive name>"],
+  "additives": ["<additive name>"],
   "allergens": ["<allergen>"],
-  "fssai_number": "<14-digit FSSAI number or null>"
+  "fssai_number": "<14-digit FSSAI number or null>",
+  "mrp": <price in rupees or null>
 }`
-              },
+
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
               {
                 inlineData: {
                   mimeType: 'image/jpeg',
@@ -59,15 +62,13 @@ Return ONLY valid JSON with no markdown, no code fences:
           }],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 2000,
+            maxOutputTokens: 1000,
           }
         })
       }
     )
 
     if (!geminiRes.ok) {
-      const err = await geminiRes.text()
-      console.log('Gemini Vision error:', err)
       return NextResponse.json(
         { success: false, error: 'Vision API failed' },
         { status: 500 }
@@ -90,7 +91,6 @@ Return ONLY valid JSON with no markdown, no code fences:
     try {
       extracted = JSON.parse(cleaned)
     } catch {
-      console.log('Vision parse failed:', cleaned.slice(0, 200))
       return NextResponse.json(
         { success: false, error: 'Could not read label' },
         { status: 500 }
