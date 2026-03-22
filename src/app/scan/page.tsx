@@ -103,11 +103,11 @@ export default function ScanPage() {
       })
     })
     const json = await res.json()
-    if (json.success) {
-      alert(`✅ Logged as ${mealType}! View in Dashboard.`)
-    } else {
-      alert('Failed to log. Make sure you are signed in.')
-    }
+   if (json.success) {
+  toast.success(`Logged as ${mealType}!`)
+} else {
+  toast.error('Failed to log. Make sure you are signed in.')
+}
   }
 
   // Handle photo capture in vision mode
@@ -297,15 +297,16 @@ export default function ScanPage() {
             marginBottom: '16px'
           }}>
             {product.image_url && (
-              <img
-                src={product.image_url}
-                alt={product.name}
-                style={{
-                  width: '100%', height: '180px',
-                  objectFit: 'contain', marginBottom: '16px'
-                }}
-              />
-            )}
+  <div className="relative w-full h-44 mb-4">
+    <Image
+      src={product.image_url}
+      alt={product.name}
+      fill
+      className="object-contain"
+      sizes="(max-width: 520px) 100vw, 520px"
+    />
+  </div>
+)}
 
             <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px', color: '#111827' }}>
               {product.name}
