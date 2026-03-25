@@ -1,6 +1,8 @@
 "use client"
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
+import toast from 'react-hot-toast'
 
 const BarcodeScanner = dynamic(
   () => import('@/components/scanner/BarcodeScanner'),
@@ -45,7 +47,6 @@ export default function ScanPage() {
       const json = await res.json()
       setLoadingProduct(false)
 
-      // Product not found — switch to vision mode
       if (!json.success && json.error === 'PRODUCT_NOT_FOUND') {
         setNotFoundBarcode(barcode)
         setShowVisionMode(true)
@@ -65,7 +66,6 @@ export default function ScanPage() {
       return
     }
 
-    // Run AI analysis
     setLoadingAnalysis(true)
     try {
       const analysisRes = await fetch('/api/analyze', {
@@ -75,8 +75,22 @@ export default function ScanPage() {
       })
       const rawText = await analysisRes.text()
       const analysisJson = JSON.parse(rawText)
+
       if (analysisJson.success) {
         setAnalysis(analysisJson.data)
+
+        // Save to personal scan history
+        fetch('/api/scan-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            barcode: productData.barcode,
+            product_name: productData.name,
+            product_image: productData.image_url,
+            ai_health_rating: analysisJson.data.health_rating,
+            ai_health_score: analysisJson.data.health_score,
+          })
+        }).catch(console.error)
       }
     } catch (e) {
       console.log('Analysis error:', e)
@@ -103,14 +117,13 @@ export default function ScanPage() {
       })
     })
     const json = await res.json()
-   if (json.success) {
-  toast.success(`Logged as ${mealType}!`)
-} else {
-  toast.error('Failed to log. Make sure you are signed in.')
-}
+    if (json.success) {
+      toast.success(`Logged as ${mealType}!`)
+    } else {
+      toast.error('Failed to log. Make sure you are signed in.')
+    }
   }
 
-  // Handle photo capture in vision mode
   async function handleVisionCapture(imageBase64: string) {
     setVisionCapturing(true)
     setVisionStatus('🤖 Gemini is reading the label...')
@@ -132,7 +145,6 @@ export default function ScanPage() {
       const extracted = json.data
       setVisionStatus('✅ Label read! Saving to Indian product database...')
 
-      // Save to our Indian product DB
       const submitRes = await fetch('/api/products/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -144,10 +156,10 @@ export default function ScanPage() {
       const submitJson = await submitRes.json()
 
       if (submitJson.success) {
-        setVisionStatus('✅ Product saved to India DB! Running AI analysis...')
+        setVisionStatus('✅ Product saved! Running AI analysis...')
         setShowVisionMode(false)
-        // Now analyze the product
-        setProduct({
+
+        const newProduct = {
           id: submitJson.data.id,
           barcode: submitJson.data.barcode,
           name: submitJson.data.name || extracted.name,
@@ -164,9 +176,9 @@ export default function ScanPage() {
           ingredients_text: submitJson.data.ingredients_text,
           allergens: submitJson.data.allergens || [],
           additives: submitJson.data.additives || [],
-        })
+        }
+        setProduct(newProduct)
 
-        // Run AI analysis on the new product
         setLoadingAnalysis(true)
         const analysisRes = await fetch('/api/analyze', {
           method: 'POST',
@@ -175,8 +187,22 @@ export default function ScanPage() {
         })
         const rawText = await analysisRes.text()
         const analysisJson = JSON.parse(rawText)
+
         if (analysisJson.success) {
           setAnalysis(analysisJson.data)
+
+          // Save to personal scan history
+          fetch('/api/scan-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              barcode: submitJson.data.barcode,
+              product_name: submitJson.data.name,
+              product_image: submitJson.data.image_url,
+              ai_health_rating: analysisJson.data.health_rating,
+              ai_health_score: analysisJson.data.health_score,
+            })
+          }).catch(console.error)
         }
         setLoadingAnalysis(false)
       }
@@ -188,195 +214,119 @@ export default function ScanPage() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f0fdf4',
-      fontFamily: 'sans-serif',
-      padding: '24px 16px'
-    }}>
-      <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+    <div className="min-h-screen bg-[var(--background)] p-4 font-sans">
+      <div className="max-w-lg mx-auto">
 
-        <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>
-          🥗 NutriScan
-        </h1>
-        <p style={{ color: '#6b7280', marginBottom: '24px', fontSize: '14px' }}>
+        <h1 className="text-2xl font-bold text-[var(--foreground)] mb-1">🥗 NutriScan</h1>
+        <p className="text-sm text-[var(--muted)] mb-6">
           Scan any packaged food to get an AI health rating
         </p>
 
         <button
           onClick={() => setShowScanner(true)}
-          style={{
-            width: '100%', padding: '16px',
-            background: '#16a34a', color: 'white',
-            border: 'none', borderRadius: '12px',
-            fontSize: '16px', fontWeight: 600,
-            cursor: 'pointer', marginBottom: '20px'
-          }}
+          className="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl text-base font-bold transition-colors mb-5"
         >
           📷 Scan Barcode
         </button>
 
         {loadingProduct && (
-          <div style={{
-            textAlign: 'center', padding: '32px',
-            background: 'white', borderRadius: '16px',
-            color: '#6b7280', fontSize: '15px'
-          }}>
-            🔍 Looking up product...
+          <div className="text-center py-8 bg-[var(--card)] rounded-2xl border border-[var(--card-border)]">
+            <div className="text-3xl mb-2">🔍</div>
+            <p className="text-sm text-[var(--muted)]">Looking up product...</p>
           </div>
         )}
 
         {loadingAnalysis && (
-          <div style={{
-            textAlign: 'center', padding: '20px',
-            background: '#fffbeb', borderRadius: '12px',
-            color: '#92400e', fontSize: '14px', marginTop: '12px'
-          }}>
-            🤖 Gemini AI is analysing the ingredients...
+          <div className="text-center py-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 mt-3">
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              🤖 Gemini AI is analysing the ingredients...
+            </p>
           </div>
         )}
 
         {error && (
-          <div style={{
-            padding: '14px 16px', background: '#fef2f2',
-            borderRadius: '12px', color: '#dc2626', fontSize: '14px'
-          }}>
-            {error}
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
-        {/* Vision Mode — shown when product not found */}
+        {/* Vision Mode */}
         {showVisionMode && (
-          <div style={{
-            background: 'white', borderRadius: '16px',
-            padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-            marginBottom: '16px'
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '10px',
-              marginBottom: '12px'
-            }}>
-              <span style={{ fontSize: '24px' }}>🇮🇳</span>
+          <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)] mb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-2xl">🇮🇳</span>
               <div>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>
-                  Product not in database
-                </div>
-                <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                  Help build the Indian food database!
-                </div>
+                <p className="text-sm font-bold text-[var(--foreground)]">Product not in database</p>
+                <p className="text-xs text-[var(--muted)]">Help build the Indian food database!</p>
               </div>
             </div>
-
-            <p style={{ fontSize: '13px', color: '#374151', marginBottom: '16px', lineHeight: 1.6 }}>
-              Barcode <strong>{notFoundBarcode}</strong> was not found. Take a photo of the
-              nutrition label and Gemini AI will read it automatically and add it to our
-              Indian product database.
+            <p className="text-xs text-[var(--muted)] mb-4 leading-relaxed">
+              Barcode <strong className="text-[var(--foreground)]">{notFoundBarcode}</strong> was not found.
+              Take a photo of the nutrition label and Gemini AI will read it automatically.
             </p>
-
             {visionStatus && (
-              <div style={{
-                padding: '10px 14px', background: '#f0fdf4',
-                borderRadius: '8px', fontSize: '13px',
-                color: '#16a34a', marginBottom: '12px'
-              }}>
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-sm text-green-700 dark:text-green-400 mb-3">
                 {visionStatus}
               </div>
             )}
-
-            <VisionCapture
-              onCapture={handleVisionCapture}
-              disabled={visionCapturing}
-            />
+            <VisionCapture onCapture={handleVisionCapture} disabled={visionCapturing} />
           </div>
         )}
 
+        {/* Product Card */}
         {product && (
-          <div style={{
-            background: 'white', borderRadius: '16px',
-            padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-            marginBottom: '16px'
-          }}>
+          <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)] shadow-sm mb-4">
             {product.image_url && (
-  <div className="relative w-full h-44 mb-4">
-    <Image
-      src={product.image_url}
-      alt={product.name}
-      fill
-      className="object-contain"
-      sizes="(max-width: 520px) 100vw, 520px"
-    />
-  </div>
-)}
-
-            <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px', color: '#111827' }}>
-              {product.name}
-            </h2>
-
-            {product.brand && (
-              <p style={{ color: '#6b7280', marginBottom: '16px', fontSize: '14px' }}>
-                {product.brand}
-              </p>
-            )}
-
-            {product.source === 'gemini_vision' && (
-              <div style={{
-                display: 'inline-block', padding: '4px 10px',
-                background: '#fef3c7', borderRadius: '20px',
-                fontSize: '12px', color: '#92400e',
-                marginBottom: '12px'
-              }}>
-                🇮🇳 Added to Indian DB by you
+              <div className="relative w-full h-44 mb-4">
+                <Image
+                  src={product.image_url}
+                  alt={product.name}
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 520px) 100vw, 520px"
+                />
               </div>
             )}
 
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
-              gap: '8px', marginBottom: '16px'
-            }}>
+            <h2 className="text-xl font-bold text-[var(--foreground)] mb-1">{product.name}</h2>
+
+            {product.brand && (
+              <p className="text-sm text-[var(--muted)] mb-4">{product.brand}</p>
+            )}
+
+            {product.source === 'gemini_vision' && (
+              <span className="inline-block px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-full text-xs font-medium mb-3">
+                🇮🇳 Added to Indian DB by you
+              </span>
+            )}
+
+            <div className="grid grid-cols-4 gap-2 mb-4">
               {[
                 { label: 'Calories', value: `${Math.round(product.nutrition.calories || 0)}`, unit: 'kcal' },
                 { label: 'Protein', value: `${product.nutrition.protein || 0}`, unit: 'g' },
                 { label: 'Carbs', value: `${product.nutrition.carbs || 0}`, unit: 'g' },
                 { label: 'Fat', value: `${product.nutrition.fat || 0}`, unit: 'g' },
               ].map(item => (
-                <div key={item.label} style={{
-                  background: '#f0fdf4', borderRadius: '10px',
-                  padding: '10px 6px', textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '16px', fontWeight: 700, color: '#16a34a' }}>
-                    {item.value}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#6b7280' }}>{item.unit}</div>
-                  <div style={{ fontSize: '10px', color: '#9ca3af' }}>{item.label}</div>
+                <div key={item.label} className="bg-green-50 dark:bg-green-900/20 rounded-xl p-2 text-center">
+                  <p className="text-base font-bold text-green-600 dark:text-green-400">{item.value}</p>
+                  <p className="text-xs text-[var(--muted)]">{item.unit}</p>
+                  <p className="text-xs text-[var(--muted)]">{item.label}</p>
                 </div>
               ))}
             </div>
 
-            <div style={{ fontSize: '11px', color: '#9ca3af' }}>
-              Per 100g · Source: {product.source}
-            </div>
+            <p className="text-xs text-[var(--muted)] mb-4">Per 100g · Source: {product.source}</p>
 
-            <div style={{ marginTop: '16px' }}>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
-                Log this meal as:
-              </p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div>
+              <p className="text-sm font-semibold text-[var(--foreground)] mb-2">Log this meal as:</p>
+              <div className="flex gap-2 flex-wrap">
                 {['breakfast', 'lunch', 'dinner', 'snack'].map(meal => (
                   <button
                     key={meal}
                     onClick={() => handleLogMeal(meal)}
-                    style={{
-                      padding: '8px 14px',
-                      background: '#f0fdf4',
-                      border: '1.5px solid #16a34a',
-                      borderRadius: '8px', fontSize: '13px',
-                      color: '#16a34a', fontWeight: 500,
-                      cursor: 'pointer', textTransform: 'capitalize'
-                    }}
+                    className="px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 rounded-lg text-xs font-medium text-green-700 dark:text-green-400 capitalize hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
                   >
-                    {meal === 'breakfast' ? '🌅' :
-                     meal === 'lunch' ? '☀️' :
-                     meal === 'dinner' ? '🌙' : '🍎'} {meal}
+                    {meal === 'breakfast' ? '🌅' : meal === 'lunch' ? '☀️' : meal === 'dinner' ? '🌙' : '🍎'} {meal}
                   </button>
                 ))}
               </div>
@@ -384,116 +334,86 @@ export default function ScanPage() {
           </div>
         )}
 
+        {/* AI Analysis Card */}
         {analysis && (
-          <div style={{
-            background: 'white', borderRadius: '16px',
-            padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
-          }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: '#111827' }}>
-              🤖 AI Health Analysis
-            </h3>
+          <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)] shadow-sm">
+            <h3 className="text-base font-bold text-[var(--foreground)] mb-4">🤖 AI Health Analysis</h3>
 
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '12px',
-              padding: '14px 16px', borderRadius: '12px', marginBottom: '16px',
-              background: (ratingColors[analysis.health_rating] || '#6b7280') + '15',
-              border: `1.5px solid ${(ratingColors[analysis.health_rating] || '#6b7280')}30`
-            }}>
-              <span style={{ fontSize: '28px' }}>
-                {ratingEmoji[analysis.health_rating] || '❓'}
-              </span>
+            <div
+              className="flex items-center gap-3 p-4 rounded-xl mb-4"
+              style={{
+                background: (ratingColors[analysis.health_rating] || '#6b7280') + '15',
+                border: `1.5px solid ${(ratingColors[analysis.health_rating] || '#6b7280')}30`
+              }}
+            >
+              <span className="text-3xl">{ratingEmoji[analysis.health_rating] || '❓'}</span>
               <div>
-                <div style={{
-                  fontSize: '18px', fontWeight: 700,
-                  color: ratingColors[analysis.health_rating] || '#6b7280',
-                  textTransform: 'capitalize'
-                }}>
+                <p className="text-lg font-bold capitalize" style={{ color: ratingColors[analysis.health_rating] }}>
                   {analysis.health_rating}
-                </div>
-                <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                  Health Score: {analysis.health_score}/10
-                </div>
+                </p>
+                <p className="text-xs text-[var(--muted)]">Health Score: {analysis.health_score}/10</p>
               </div>
             </div>
 
-            <p style={{
-              fontSize: '14px', color: '#374151', lineHeight: 1.7,
-              marginBottom: '16px', padding: '12px',
-              background: '#f9fafb', borderRadius: '10px'
-            }}>
+            <p className="text-sm text-[var(--foreground)] leading-relaxed mb-4 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-xl">
               {analysis.summary}
             </p>
 
             {analysis.safe_consumption && (
-              <div style={{
-                padding: '12px 14px', background: '#f0fdf4',
-                borderRadius: '10px', marginBottom: '16px'
-              }}>
-                <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '6px', color: '#111827' }}>
-                  ✅ Safe Consumption
-                </div>
-                <div style={{ fontSize: '13px', color: '#374151' }}>
-                  <strong>Amount:</strong> {analysis.safe_consumption.amount}
-                </div>
-                <div style={{ fontSize: '13px', color: '#374151' }}>
-                  <strong>Frequency:</strong> {analysis.safe_consumption.frequency}
-                </div>
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl mb-4">
+                <p className="text-xs font-bold text-[var(--foreground)] mb-2">✅ Safe Consumption</p>
+                <p className="text-xs text-[var(--foreground)]"><strong>Amount:</strong> {analysis.safe_consumption.amount}</p>
+                <p className="text-xs text-[var(--foreground)]"><strong>Frequency:</strong> {analysis.safe_consumption.frequency}</p>
                 {analysis.safe_consumption.notes && (
-                  <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>
-                    {analysis.safe_consumption.notes}
-                  </div>
+                  <p className="text-xs text-[var(--muted)] mt-1">{analysis.safe_consumption.notes}</p>
                 )}
               </div>
             )}
 
             {analysis.ingredient_warnings?.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px', color: '#111827' }}>
-                  ⚠️ Ingredient Warnings
-                </div>
-                {analysis.ingredient_warnings.map((w: any, i: number) => (
-                  <div key={i} style={{
-                    display: 'flex', alignItems: 'flex-start', gap: '10px',
-                    padding: '10px 12px', marginBottom: '6px', borderRadius: '8px',
-                    background: w.severity === 'high' ? '#fef2f2' : w.severity === 'medium' ? '#fffbeb' : '#f9fafb',
-                    borderLeft: `3px solid ${w.severity === 'high' ? '#dc2626' : w.severity === 'medium' ? '#d97706' : '#9ca3af'}`
-                  }}>
-                    <span style={{ fontSize: '14px' }}>
-                      {w.severity === 'high' ? '🔴' : w.severity === 'medium' ? '🟡' : '🟢'}
-                    </span>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
-                        {w.ingredient}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                        {w.concern}
+              <div className="mb-4">
+                <p className="text-xs font-bold text-[var(--foreground)] mb-2">⚠️ Ingredient Warnings</p>
+                <div className="flex flex-col gap-2">
+                  {analysis.ingredient_warnings.map((w: any, i: number) => (
+                    <div
+                      key={i}
+                      className={`flex items-start gap-2 p-3 rounded-lg border-l-4 ${
+                        w.severity === 'high'
+                          ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
+                          : w.severity === 'medium'
+                          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
+                          : 'bg-gray-50 dark:bg-slate-800/50 border-gray-400'
+                      }`}
+                    >
+                      <span className="text-sm">
+                        {w.severity === 'high' ? '🔴' : w.severity === 'medium' ? '🟡' : '🟢'}
+                      </span>
+                      <div>
+                        <p className="text-xs font-bold text-[var(--foreground)]">{w.ingredient}</p>
+                        <p className="text-xs text-[var(--muted)]">{w.concern}</p>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
 
             {analysis.positives?.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px', color: '#111827' }}>
-                  👍 What is Good
+              <div className="mb-4">
+                <p className="text-xs font-bold text-[var(--foreground)] mb-2">👍 What is Good</p>
+                <div className="flex flex-col gap-1">
+                  {analysis.positives.map((p: string, i: number) => (
+                    <div key={i} className="text-xs text-[var(--foreground)] px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      • {p}
+                    </div>
+                  ))}
                 </div>
-                {analysis.positives.map((p: string, i: number) => (
-                  <div key={i} style={{
-                    fontSize: '13px', color: '#374151',
-                    padding: '6px 10px', marginBottom: '4px',
-                    background: '#f0fdf4', borderRadius: '6px'
-                  }}>
-                    • {p}
-                  </div>
-                ))}
               </div>
             )}
 
-            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '8px' }}>
+            <p className="text-xs text-[var(--muted)]">
               Analysed by Gemini AI · {new Date(analysis.analyzed_at).toLocaleDateString()}
-            </div>
+            </p>
           </div>
         )}
 
@@ -509,7 +429,6 @@ export default function ScanPage() {
   )
 }
 
-// Vision capture component — shows camera + capture button
 function VisionCapture({
   onCapture,
   disabled
@@ -517,7 +436,6 @@ function VisionCapture({
   onCapture: (base64: string) => void
   disabled: boolean
 }) {
-  const videoRef = useState<HTMLVideoElement | null>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [cameraActive, setCameraActive] = useState(false)
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
@@ -530,7 +448,7 @@ function VisionCapture({
       setStream(s)
       setCameraActive(true)
     } catch {
-      alert('Camera access denied. Please allow camera permission.')
+      toast.error('Camera access denied. Please allow camera permission.')
     }
   }
 
@@ -558,13 +476,7 @@ function VisionCapture({
       {!cameraActive ? (
         <button
           onClick={startCamera}
-          style={{
-            width: '100%', padding: '14px',
-            background: '#f59e0b', color: 'white',
-            border: 'none', borderRadius: '10px',
-            fontSize: '15px', fontWeight: 600,
-            cursor: 'pointer'
-          }}
+          className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold transition-colors"
         >
           📸 Open Camera to Read Label
         </button>
@@ -578,34 +490,23 @@ function VisionCapture({
                 setVideoEl(el)
               }
             }}
-            style={{
-              width: '100%', borderRadius: '10px',
-              marginBottom: '10px', background: '#000'
-            }}
-            muted playsInline
+            className="w-full rounded-xl mb-3 bg-black"
+            muted
+            playsInline
           />
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="flex gap-2">
             <button
               onClick={capture}
               disabled={disabled}
-              style={{
-                flex: 1, padding: '12px',
-                background: disabled ? '#9ca3af' : '#16a34a',
-                color: 'white', border: 'none',
-                borderRadius: '8px', fontSize: '14px',
-                fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer'
-              }}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold text-white transition-colors ${
+                disabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+              }`}
             >
               {disabled ? '🤖 Reading...' : '📸 Capture Label'}
             </button>
             <button
               onClick={stopCamera}
-              style={{
-                padding: '12px 16px',
-                background: '#f3f4f6', color: '#374151',
-                border: 'none', borderRadius: '8px',
-                fontSize: '14px', cursor: 'pointer'
-              }}
+              className="px-4 py-3 bg-gray-100 dark:bg-slate-700 text-[var(--foreground)] rounded-xl text-sm"
             >
               Cancel
             </button>
