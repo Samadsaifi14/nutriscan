@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useRef, useState } from 'react'
+import toast from 'react-hot-toast'
 
 interface BarcodeScannerProps {
   onDetected: (barcode: string) => void
@@ -15,13 +16,21 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
   const [isCapturing, setIsCapturing] = useState(false)
   const [manualBarcode, setManualBarcode] = useState('')
   const [tab, setTab] = useState<'photo' | 'manual'>('photo')
+  const [pulse, setPulse] = useState(false)
 
   useEffect(() => {
     mountedRef.current = true
     startCamera()
+
+    // Start pulsing the button after 2 seconds to draw attention
+    const pulseTimer = setTimeout(() => {
+      if (mountedRef.current) setPulse(true)
+    }, 2000)
+
     return () => {
       mountedRef.current = false
       stopCamera()
+      clearTimeout(pulseTimer)
     }
   }, [])
 
@@ -59,6 +68,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
   async function handleCapture() {
     if (!videoRef.current || isCapturing) return
     setIsCapturing(true)
+    setPulse(false)
     setStatus('🤖 Gemini is reading the barcode...')
 
     const canvas = document.createElement('canvas')
@@ -75,7 +85,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
     const imageBase64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1]
 
     try {
-      // First try to extract just the barcode number
+      // First try barcode only
       const res = await fetch('/api/scan-vision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,8 +100,8 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         return
       }
 
-      // Barcode not found in image — try full label extraction
-      setStatus('Barcode not clear. Trying to read full label...')
+      // Try full label extraction
+      setStatus('Trying full label extraction...')
       const res2 = await fetch('/api/scan-vision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -107,7 +117,6 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
       }
 
       if (json2.success && json2.data?.name) {
-        // No barcode but got product info — save directly
         setStatus('No barcode visible. Saving from label data...')
         const submitRes = await fetch('/api/products/submit', {
           method: 'POST',
@@ -122,7 +131,8 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         }
       }
 
-      setStatus('Could not read barcode. Try better lighting or manual entry.')
+      setStatus('Could not read barcode. Try better lighting or manual entry below.')
+      setPulse(true)
     } catch {
       setStatus('Something went wrong. Try again or use manual entry.')
     }
@@ -133,7 +143,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
   function handleManualSubmit() {
     const code = manualBarcode.trim()
     if (code.length < 8) {
-      alert('Please enter at least 8 digits')
+      toast.error('Please enter at least 8 digits')
       return
     }
     stopCamera()
@@ -141,44 +151,38 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: 'rgba(0,0,0,0.9)',
-      display: 'flex', alignItems: 'center',
-      justifyContent: 'center', zIndex: 50, padding: '16px'
-    }}>
-      <div style={{
-        background: 'white', borderRadius: '16px',
-        overflow: 'hidden', width: '100%', maxWidth: '420px'
-      }}>
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+      <div className="bg-[var(--card)] rounded-2xl overflow-hidden w-full max-w-md">
 
         {/* Header */}
-        <div style={{
-          padding: '14px 16px', borderBottom: '1px solid #e5e7eb',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-        }}>
-          <span style={{ fontWeight: 700, fontSize: '16px' }}>📷 Scan Food Product</span>
-          <button onClick={() => { stopCamera(); onClose() }} style={{
-            background: 'none', border: 'none',
-            fontSize: '22px', cursor: 'pointer', color: '#6b7280'
-          }}>✕</button>
+        <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--card-border)]">
+          <div>
+            <h2 className="text-base font-bold text-[var(--foreground)]">📷 Scan Food Product</h2>
+            <p className="text-xs text-[var(--muted)]">Works on all Indian products</p>
+          </div>
+          <button
+            onClick={() => { stopCamera(); onClose() }}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-slate-700 text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+          >
+            ✕
+          </button>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb' }}>
+        <div className="flex border-b border-[var(--card-border)]">
           {[
             { key: 'photo', label: '📸 Photo Scan' },
             { key: 'manual', label: '⌨️ Manual Entry' },
           ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key as any)} style={{
-              flex: 1, padding: '10px',
-              background: tab === t.key ? '#f0fdf4' : 'white',
-              border: 'none',
-              borderBottom: tab === t.key ? '2px solid #16a34a' : '2px solid transparent',
-              fontSize: '13px', fontWeight: tab === t.key ? 600 : 400,
-              color: tab === t.key ? '#16a34a' : '#6b7280',
-              cursor: 'pointer'
-            }}>
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key as 'photo' | 'manual')}
+              className={`flex-1 py-2.5 text-sm font-medium transition-all ${
+                tab === t.key
+                  ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 bg-green-50 dark:bg-green-900/20'
+                  : 'text-[var(--muted)] border-b-2 border-transparent'
+              }`}
+            >
               {t.label}
             </button>
           ))}
@@ -186,65 +190,117 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
 
         {tab === 'photo' && (
           <>
-            {/* Camera */}
-            <div style={{ position: 'relative', background: '#000', aspectRatio: '4/3' }}>
-              <video ref={videoRef} style={{
-                width: '100%', height: '100%',
-                objectFit: 'cover', display: 'block',
-                transform: isFrontCamera ? 'scaleX(-1)' : 'none'
-              }} muted playsInline />
-              <div style={{
-                position: 'absolute',
-                top: '15%', left: '5%', right: '5%', bottom: '15%',
-                border: '2px solid #16a34a', borderRadius: '10px',
-                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
-              }} />
-              <div style={{
-                position: 'absolute', bottom: '8px',
-                left: 0, right: 0, textAlign: 'center'
-              }}>
-                <span style={{
-                  background: 'rgba(0,0,0,0.7)', color: 'white',
-                  fontSize: '12px', padding: '4px 12px', borderRadius: '20px'
-                }}>
+            {/* Camera view */}
+            <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
+              <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                style={{ transform: isFrontCamera ? 'scaleX(-1)' : 'none' }}
+                muted
+                playsInline
+              />
+
+              {/* Scanning guide box */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div
+                  className="border-2 border-green-400 rounded-xl"
+                  style={{
+                    width: '80%',
+                    height: '60%',
+                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
+                  }}
+                >
+                  {/* Corner markers */}
+                  <div className="absolute top-0 left-0 w-5 h-5 border-t-4 border-l-4 border-green-400 rounded-tl-lg" />
+                  <div className="absolute top-0 right-0 w-5 h-5 border-t-4 border-r-4 border-green-400 rounded-tr-lg" />
+                  <div className="absolute bottom-0 left-0 w-5 h-5 border-b-4 border-l-4 border-green-400 rounded-bl-lg" />
+                  <div className="absolute bottom-0 right-0 w-5 h-5 border-b-4 border-r-4 border-green-400 rounded-br-lg" />
+                </div>
+              </div>
+
+              {/* Status overlay */}
+              <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+                <span className="bg-black/70 text-white text-xs px-3 py-1.5 rounded-full">
                   {status}
                 </span>
               </div>
             </div>
 
-            {/* Instructions */}
-            <div style={{ padding: '12px 16px', background: '#f9fafb', fontSize: '12px', color: '#6b7280' }}>
-              💡 Point camera at the <strong>barcode</strong> or <strong>nutrition label</strong> on the packet. Works on all Indian products!
+            {/* Instruction banner */}
+            <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+              <p className="text-xs text-amber-700 dark:text-amber-400 text-center font-medium">
+                👇 Point at the barcode or nutrition label, then tap the button below
+              </p>
             </div>
 
-            {/* Capture Button */}
-            <div style={{ padding: '16px' }}>
-              <button
-                onClick={handleCapture}
-                disabled={isCapturing}
-                style={{
-                  width: '100%', padding: '14px',
-                  background: isCapturing ? '#9ca3af' : '#16a34a',
-                  color: 'white', border: 'none', borderRadius: '10px',
-                  fontSize: '16px', fontWeight: 700,
-                  cursor: isCapturing ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {isCapturing ? '🤖 Gemini is reading...' : '📸 Capture & Read'}
-              </button>
+            {/* Capture button — highlighted with pulse animation */}
+            <div className="p-4">
+              <div className="relative">
+                {/* Glow ring behind button when pulsing */}
+                {pulse && !isCapturing && (
+                  <div
+                    className="absolute inset-0 rounded-xl bg-green-500 opacity-30"
+                    style={{
+                      animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
+                    }}
+                  />
+                )}
+
+                <button
+                  onClick={handleCapture}
+                  disabled={isCapturing}
+                  className={`relative w-full py-4 rounded-xl text-white text-base font-bold transition-all flex items-center justify-center gap-2 ${
+                    isCapturing
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : pulse
+                      ? 'bg-green-600 shadow-lg shadow-green-500/50 scale-105'
+                      : 'bg-green-600 hover:bg-green-700 active:scale-95'
+                  }`}
+                  style={{
+                    boxShadow: pulse && !isCapturing
+                      ? '0 0 0 4px rgba(22, 163, 74, 0.3), 0 8px 24px rgba(22, 163, 74, 0.4)'
+                      : undefined,
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {isCapturing ? (
+                    <>
+                      <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeOpacity="0.3"/>
+                        <path d="M12 2a10 10 0 0110 10" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+                      </svg>
+                      Gemini AI is reading...
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xl">📸</span>
+                      Capture &amp; Read
+                      {pulse && <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">Tap here!</span>}
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Helper text below button */}
+              {!isCapturing && (
+                <p className="text-xs text-center text-[var(--muted)] mt-2">
+                  Gemini AI will automatically read the barcode and nutrition info
+                </p>
+              )}
             </div>
           </>
         )}
 
         {tab === 'manual' && (
-          <div style={{ padding: '20px' }}>
-            <p style={{ fontSize: '14px', color: '#374151', marginBottom: '8px', fontWeight: 500 }}>
-              Enter the barcode number:
+          <div className="p-5">
+            <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
+              Enter barcode number:
             </p>
-            <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '14px' }}>
+            <p className="text-xs text-[var(--muted)] mb-4">
               Find the number printed directly below the barcode lines on the packet
             </p>
-            <div style={{ display: 'flex', gap: '8px' }}>
+
+            <div className="flex gap-2 mb-4">
               <input
                 type="text"
                 inputMode="numeric"
@@ -253,52 +309,52 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
                 onChange={e => setManualBarcode(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleManualSubmit()}
                 autoFocus
-                style={{
-                  flex: 1, padding: '12px',
-                  border: '1.5px solid #d1d5db',
-                  borderRadius: '8px', fontSize: '15px',
-                  outline: 'none', color: '#111827'
-                }}
+                className="flex-1 px-3 py-3 border-2 border-[var(--card-border)] focus:border-green-500 rounded-xl text-sm text-[var(--foreground)] bg-[var(--card)] outline-none transition-colors"
               />
-              <button onClick={handleManualSubmit} style={{
-                padding: '12px 20px',
-                background: '#16a34a', color: 'white',
-                border: 'none', borderRadius: '8px',
-                fontSize: '15px', fontWeight: 700,
-                cursor: 'pointer'
-              }}>
+              <button
+                onClick={handleManualSubmit}
+                className="px-5 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-colors"
+              >
                 Go →
               </button>
             </div>
 
-            <div style={{ marginTop: '16px', padding: '12px', background: '#f0fdf4', borderRadius: '8px' }}>
-              <p style={{ fontSize: '12px', color: '#16a34a', fontWeight: 500, marginBottom: '4px' }}>
-                Popular Indian product barcodes to test:
+            {/* Quick test barcodes */}
+            <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-3">
+              <p className="text-xs font-semibold text-[var(--muted)] mb-2">
+                Popular Indian products to test:
               </p>
-              {[
-                { name: 'Parle-G', code: '8901719110023' },
-                { name: 'Lay\'s', code: '8901491981552' },
-                { name: 'Maggi', code: '8901030814091' },
-              ].map(item => (
-                <button
-                  key={item.code}
-                  onClick={() => { stopCamera(); onDetected(item.code) }}
-                  style={{
-                    display: 'block', width: '100%',
-                    padding: '8px 10px', marginBottom: '4px',
-                    background: 'white', border: '1px solid #d1fae5',
-                    borderRadius: '6px', textAlign: 'left',
-                    fontSize: '13px', color: '#374151', cursor: 'pointer'
-                  }}
-                >
-                  {item.name} — <span style={{ color: '#9ca3af', fontFamily: 'monospace' }}>{item.code}</span>
-                </button>
-              ))}
+              <div className="flex flex-col gap-1.5">
+                {[
+                  { name: 'Parle-G Biscuits', code: '8901719110023' },
+                  { name: "Lay's Chips", code: '8901491981552' },
+                  { name: 'Maggi Noodles', code: '8901030814091' },
+                ].map(item => (
+                  <button
+                    key={item.code}
+                    onClick={() => { stopCamera(); onDetected(item.code) }}
+                    className="flex items-center justify-between px-3 py-2 bg-[var(--card)] border border-[var(--card-border)] rounded-lg hover:border-green-300 dark:hover:border-green-700 transition-colors text-left"
+                  >
+                    <span className="text-xs font-medium text-[var(--foreground)]">{item.name}</span>
+                    <span className="text-xs text-[var(--muted)] font-mono">{item.code}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
       </div>
+
+      {/* Global pulse animation style */}
+      <style jsx>{`
+        @keyframes ping {
+          75%, 100% {
+            transform: scale(1.1);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   )
 }
