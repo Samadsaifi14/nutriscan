@@ -87,7 +87,7 @@ export default function ProfileSetupPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl gradient-brand mb-4 shadow-lg shadow-emerald-500/25">
             <span className="text-2xl">🥗</span>
           </div>
-          <h1 className="text-2xl font-black text-gradient mb-1">HealthOX</h1>
+          <h1 className="text-2xl font-black text-gradient mb-1">NutriScan</h1>
           <p className="text-sm text-[var(--muted)]">
             {step === 3 ? 'Your profile is ready!' : `Set up your health profile — Step ${step} of 2`}
           </p>
@@ -351,7 +351,7 @@ export default function ProfileSetupPage() {
                 boxShadow: '0 8px 24px rgba(5,150,105,0.3)',
               }}
             >
-              Start Tracking with HealthOX →
+              Start Tracking with NutriScan →
             </button>
           </div>
         )}

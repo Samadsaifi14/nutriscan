@@ -1,6 +1,6 @@
 {
-  "name": "HealthOX — AI Food Health Advisor",
-  "short_name": "HealthOX",
+  "name": "NutriScan — AI Food Health Advisor",
+  "short_name": "NutriScan",
   "description": "Scan any packaged food and get an instant AI health rating",
   "start_url": "/dashboard",
   "display": "standalone",

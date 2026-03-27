@@ -8,17 +8,17 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'HealthOX — AI Food Health Advisor',
+  title: 'NutriScan — AI Food Health Advisor',
   description: 'Scan any packaged food and get an instant AI health rating powered by Gemini',
   manifest: '/manifest.json',
   icons: { icon: '/icon.svg', apple: '/icon.svg' },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'HealthOX',
+    title: 'NutriScan',
   },
   openGraph: {
-    title: 'HealthOX — AI Food Health Advisor',
+    title: 'NutriScan — AI Food Health Advisor',
     description: 'Scan any packaged food and get an instant AI health rating',
     type: 'website',
   },

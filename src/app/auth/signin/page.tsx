@@ -39,7 +39,7 @@ export default function SignInPage() {
             <span className="text-4xl">🥗</span>
           </div>
           <h1 className="text-4xl font-black tracking-tight mb-2">
-            <span className="text-gradient">HealthOX</span>
+            <span className="text-gradient">NutriScan</span>
           </h1>
           <p className="text-sm text-[var(--muted)] leading-relaxed">
             Your AI-powered food health advisor.<br/>
