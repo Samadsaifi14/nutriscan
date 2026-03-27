@@ -5,41 +5,39 @@ import Providers from '@/components/Providers'
 import BottomNav from '@/components/BottomNav'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'NutriScan — AI Food Health Advisor',
-  description: 'Scan any packaged food and get an instant AI health rating',
+  title: 'HealthOX — AI Food Health Advisor',
+  description: 'Scan any packaged food and get an instant AI health rating powered by Gemini',
   manifest: '/manifest.json',
-  icons: {
-    icon: '/icon.png',
-    apple: '/apple-icon.png',
-  },
+  icons: { icon: '/icon.svg', apple: '/icon.svg' },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'NutriScan',
+    statusBarStyle: 'black-translucent',
+    title: 'HealthOX',
+  },
+  openGraph: {
+    title: 'HealthOX — AI Food Health Advisor',
+    description: 'Scan any packaged food and get an instant AI health rating',
+    type: 'website',
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#16a34a',
+  themeColor: '#059669',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className={inter.className}>
         <Providers>
           <ErrorBoundary>
-            <main className="pb-20">
+            <main className="pb-20 min-h-screen">
               {children}
             </main>
             <BottomNav />

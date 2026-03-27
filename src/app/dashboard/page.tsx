@@ -10,81 +10,24 @@ import { RecentScans } from '@/components/dashboard/RecentScans'
 import { SkeletonDashboard } from '@/components/Skeleton'
 import toast from 'react-hot-toast'
 
-function MacroChart({ protein, carbs, fat }: { protein: number, carbs: number, fat: number }) {
-  const total = protein + carbs + fat
-  if (total === 0) return null
-
-  const proteinPct = Math.round((protein / total) * 100)
-  const carbsPct = Math.round((carbs / total) * 100)
-  const fatPct = 100 - proteinPct - carbsPct
-
-  const segments = [
-    { label: 'Protein', pct: proteinPct, color: '#16a34a', value: Math.round(protein) },
-    { label: 'Carbs', pct: carbsPct, color: '#3b82f6', value: Math.round(carbs) },
-    { label: 'Fat', pct: fatPct, color: '#f59e0b', value: Math.round(fat) },
-  ]
-
-  // Build SVG pie chart
-  let currentAngle = -90
-  const cx = 50, cy = 50, r = 40
-
-  function polarToCartesian(angle: number) {
-    const rad = (angle * Math.PI) / 180
-    return {
-      x: cx + r * Math.cos(rad),
-      y: cy + r * Math.sin(rad),
-    }
-  }
-
-  function buildArc(startAngle: number, pct: number) {
-    const endAngle = startAngle + (pct / 100) * 360
-    const start = polarToCartesian(startAngle)
-    const end = polarToCartesian(endAngle - 0.01)
-    const largeArc = pct > 50 ? 1 : 0
-    return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y} Z`
-  }
-
+function MacroBar({ label, value, total, color }: {
+  label: string
+  value: number
+  total: number
+  color: string
+}) {
+  const pct = total > 0 ? Math.min((value / total) * 100, 100) : 0
   return (
-    <div className="bg-[var(--card)] rounded-2xl p-5 shadow-sm border border-[var(--card-border)]">
-      <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
-        🥩 Today&apos;s Macros
-      </h3>
-      <div className="flex items-center gap-4">
-        <svg width="100" height="100" viewBox="0 0 100 100" className="flex-shrink-0">
-          {total > 0 && segments.map((seg, i) => {
-            if (seg.pct === 0) return null
-            const path = buildArc(currentAngle, seg.pct)
-            currentAngle += (seg.pct / 100) * 360
-            return <path key={i} d={path} fill={seg.color} />
-          })}
-          <circle cx={cx} cy={cy} r={25} fill="var(--card)" />
-          <text x={cx} y={cy - 4} textAnchor="middle" fontSize="10" fill="var(--foreground)" fontWeight="600">
-            {Math.round(total)}g
-          </text>
-          <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7" fill="var(--muted)">
-            total
-          </text>
-        </svg>
-
-        <div className="flex-1 space-y-2">
-          {segments.map(seg => (
-            <div key={seg.label} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ background: seg.color }} />
-                <span className="text-xs text-[var(--muted)]">{seg.label}</span>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-semibold text-[var(--foreground)]">
-                  {seg.value}g
-                </span>
-                <span className="text-xs text-[var(--muted)] ml-1">
-                  {seg.pct}%
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+    <div className="flex-1">
+      <div className="flex justify-between items-center mb-1">
+        <span className="text-xs text-[var(--muted)] font-medium">{label}</span>
+        <span className="text-xs font-bold text-[var(--foreground)]">{Math.round(value)}g</span>
+      </div>
+      <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, background: color }}
+        />
       </div>
     </div>
   )
@@ -95,10 +38,8 @@ export default function DashboardPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [dailyGoal, setDailyGoal] = useState(2000)
-
   const userId = (session as any)?.userId
 
-  // React Query — caches dashboard data for 5 minutes
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard', userId],
     queryFn: async () => {
@@ -106,7 +47,7 @@ export default function DashboardPage() {
 
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('daily_calorie_goal, profile_completed')
+        .select('daily_calorie_goal, profile_completed, name')
         .eq('user_id', userId)
         .single()
 
@@ -153,85 +94,133 @@ export default function DashboardPage() {
 
   const todayLogs = data?.todayLogs || []
   const recentLogs = data?.recentLogs || []
-
   const todayCalories = todayLogs.reduce((s: number, l: any) => s + (l.calories || 0), 0)
   const todayProtein = todayLogs.reduce((s: number, l: any) => s + (l.protein_g || 0), 0)
   const todayCarbs = todayLogs.reduce((s: number, l: any) => s + (l.carbs_g || 0), 0)
   const todayFat = todayLogs.reduce((s: number, l: any) => s + (l.fat_g || 0), 0)
+  const todayMeals = todayLogs.length
+  const progressPct = Math.min(Math.round((todayCalories / dailyGoal) * 100), 100)
+  const firstName = session?.user?.name?.split(' ')[0] || 'there'
 
-  const todayMeals = todayLogs.filter((l: any) =>
-    new Date(l.logged_at).toDateString() === new Date().toDateString()
-  ).length
+  const now = new Date()
+  const hour = now.getHours()
+  const greeting = hour < 12 ? '🌅 Good morning' : hour < 17 ? '☀️ Good afternoon' : '🌙 Good evening'
 
   return (
-    <div className="min-h-screen bg-[var(--background)] p-4 animate-fade-in">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[var(--background)]">
 
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+      {/* Header with gradient */}
+      <div
+        className="relative px-5 pt-12 pb-8 overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #059669 0%, #0ea5e9 100%)',
+        }}
+      >
+        {/* Decorative circles */}
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-8 w-24 h-24 bg-white/5 rounded-full translate-y-1/2" />
+
+        <div className="relative flex justify-between items-start mb-6 max-w-2xl mx-auto">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--foreground)]">
-              Hello, {session?.user?.name?.split(' ')[0]} 👋
-            </h1>
-            <p className="text-sm text-[var(--muted)] mt-0.5">
-              {new Date().toLocaleDateString('en-IN', {
-                weekday: 'long', month: 'long', day: 'numeric'
-              })}
+            <p className="text-emerald-100 text-sm font-medium mb-1">{greeting}</p>
+            <h1 className="text-3xl font-black text-white">{firstName}</h1>
+            <p className="text-emerald-100 text-xs mt-1">
+              {now.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
           </div>
           <button
             onClick={() => router.push('/scan')}
-            className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition-colors"
+            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 active:bg-white/40 text-white px-4 py-2.5 rounded-2xl text-sm font-bold transition-all border border-white/20"
           >
-            📷 Scan
+            <span>📷</span> Scan
           </button>
         </div>
 
-        {dailyGoal !== 2000 && (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl mb-4 text-sm text-green-700 dark:text-green-400">
-            🎯 Your daily goal: <span className="font-bold">{dailyGoal} kcal</span>
+        {/* Today's progress bar */}
+        <div className="relative bg-white/10 rounded-2xl p-4 max-w-2xl mx-auto border border-white/20">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-white text-sm font-semibold">Today's Progress</span>
+            <span className="text-emerald-100 text-xs">{progressPct}% of goal</span>
           </div>
-        )}
+          <div className="h-2.5 bg-white/20 rounded-full overflow-hidden mb-2">
+            <div
+              className="h-full rounded-full transition-all duration-1000"
+              style={{
+                width: `${progressPct}%`,
+                background: progressPct >= 100
+                  ? '#ef4444'
+                  : progressPct >= 75
+                  ? '#f59e0b'
+                  : 'rgba(255,255,255,0.9)',
+              }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-emerald-100">
+            <span>{Math.round(todayCalories)} kcal consumed</span>
+            <span>{Math.max(0, dailyGoal - Math.round(todayCalories))} kcal remaining</span>
+          </div>
+        </div>
+      </div>
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <CalorieRing consumed={todayCalories} goal={dailyGoal} label="Today's Calories" />
-          <div className="bg-[var(--card)] rounded-2xl p-5 shadow-sm border border-[var(--card-border)] flex flex-col justify-center gap-4">
-            <div>
-              <p className="text-xs text-[var(--muted)] mb-1">Meals today</p>
-              <p className="text-3xl font-bold text-[var(--foreground)]">{todayMeals}</p>
+      <div className="px-4 py-5 max-w-2xl mx-auto space-y-4">
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-3 animate-fade-in-up">
+          {[
+            { label: 'Calories', value: Math.round(todayCalories), unit: 'kcal', color: '#059669' },
+            { label: 'Meals', value: todayMeals, unit: 'today', color: '#0ea5e9' },
+            { label: 'Goal', value: dailyGoal, unit: 'kcal', color: '#8b5cf6' },
+          ].map((stat, i) => (
+            <div
+              key={stat.label}
+              className="bg-[var(--card)] rounded-2xl p-4 border border-[var(--card-border)] shadow-sm text-center"
+              style={{ animationDelay: `${i * 0.05}s` }}
+            >
+              <p className="text-2xl font-black" style={{ color: stat.color }}>
+                {stat.value}
+              </p>
+              <p className="text-xs text-[var(--muted)] mt-0.5">{stat.unit}</p>
+              <p className="text-xs font-medium text-[var(--foreground)] mt-0.5">{stat.label}</p>
             </div>
-            <div>
-              <p className="text-xs text-[var(--muted)] mb-1">Daily goal</p>
-              <p className="text-3xl font-bold text-green-600">{dailyGoal}</p>
-            </div>
+          ))}
+        </div>
+
+        {/* Calorie ring + macros */}
+        <div className="grid grid-cols-2 gap-3 animate-fade-in-up stagger-1">
+          <CalorieRing consumed={todayCalories} goal={dailyGoal} label="Daily Calories" />
+
+          <div className="bg-[var(--card)] rounded-2xl p-4 border border-[var(--card-border)] shadow-sm">
+            <p className="text-xs font-bold text-[var(--foreground)] mb-4">🥩 Macros Today</p>
+            {todayCalories > 0 ? (
+              <div className="space-y-3">
+                <MacroBar label="Protein" value={todayProtein} total={todayProtein + todayCarbs + todayFat} color="#059669" />
+                <MacroBar label="Carbs" value={todayCarbs} total={todayProtein + todayCarbs + todayFat} color="#0ea5e9" />
+                <MacroBar label="Fat" value={todayFat} total={todayProtein + todayCarbs + todayFat} color="#f59e0b" />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-24 text-center">
+                <span className="text-3xl mb-2">🍽️</span>
+                <p className="text-xs text-[var(--muted)]">Log a meal to see macros</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Macro chart */}
-        {todayCalories > 0 && (
-          <div className="mb-4">
-            <MacroChart
-              protein={todayProtein}
-              carbs={todayCarbs}
-              fat={todayFat}
-            />
-          </div>
-        )}
-
         {/* Weekly chart */}
-        <div className="mb-4">
+        <div className="animate-fade-in-up stagger-2">
           <WeeklyChart />
         </div>
 
         {/* Recent meals */}
-        <RecentScans
-          logs={recentLogs}
-          onDelete={(id) => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard', userId] })
-            toast.success('Meal removed')
-          }}
-        />
+        <div className="animate-fade-in-up stagger-3">
+          <RecentScans
+            logs={recentLogs}
+            onDelete={(id) => {
+              queryClient.invalidateQueries({ queryKey: ['dashboard', userId] })
+              toast.success('Meal removed')
+            }}
+          />
+        </div>
 
       </div>
     </div>

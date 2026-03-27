@@ -2,13 +2,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import toast from 'react-hot-toast'
 
 const activityOptions = [
-  { value: 'sedentary', label: 'Sedentary', desc: 'Little or no exercise, desk job' },
-  { value: 'light', label: 'Lightly Active', desc: 'Light exercise 1-3 days/week' },
-  { value: 'moderate', label: 'Moderately Active', desc: 'Moderate exercise 3-5 days/week' },
-  { value: 'active', label: 'Very Active', desc: 'Hard exercise 6-7 days/week' },
-  { value: 'very_active', label: 'Extra Active', desc: 'Very hard exercise, physical job' },
+  { value: 'sedentary', label: 'Sedentary', desc: 'Little or no exercise', icon: '🪑' },
+  { value: 'light', label: 'Lightly Active', desc: 'Light exercise 1-3 days/week', icon: '🚶' },
+  { value: 'moderate', label: 'Moderately Active', desc: 'Exercise 3-5 days/week', icon: '🏃' },
+  { value: 'active', label: 'Very Active', desc: 'Hard exercise 6-7 days/week', icon: '⚡' },
+  { value: 'very_active', label: 'Extra Active', desc: 'Very hard exercise daily', icon: '🔥' },
 ]
 
 export default function ProfileSetupPage() {
@@ -29,19 +30,18 @@ export default function ProfileSetupPage() {
     is_vegetarian: false,
   })
 
-  function getBMICategory(bmi: number) {
-    if (bmi < 18.5) return { label: 'Underweight', color: '#3b82f6' }
-    if (bmi < 25) return { label: 'Normal weight', color: '#16a34a' }
-    if (bmi < 30) return { label: 'Overweight', color: '#d97706' }
-    return { label: 'Obese', color: '#dc2626' }
+  function getBMIInfo(bmi: number) {
+    if (bmi < 18.5) return { label: 'Underweight', color: '#3b82f6', bg: 'bg-blue-50 dark:bg-blue-900/20', advice: 'Focus on nutritious calorie-dense foods to reach a healthy weight.' }
+    if (bmi < 25) return { label: 'Normal weight', color: '#059669', bg: 'bg-green-50 dark:bg-green-900/20', advice: 'Great work! Maintain your balanced diet and active lifestyle.' }
+    if (bmi < 30) return { label: 'Overweight', color: '#d97706', bg: 'bg-amber-50 dark:bg-amber-900/20', advice: 'Consider reducing processed foods and increasing physical activity.' }
+    return { label: 'Obese', color: '#dc2626', bg: 'bg-red-50 dark:bg-red-900/20', advice: 'Consult a healthcare provider for a personalised weight management plan.' }
   }
 
   async function handleSubmit() {
     if (!form.age || !form.gender || !form.weight_kg || !form.height_cm) {
-      alert('Please fill in all fields')
+      toast.error('Please fill in all required fields')
       return
     }
-
     setLoading(true)
     try {
       const res = await fetch('/api/profile', {
@@ -63,289 +63,239 @@ export default function ProfileSetupPage() {
         setResult(json)
         setStep(3)
       } else {
-        alert('Something went wrong. Please try again.')
+        toast.error('Something went wrong. Please try again.')
       }
     } catch {
-      alert('Network error. Please try again.')
+      toast.error('Network error. Please try again.')
     }
     setLoading(false)
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-      fontFamily: 'sans-serif',
-      padding: '24px 16px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <div style={{ maxWidth: '480px', width: '100%' }}>
+    <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center p-5">
+
+      {/* Background decoration */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-0 w-72 h-72 bg-emerald-400/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-sky-400/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-sm">
 
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '8px' }}>🥗</div>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#111827', marginBottom: '4px' }}>
-            Welcome to NutriScan
-          </h1>
-          <p style={{ color: '#6b7280', fontSize: '14px' }}>
-            Hello {session?.user?.name?.split(' ')[0]}! Let us personalise your experience.
+        <div className="text-center mb-8 animate-fade-in-up">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl gradient-brand mb-4 shadow-lg shadow-emerald-500/25">
+            <span className="text-2xl">🥗</span>
+          </div>
+          <h1 className="text-2xl font-black text-gradient mb-1">HealthOX</h1>
+          <p className="text-sm text-[var(--muted)]">
+            {step === 3 ? 'Your profile is ready!' : `Set up your health profile — Step ${step} of 2`}
           </p>
         </div>
 
-        {/* Progress */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          gap: '8px', marginBottom: '24px', justifyContent: 'center'
-        }}>
-          {[1, 2, 3].map(s => (
-            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{
-                width: '32px', height: '32px', borderRadius: '50%',
-                background: step >= s ? '#16a34a' : '#e5e7eb',
-                color: step >= s ? 'white' : '#9ca3af',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '14px', fontWeight: 700,
-                transition: 'all 0.3s'
-              }}>
-                {step > s ? '✓' : s}
-              </div>
-              {s < 3 && (
-                <div style={{
-                  width: '40px', height: '2px',
-                  background: step > s ? '#16a34a' : '#e5e7eb',
-                  transition: 'all 0.3s'
-                }} />
-              )}
-            </div>
-          ))}
-        </div>
+        {/* Progress bar */}
+        {step < 3 && (
+          <div className="flex gap-2 mb-6">
+            {[1, 2].map(s => (
+              <div
+                key={s}
+                className="flex-1 h-1.5 rounded-full transition-all duration-300"
+                style={{
+                  background: step >= s
+                    ? 'linear-gradient(135deg, #059669, #0ea5e9)'
+                    : 'var(--card-border)'
+                }}
+              />
+            ))}
+          </div>
+        )}
 
-        {/* Step 1 — Basic Info */}
+        {/* Step 1 */}
         {step === 1 && (
-          <div style={{
-            background: 'white', borderRadius: '20px',
-            padding: '28px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
-          }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px', color: '#111827' }}>
-              Basic Information
-            </h2>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px' }}>
-              This helps us calculate your BMI and personalise your calorie goal.
-            </p>
+          <div className="bg-[var(--card)] rounded-3xl p-7 shadow-xl border border-[var(--card-border)] animate-scale-in">
+            <h2 className="text-xl font-bold text-[var(--foreground)] mb-1">Basic Info</h2>
+            <p className="text-xs text-[var(--muted)] mb-6">Used to calculate your BMI and calorie goal</p>
 
-            {/* Age */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
-                Age (years)
-              </label>
-              <input
-                type="number"
-                placeholder="e.g. 22"
-                value={form.age}
-                onChange={e => setForm({ ...form, age: e.target.value })}
-                style={{
-                  width: '100%', padding: '12px',
-                  border: '1.5px solid #e5e7eb', borderRadius: '10px',
-                  fontSize: '15px', outline: 'none', boxSizing: 'border-box'
-                }}
-              />
-            </div>
+            <div className="space-y-4">
 
-            {/* Gender */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
-                Gender
-              </label>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {['male', 'female'].map(g => (
-                  <button
-                    key={g}
-                    onClick={() => setForm({ ...form, gender: g })}
-                    style={{
-                      flex: 1, padding: '12px',
-                      background: form.gender === g ? '#f0fdf4' : 'white',
-                      border: `2px solid ${form.gender === g ? '#16a34a' : '#e5e7eb'}`,
-                      borderRadius: '10px', fontSize: '14px',
-                      fontWeight: form.gender === g ? 600 : 400,
-                      color: form.gender === g ? '#16a34a' : '#6b7280',
-                      cursor: 'pointer', textTransform: 'capitalize'
-                    }}
-                  >
-                    {g === 'male' ? '👨 Male' : '👩 Female'}
-                  </button>
-                ))}
+              {/* Age */}
+              <div>
+                <label className="block text-xs font-bold text-[var(--foreground)] mb-2">Age</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 22"
+                  value={form.age}
+                  onChange={e => setForm({ ...form, age: e.target.value })}
+                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-[var(--card-border)] focus:border-emerald-500 bg-[var(--card)] text-[var(--foreground)] text-sm outline-none transition-colors"
+                />
               </div>
-            </div>
 
-            {/* Height */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
-                Height (cm)
-              </label>
-              <input
-                type="number"
-                placeholder="e.g. 170"
-                value={form.height_cm}
-                onChange={e => setForm({ ...form, height_cm: e.target.value })}
-                style={{
-                  width: '100%', padding: '12px',
-                  border: '1.5px solid #e5e7eb', borderRadius: '10px',
-                  fontSize: '15px', outline: 'none', boxSizing: 'border-box'
-                }}
-              />
-            </div>
+              {/* Gender */}
+              <div>
+                <label className="block text-xs font-bold text-[var(--foreground)] mb-2">Gender</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { value: 'male', label: '👨 Male' },
+                    { value: 'female', label: '👩 Female' },
+                  ].map(g => (
+                    <button
+                      key={g.value}
+                      onClick={() => setForm({ ...form, gender: g.value })}
+                      className="py-3.5 rounded-2xl border-2 text-sm font-bold transition-all"
+                      style={{
+                        borderColor: form.gender === g.value ? '#059669' : 'var(--card-border)',
+                        background: form.gender === g.value
+                          ? 'linear-gradient(135deg, rgba(5,150,105,0.1), rgba(14,165,233,0.05))'
+                          : 'var(--card)',
+                        color: form.gender === g.value ? '#059669' : 'var(--muted)',
+                      }}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-            {/* Weight */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
-                Weight (kg)
-              </label>
-              <input
-                type="number"
-                placeholder="e.g. 65"
-                value={form.weight_kg}
-                onChange={e => setForm({ ...form, weight_kg: e.target.value })}
-                style={{
-                  width: '100%', padding: '12px',
-                  border: '1.5px solid #e5e7eb', borderRadius: '10px',
-                  fontSize: '15px', outline: 'none', boxSizing: 'border-box'
-                }}
-              />
+              {/* Height + Weight */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[var(--foreground)] mb-2">Height (cm)</label>
+                  <input
+                    type="number"
+                    placeholder="170"
+                    value={form.height_cm}
+                    onChange={e => setForm({ ...form, height_cm: e.target.value })}
+                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-[var(--card-border)] focus:border-emerald-500 bg-[var(--card)] text-[var(--foreground)] text-sm outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[var(--foreground)] mb-2">Weight (kg)</label>
+                  <input
+                    type="number"
+                    placeholder="65"
+                    value={form.weight_kg}
+                    onChange={e => setForm({ ...form, weight_kg: e.target.value })}
+                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-[var(--card-border)] focus:border-emerald-500 bg-[var(--card)] text-[var(--foreground)] text-sm outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
             </div>
 
             <button
               onClick={() => {
                 if (!form.age || !form.gender || !form.weight_kg || !form.height_cm) {
-                  alert('Please fill in all fields')
+                  toast.error('Please fill in all fields')
                   return
                 }
                 setStep(2)
               }}
+              className="w-full mt-6 py-4 rounded-2xl text-white text-sm font-bold transition-all"
               style={{
-                width: '100%', padding: '14px',
-                background: '#16a34a', color: 'white',
-                border: 'none', borderRadius: '12px',
-                fontSize: '16px', fontWeight: 700, cursor: 'pointer'
+                background: 'linear-gradient(135deg, #059669, #0ea5e9)',
+                boxShadow: '0 8px 24px rgba(5,150,105,0.3)',
               }}
             >
-              Next →
+              Continue →
             </button>
           </div>
         )}
 
-        {/* Step 2 — Activity + Health */}
+        {/* Step 2 */}
         {step === 2 && (
-          <div style={{
-            background: 'white', borderRadius: '20px',
-            padding: '28px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
-          }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px', color: '#111827' }}>
-              Activity & Health
-            </h2>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px' }}>
-              This helps us set the right calorie target for you.
-            </p>
+          <div className="bg-[var(--card)] rounded-3xl p-7 shadow-xl border border-[var(--card-border)] animate-scale-in">
+            <h2 className="text-xl font-bold text-[var(--foreground)] mb-1">Activity & Health</h2>
+            <p className="text-xs text-[var(--muted)] mb-6">Helps us set the right calorie target for you</p>
 
-            {/* Activity Level */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '10px' }}>
-                Activity Level
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Activity level */}
+            <div className="mb-5">
+              <label className="block text-xs font-bold text-[var(--foreground)] mb-3">Activity Level</label>
+              <div className="space-y-2">
                 {activityOptions.map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => setForm({ ...form, activity_level: opt.value })}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all"
                     style={{
-                      padding: '12px 14px', textAlign: 'left',
-                      background: form.activity_level === opt.value ? '#f0fdf4' : 'white',
-                      border: `2px solid ${form.activity_level === opt.value ? '#16a34a' : '#e5e7eb'}`,
-                      borderRadius: '10px', cursor: 'pointer'
+                      borderColor: form.activity_level === opt.value ? '#059669' : 'var(--card-border)',
+                      background: form.activity_level === opt.value
+                        ? 'linear-gradient(135deg, rgba(5,150,105,0.08), rgba(14,165,233,0.04))'
+                        : 'transparent',
                     }}
                   >
-                    <div style={{
-                      fontSize: '14px', fontWeight: 600,
-                      color: form.activity_level === opt.value ? '#16a34a' : '#111827'
-                    }}>
-                      {opt.label}
+                    <span className="text-xl">{opt.icon}</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold" style={{ color: form.activity_level === opt.value ? '#059669' : 'var(--foreground)' }}>
+                        {opt.label}
+                      </p>
+                      <p className="text-xs text-[var(--muted)]">{opt.desc}</p>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
-                      {opt.desc}
-                    </div>
+                    {form.activity_level === opt.value && (
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs" style={{ background: '#059669' }}>✓</div>
+                    )}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Health Conditions */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '10px' }}>
-                Health Conditions (optional)
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Health conditions */}
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-[var(--foreground)] mb-3">Health Conditions (optional)</label>
+              <div className="space-y-2">
                 {[
-                  { key: 'is_diabetic', label: '🩸 Diabetic', desc: 'We will flag high sugar products' },
-                  { key: 'has_bp', label: '💊 High Blood Pressure', desc: 'We will flag high sodium products' },
-                  { key: 'is_vegetarian', label: '🥦 Vegetarian', desc: 'We will note non-veg ingredients' },
+                  { key: 'is_diabetic', label: '🩸 Diabetic', desc: 'Flag high sugar products' },
+                  { key: 'has_bp', label: '💊 High Blood Pressure', desc: 'Flag high sodium products' },
+                  { key: 'is_vegetarian', label: '🥦 Vegetarian', desc: 'Note non-veg ingredients' },
                 ].map(item => (
                   <button
                     key={item.key}
                     onClick={() => setForm({ ...form, [item.key]: !form[item.key as keyof typeof form] })}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all"
                     style={{
-                      padding: '12px 14px', textAlign: 'left',
-                      background: form[item.key as keyof typeof form] ? '#f0fdf4' : 'white',
-                      border: `2px solid ${form[item.key as keyof typeof form] ? '#16a34a' : '#e5e7eb'}`,
-                      borderRadius: '10px', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '12px'
+                      borderColor: form[item.key as keyof typeof form] ? '#059669' : 'var(--card-border)',
+                      background: form[item.key as keyof typeof form]
+                        ? 'rgba(5,150,105,0.05)'
+                        : 'transparent',
                     }}
                   >
-                    <div style={{
-                      width: '20px', height: '20px', borderRadius: '6px',
-                      background: form[item.key as keyof typeof form] ? '#16a34a' : '#e5e7eb',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '12px', color: 'white', flexShrink: 0
-                    }}>
+                    <div
+                      className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all"
+                      style={{
+                        borderColor: form[item.key as keyof typeof form] ? '#059669' : 'var(--card-border)',
+                        background: form[item.key as keyof typeof form] ? '#059669' : 'transparent',
+                        color: 'white',
+                        fontSize: '11px',
+                      }}
+                    >
                       {form[item.key as keyof typeof form] ? '✓' : ''}
                     </div>
                     <div>
-                      <div style={{ fontSize: '14px', fontWeight: 500, color: '#111827' }}>
-                        {item.label}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                        {item.desc}
-                      </div>
+                      <p className="text-sm font-medium text-[var(--foreground)]">{item.label}</p>
+                      <p className="text-xs text-[var(--muted)]">{item.desc}</p>
                     </div>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div className="flex gap-3">
               <button
                 onClick={() => setStep(1)}
-                style={{
-                  flex: 1, padding: '14px',
-                  background: '#f3f4f6', color: '#374151',
-                  border: 'none', borderRadius: '12px',
-                  fontSize: '15px', fontWeight: 600, cursor: 'pointer'
-                }}
+                className="flex-1 py-3.5 rounded-2xl border-2 border-[var(--card-border)] text-[var(--muted)] text-sm font-bold transition-colors hover:border-[var(--muted)]"
               >
                 ← Back
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={loading}
+                className="flex-2 flex-1 py-3.5 rounded-2xl text-white text-sm font-bold transition-all"
                 style={{
-                  flex: 2, padding: '14px',
-                  background: loading ? '#9ca3af' : '#16a34a',
-                  color: 'white', border: 'none', borderRadius: '12px',
-                  fontSize: '15px', fontWeight: 700,
-                  cursor: loading ? 'not-allowed' : 'pointer'
+                  background: loading ? '#9ca3af' : 'linear-gradient(135deg, #059669, #0ea5e9)',
+                  boxShadow: loading ? 'none' : '0 8px 24px rgba(5,150,105,0.3)',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                 }}
               >
-                {loading ? 'Calculating...' : 'Calculate My Goals →'}
+                {loading ? 'Calculating...' : 'Get My Goals →'}
               </button>
             </div>
           </div>
@@ -353,88 +303,55 @@ export default function ProfileSetupPage() {
 
         {/* Step 3 — Results */}
         {step === 3 && result && (
-          <div style={{
-            background: 'white', borderRadius: '20px',
-            padding: '28px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
-          }}>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{ fontSize: '48px', marginBottom: '8px' }}>🎯</div>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#111827', marginBottom: '4px' }}>
-                Your Personal Goals
-              </h2>
-              <p style={{ fontSize: '13px', color: '#6b7280' }}>
-                Based on your profile, here are your targets
-              </p>
+          <div className="bg-[var(--card)] rounded-3xl p-7 shadow-xl border border-[var(--card-border)] animate-scale-in">
+
+            <div className="text-center mb-6">
+              <div className="text-5xl mb-3">🎯</div>
+              <h2 className="text-xl font-black text-[var(--foreground)] mb-1">Your Health Profile</h2>
+              <p className="text-xs text-[var(--muted)]">Personalised just for you</p>
             </div>
 
             {/* BMI Card */}
-            <div style={{
-              padding: '20px', borderRadius: '14px', marginBottom: '14px',
-              background: getBMICategory(result.bmi).color + '15',
-              border: `2px solid ${getBMICategory(result.bmi).color}30`,
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>Your BMI</div>
-              <div style={{ fontSize: '36px', fontWeight: 700, color: getBMICategory(result.bmi).color }}>
-                {result.bmi}
-              </div>
-              <div style={{
-                display: 'inline-block', padding: '4px 12px',
-                background: getBMICategory(result.bmi).color,
-                color: 'white', borderRadius: '20px',
-                fontSize: '13px', fontWeight: 600, marginTop: '4px'
-              }}>
-                {getBMICategory(result.bmi).label}
-              </div>
-            </div>
+            {(() => {
+              const info = getBMIInfo(result.bmi)
+              return (
+                <div className={`${info.bg} rounded-2xl p-5 mb-4 text-center border border-current/10`}>
+                  <p className="text-xs text-[var(--muted)] mb-1">Your BMI</p>
+                  <p className="text-5xl font-black mb-2" style={{ color: info.color }}>
+                    {result.bmi}
+                  </p>
+                  <span
+                    className="inline-block px-3 py-1 rounded-full text-xs font-bold text-white mb-3"
+                    style={{ background: info.color }}
+                  >
+                    {info.label}
+                  </span>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">{info.advice}</p>
+                </div>
+              )
+            })()}
 
-            {/* Calorie Goal Card */}
-            <div style={{
-              padding: '20px', borderRadius: '14px', marginBottom: '14px',
-              background: '#f0fdf4', border: '2px solid #bbf7d0',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
-                Daily Calorie Goal
-              </div>
-              <div style={{ fontSize: '36px', fontWeight: 700, color: '#16a34a' }}>
-                {result.dailyCalorieGoal}
-              </div>
-              <div style={{ fontSize: '13px', color: '#6b7280' }}>kcal per day</div>
-            </div>
-
-            {/* BMI Scale */}
-            <div style={{ marginBottom: '20px', padding: '14px', background: '#f9fafb', borderRadius: '12px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
-                BMI Scale
-              </div>
-              <div style={{ display: 'flex', borderRadius: '6px', overflow: 'hidden', height: '10px', marginBottom: '6px' }}>
-                <div style={{ flex: 1, background: '#3b82f6' }} />
-                <div style={{ flex: 1.3, background: '#16a34a' }} />
-                <div style={{ flex: 1, background: '#d97706' }} />
-                <div style={{ flex: 1, background: '#dc2626' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#9ca3af' }}>
-                <span>Underweight</span>
-                <span>Normal</span>
-                <span>Overweight</span>
-                <span>Obese</span>
-              </div>
-              <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
-                Under 18.5 · 18.5–24.9 · 25–29.9 · 30+
-              </div>
+            {/* Calorie goal */}
+            <div className="rounded-2xl p-5 mb-6 text-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(5,150,105,0.08), rgba(14,165,233,0.05))',
+                border: '1px solid rgba(5,150,105,0.2)'
+              }}
+            >
+              <p className="text-xs text-[var(--muted)] mb-1">Your Daily Calorie Goal</p>
+              <p className="text-5xl font-black text-gradient mb-1">{result.dailyCalorieGoal}</p>
+              <p className="text-xs text-[var(--muted)]">kcal per day · personalised for your body</p>
             </div>
 
             <button
               onClick={() => router.push('/dashboard')}
+              className="w-full py-4 rounded-2xl text-white text-sm font-bold"
               style={{
-                width: '100%', padding: '16px',
-                background: '#16a34a', color: 'white',
-                border: 'none', borderRadius: '12px',
-                fontSize: '16px', fontWeight: 700, cursor: 'pointer'
+                background: 'linear-gradient(135deg, #059669, #0ea5e9)',
+                boxShadow: '0 8px 24px rgba(5,150,105,0.3)',
               }}
             >
-              Go to My Dashboard →
+              Start Tracking with HealthOX →
             </button>
           </div>
         )}

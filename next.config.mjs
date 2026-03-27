@@ -4,26 +4,11 @@ const nextConfig = {
   typescript: { ignoreBuildErrors: true },
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'images.openfoodfacts.org',
-      },
-      {
-        protocol: 'https',
-        hostname: 'static.openfoodfacts.org',
-      },
-      {
-        protocol: 'https',
-        hostname: 'world.openfoodfacts.org',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.openfoodfacts.org',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-      },
+      { protocol: 'https', hostname: '**.openfoodfacts.org' },
+      { protocol: 'https', hostname: 'images.openfoodfacts.org' },
+      { protocol: 'https', hostname: 'static.openfoodfacts.org' },
+      { protocol: 'https', hostname: 'world.openfoodfacts.org' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
     ],
   },
 }
