@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   // Check if welcome email already sent
   const { data: profile } = await supabaseAdmin
     .from('user_profiles')
-    .select('welcome_email_sent')
+    .select('welcome_email_sent, email_unsubscribed')
     .eq('user_id', userId)
     .single()
 
@@ -20,7 +20,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, reason: 'already_sent' })
   }
 
+  if (profile?.email_unsubscribed) {
+    console.log('User has unsubscribed:', email)
+    return NextResponse.json({ success: false, reason: 'unsubscribed' })
+  }
+
   const firstName = name?.split(' ')[0] || 'there'
+  const baseUrl = process.env.NEXTAUTH_URL
+  const unsubscribeAllUrl = `${baseUrl}/api/unsubscribe?userId=${userId}&type=all`
+  const unsubscribeWeeklyUrl = `${baseUrl}/api/unsubscribe?userId=${userId}&type=weekly`
 
   const html = `
 <!DOCTYPE html>
@@ -29,163 +37,159 @@ export async function POST(req: NextRequest) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background-color:#f0fdf4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<body style="margin:0;padding:0;background:#f0fdf4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<div style="max-width:600px;margin:0 auto;padding:32px 16px;">
 
-  <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
-
-    <!-- Header -->
-    <div style="text-align:center;margin-bottom:32px;">
-      <div style="font-size:56px;margin-bottom:8px;">🥗</div>
-      <h1 style="font-size:28px;font-weight:800;color:#16a34a;margin:0;">NutriScan</h1>
-      <p style="font-size:14px;color:#6b7280;margin:4px 0 0;">AI-Powered Food Health Advisor</p>
+  <!-- Header -->
+  <div style="text-align:center;margin-bottom:32px;">
+    <div style="display:inline-flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#059669,#0ea5e9);margin-bottom:16px;">
+      <span style="font-size:36px;">🥗</span>
     </div>
+    <h1 style="font-size:32px;font-weight:900;margin:0;background:linear-gradient(135deg,#059669,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">HealthOX</h1>
+    <p style="font-size:13px;color:#6b7280;margin:4px 0 0;">AI-Powered Food Health Advisor</p>
+  </div>
 
-    <!-- Main card -->
-    <div style="background:white;border-radius:20px;padding:36px;box-shadow:0 4px 24px rgba(0,0,0,0.06);margin-bottom:24px;">
+  <!-- Main card -->
+  <div style="background:white;border-radius:24px;padding:40px;box-shadow:0 4px 32px rgba(0,0,0,0.06);margin-bottom:20px;">
 
-      <h2 style="font-size:22px;font-weight:700;color:#111827;margin:0 0 8px;">
-        Welcome, ${firstName}! 🎉
-      </h2>
+    <!-- Greeting -->
+    <h2 style="font-size:26px;font-weight:900;color:#111827;margin:0 0 4px;">
+      Welcome, ${firstName}! 🎉
+    </h2>
+    <p style="font-size:13px;color:#6b7280;margin:0 0 24px;">
+      We are so glad you are here.
+    </p>
 
-      <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">
-        We are so glad you joined NutriScan. You have taken a meaningful step towards 
-        understanding what goes into your food and making healthier choices for yourself 
-        and your family.
-      </p>
+    <p style="font-size:15px;color:#374151;line-height:1.8;margin:0 0 24px;">
+      You have just taken a small but meaningful step towards understanding what goes
+      into the food you eat every day. At HealthOX, we believe that <strong>knowledge
+      is the first step to better health</strong> — and you now have that knowledge at
+      your fingertips.
+    </p>
 
-      <!-- Divider -->
-      <div style="height:1px;background:#f3f4f6;margin:24px 0;"></div>
+    <!-- Divider -->
+    <div style="height:1px;background:linear-gradient(90deg,transparent,#e5e7eb,transparent);margin:28px 0;"></div>
 
-      <!-- Our initiative -->
-      <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 12px;">
-        🌱 Our Initiative
-      </h3>
+    <!-- Our story -->
+    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 14px;">
+      🌱 Why We Built HealthOX
+    </h3>
 
-      <p style="font-size:14px;color:#374151;line-height:1.7;margin:0 0 16px;">
-        India has over 1.4 billion people, yet most of us have no idea what is actually 
-        inside the packaged food we eat every day. Hidden sugars, artificial additives, 
-        excessive sodium — these quietly affect our health without us even knowing.
-      </p>
+    <p style="font-size:14px;color:#374151;line-height:1.8;margin:0 0 14px;">
+      India is home to over 1.4 billion people, yet most of us eat packaged food every
+      single day without truly knowing what is inside it. Hidden sugars, artificial
+      preservatives, excessive sodium, harmful additives — they quietly affect our
+      health while we remain unaware.
+    </p>
 
-      <p style="font-size:14px;color:#374151;line-height:1.7;margin:0 0 16px;">
-        <strong>NutriScan was built with one simple mission:</strong> to make food transparency 
-        accessible to every Indian. No medical degree required. No confusing labels. 
-        Just scan, and instantly know if what you are about to eat is good for you.
-      </p>
+    <p style="font-size:14px;color:#374151;line-height:1.8;margin:0 0 14px;">
+      We started HealthOX with one simple, heartfelt intention — to make food
+      transparency <strong>free, accessible, and easy for every Indian family</strong>.
+      No medical degree required. No confusing nutritional jargon. Just scan a product
+      and instantly know if it is good for you, your children, or your parents.
+    </p>
 
-      <p style="font-size:14px;color:#374151;line-height:1.7;margin:0 0 24px;">
-        We use <strong>Gemini AI</strong> to analyse ingredients against FSSAI standards, 
-        flag harmful additives, and give you personalised advice based on your own health 
-        profile. We are building a crowdsourced database of Indian products so that 
-        every family across the country can make informed food choices.
-      </p>
+    <p style="font-size:14px;color:#374151;line-height:1.8;margin:0 0 28px;">
+      We use <strong>Google Gemini AI</strong> to analyse ingredients against FSSAI
+      standards, flag harmful additives, and give personalised advice based on your own
+      BMI and health profile. Together, we are building a crowdsourced database of
+      Indian products so that every family across the country can make informed food
+      choices — one scan at a time.
+    </p>
 
-      <!-- Divider -->
-      <div style="height:1px;background:#f3f4f6;margin:0 0 24px;"></div>
+    <!-- Divider -->
+    <div style="height:1px;background:linear-gradient(90deg,transparent,#e5e7eb,transparent);margin:0 0 28px;"></div>
 
-      <!-- What you can do -->
-      <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 16px;">
-        ✨ What you can do with NutriScan
-      </h3>
+    <!-- What you can do -->
+    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 16px;">
+      ✨ Everything you can do with HealthOX
+    </h3>
 
-      <div style="display:flex;flex-direction:column;gap:12px;">
-
-        <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:#f0fdf4;border-radius:12px;">
-          <span style="font-size:24px;flex-shrink:0;">📷</span>
-          <div>
-            <p style="font-size:14px;font-weight:600;color:#111827;margin:0 0 2px;">Scan any packaged food</p>
-            <p style="font-size:13px;color:#6b7280;margin:0;">Point your camera at a barcode or nutrition label and get an instant AI health rating</p>
-          </div>
+    ${[
+      { icon: '📷', title: 'Scan any packaged food', desc: 'Point your camera at a barcode or nutrition label. Works on all Indian products — even ones not in any database.' },
+      { icon: '🤖', title: 'Instant AI health rating', desc: 'Gemini AI checks every ingredient, flags harmful additives like E621 MSG and TBHQ, and gives you a clear healthy/moderate/unhealthy rating.' },
+      { icon: '📊', title: 'Track your daily nutrition', desc: 'Log meals, monitor calories, and see your protein, carbs and fat breakdown. Your calorie goal is personalised based on your BMI.' },
+      { icon: '📧', title: 'Weekly nutrition reports', desc: 'Every Monday morning you will receive a beautiful email summary of your week — how many meals you logged, total calories, and nutritional insights.' },
+      { icon: '🇮🇳', title: 'Help build India\'s food database', desc: 'When you scan a product not in any database, Gemini reads the nutrition label from your photo and adds it for everyone across India.' },
+    ].map(f => `
+      <div style="display:flex;align-items:flex-start;gap:14px;padding:16px;background:#f0fdf4;border-radius:16px;margin-bottom:10px;">
+        <span style="font-size:26px;flex-shrink:0;line-height:1;">${f.icon}</span>
+        <div>
+          <p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 4px;">${f.title}</p>
+          <p style="font-size:13px;color:#6b7280;line-height:1.6;margin:0;">${f.desc}</p>
         </div>
-
-        <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:#f0fdf4;border-radius:12px;">
-          <span style="font-size:24px;flex-shrink:0;">🤖</span>
-          <div>
-            <p style="font-size:14px;font-weight:600;color:#111827;margin:0 0 2px;">Get AI-powered analysis</p>
-            <p style="font-size:13px;color:#6b7280;margin:0;">Gemini AI checks ingredients, flags harmful additives, and gives you safe consumption advice</p>
-          </div>
-        </div>
-
-        <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:#f0fdf4;border-radius:12px;">
-          <span style="font-size:24px;flex-shrink:0;">📊</span>
-          <div>
-            <p style="font-size:14px;font-weight:600;color:#111827;margin:0 0 2px;">Track your nutrition</p>
-            <p style="font-size:13px;color:#6b7280;margin:0;">Log meals, monitor your daily calorie intake, and get a personalised goal based on your BMI</p>
-          </div>
-        </div>
-
-        <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:#f0fdf4;border-radius:12px;">
-          <span style="font-size:24px;flex-shrink:0;">🇮🇳</span>
-          <div>
-            <p style="font-size:14px;font-weight:600;color:#111827;margin:0 0 2px;">Help build India's food database</p>
-            <p style="font-size:13px;color:#6b7280;margin:0;">When you scan a product not in our database, Gemini reads the label and adds it for everyone in India</p>
-          </div>
-        </div>
-
       </div>
+    `).join('')}
 
-      <!-- Divider -->
-      <div style="height:1px;background:#f3f4f6;margin:24px 0;"></div>
+    <!-- Divider -->
+    <div style="height:1px;background:linear-gradient(90deg,transparent,#e5e7eb,transparent);margin:28px 0;"></div>
 
-      <!-- Personal message -->
-      <p style="font-size:14px;color:#374151;line-height:1.7;margin:0 0 8px;">
-        We believe that <strong>informed people make healthier choices</strong>. Every scan 
-        you make, every product you add, helps build a healthier India — one packet at a time.
-      </p>
+    <!-- Tips -->
+    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 14px;">
+      💡 3 things to do right now
+    </h3>
 
-      <p style="font-size:14px;color:#374151;line-height:1.7;margin:0 0 24px;">
-        Thank you for being part of this journey, ${firstName}. We are rooting for you. 💚
-      </p>
-
-      <!-- CTA Button -->
-      <div style="text-align:center;">
-        
-          href="${process.env.NEXTAUTH_URL}/scan"
-          style="display:inline-block;padding:14px 32px;background:#16a34a;color:white;text-decoration:none;border-radius:12px;font-size:15px;font-weight:700;"
-        >
-          Start Scanning Now →
-        </a>
+    ${[
+      { num: '1', text: 'Complete your health profile to get a personalised calorie goal based on your BMI and activity level.' },
+      { num: '2', text: 'Try scanning Parle-G, Maggi or Lay\'s to see the full AI analysis in action — you might be surprised!' },
+      { num: '3', text: 'Enable weekly reports in your Profile settings so every Monday you get a nutrition summary in your inbox.' },
+    ].map(tip => `
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+        <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#059669,#0ea5e9);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-size:13px;font-weight:900;">${tip.num}</div>
+        <p style="font-size:13px;color:#374151;line-height:1.7;margin:4px 0 0;">${tip.text}</p>
       </div>
+    `).join('')}
 
+    <!-- Divider -->
+    <div style="height:1px;background:linear-gradient(90deg,transparent,#e5e7eb,transparent);margin:28px 0;"></div>
+
+    <!-- Personal message -->
+    <div style="background:linear-gradient(135deg,rgba(5,150,105,0.06),rgba(14,165,233,0.04));border-radius:16px;padding:20px;border:1px solid rgba(5,150,105,0.15);margin-bottom:28px;">
+      <p style="font-size:14px;color:#374151;line-height:1.8;margin:0 0 10px;">
+        ${firstName}, every scan you make, every meal you log, every product you add to
+        our database — it all adds up. You are not just tracking your own health, you
+        are helping build a healthier future for millions of Indian families.
+      </p>
+      <p style="font-size:14px;color:#374151;line-height:1.8;margin:0;">
+        We are genuinely rooting for you. <strong>You have got this. 💚</strong>
+      </p>
     </div>
 
-    <!-- Tips card -->
-    <div style="background:white;border-radius:20px;padding:24px;box-shadow:0 4px 24px rgba(0,0,0,0.06);margin-bottom:24px;">
-      <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 14px;">
-        💡 Quick Tips to Get Started
-      </h3>
-      <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;">
-        <li style="font-size:13px;color:#374151;padding-left:20px;position:relative;">
-          <span style="position:absolute;left:0;">1️⃣</span>
-          Complete your profile to get a personalised calorie goal based on your BMI
-        </li>
-        <li style="font-size:13px;color:#374151;padding-left:20px;position:relative;">
-          <span style="position:absolute;left:0;">2️⃣</span>
-          Try scanning Parle-G, Maggi or Lay's to see the AI analysis in action
-        </li>
-        <li style="font-size:13px;color:#374151;padding-left:20px;position:relative;">
-          <span style="position:absolute;left:0;">3️⃣</span>
-          Use Photo Mode if the barcode does not scan — Gemini reads the nutrition label directly
-        </li>
-        <li style="font-size:13px;color:#374151;padding-left:20px;position:relative;">
-          <span style="position:absolute;left:0;">4️⃣</span>
-          You will receive a weekly nutrition report every Monday morning
-        </li>
-      </ul>
-    </div>
-
-    <!-- Footer -->
+    <!-- CTA -->
     <div style="text-align:center;">
-      <p style="font-size:12px;color:#9ca3af;margin:0;">
-        Made with 💚 for a healthier India
-      </p>
-      <p style="font-size:12px;color:#9ca3af;margin:4px 0 0;">
-        NutriScan — AI-Powered Food Health Advisor
+      <a href="${baseUrl}/scan"
+        style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#059669,#0ea5e9);color:white;text-decoration:none;border-radius:16px;font-size:15px;font-weight:800;box-shadow:0 8px 24px rgba(5,150,105,0.35);">
+        Start Scanning Now →
+      </a>
+      <p style="font-size:12px;color:#9ca3af;margin:12px 0 0;">
+        Takes less than 30 seconds to get your first AI health rating
       </p>
     </div>
 
   </div>
 
+  <!-- Footer -->
+  <div style="background:white;border-radius:20px;padding:20px 24px;box-shadow:0 2px 12px rgba(0,0,0,0.04);text-align:center;">
+    <p style="font-size:13px;color:#374151;font-weight:600;margin:0 0 4px;">
+      Made with 💚 for a healthier India
+    </p>
+    <p style="font-size:12px;color:#9ca3af;margin:0 0 14px;">
+      HealthOX — AI-Powered Food Health Advisor
+    </p>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
+      <a href="${unsubscribeWeeklyUrl}"
+        style="font-size:11px;color:#9ca3af;text-decoration:underline;">
+        Unsubscribe from weekly reports
+      </a>
+      <span style="color:#d1d5db;font-size:11px;">·</span>
+      <a href="${unsubscribeAllUrl}"
+        style="font-size:11px;color:#9ca3af;text-decoration:underline;">
+        Unsubscribe from all emails
+      </a>
+    </div>
+  </div>
+
+</div>
 </body>
 </html>
   `
@@ -198,9 +202,9 @@ export async function POST(req: NextRequest) {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
       },
       body: JSON.stringify({
-        from: 'NutriScan <onboarding@resend.dev>',
+        from: 'HealthOX <onboarding@resend.dev>',
         to: email,
-        subject: `Welcome to NutriScan, ${firstName}! 🥗 Your journey to healthier eating starts now`,
+        subject: `Welcome to HealthOX, ${firstName}! 🥗 Your journey to healthier eating starts now`,
         html
       })
     })
@@ -208,11 +212,11 @@ export async function POST(req: NextRequest) {
     const data = await res.json()
 
     if (!res.ok) {
-      console.log('Welcome email send failed:', data)
+      console.log('Welcome email failed:', data)
       return NextResponse.json({ success: false, error: data }, { status: 500 })
     }
 
-    // Mark welcome email as sent so we never send it again
+    // Mark as sent so it never sends again
     await supabaseAdmin
       .from('user_profiles')
       .update({ welcome_email_sent: true })
