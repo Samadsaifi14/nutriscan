@@ -1,17 +1,78 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { checkRateLimit } from '@/lib/rateLimit'
+
+const ProductSchema = z.object({
+  barcode: z.string().optional(),
+  name: z.string().min(1),
+  brand: z.string().optional(),
+  category: z.string().optional(),
+  country_of_origin: z.string().optional(),
+  image_url: z.string().optional(),
+  nutrition: z.object({
+    calories: z.number().min(0),
+    protein: z.number().min(0),
+    carbs: z.number().min(0),
+    fat: z.number().min(0),
+    sugar: z.number().optional(),
+    sodium: z.number().optional(),
+    fiber: z.number().optional(),
+  }),
+  ingredients_text: z.string().optional(),
+  allergens: z.array(z.string()).optional(),
+  additives: z.array(z.string()).optional(),
+})
+
+const RequestSchema = z.object({
+  product: ProductSchema,
+})
 
 export async function POST(req: NextRequest) {
   try {
-    const { product } = await req.json()
+    // Auth check
+    const session = await getServerSession(authOptions)
+    const userId = (session as any)?.userId
 
-    if (!product) {
+    if (!userId) {
       return NextResponse.json(
-        { success: false, error: 'No product provided' },
+        { success: false, error: 'You must be signed in to analyse products' },
+        { status: 401 }
+      )
+    }
+
+    // Rate limit check
+    const rateCheck = await checkRateLimit(userId, 'analyze')
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `You have reached the analysis limit. Please wait ${rateCheck.resetIn} minutes before trying again.`,
+          rateLimited: true,
+        },
+        { status: 429 }
+      )
+    }
+
+    // Validate request body
+    const body = await req.json()
+    const parsed = RequestSchema.safeParse(body)
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid product data: ' + parsed.error.issues.map(i => i.message).join(', ')
+        },
         { status: 400 }
       )
     }
 
+    const { product } = parsed.data
+
+    // Check 7 day cache first
     if (product.barcode) {
       const { data: cached } = await supabaseAdmin
         .from('products')
@@ -33,7 +94,7 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = buildPrompt(product)
-    console.log('Calling Gemini AI directly...')
+    console.log('Calling Gemini AI for:', product.name)
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -42,58 +103,45 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 8000,
-          }
+          generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
         })
       }
     )
-
-    console.log('Gemini response status:', geminiRes.status)
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text()
       console.log('Gemini error:', errText)
       return NextResponse.json(
-        { success: false, error: 'Gemini API failed' },
+        { success: false, error: 'AI service temporarily unavailable. Please try again.' },
         { status: 500 }
       )
     }
 
     const geminiData = await geminiRes.json()
-    console.log('Gemini raw data:', JSON.stringify(geminiData).slice(0, 300))
-
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
 
     if (!text) {
-      console.log('No text in response:', JSON.stringify(geminiData))
       return NextResponse.json(
-        { success: false, error: 'Empty AI response' },
+        { success: false, error: 'AI returned empty response. Please try again.' },
         { status: 500 }
       )
     }
 
-    console.log('Gemini raw text:', text.slice(0, 200))
-
-    const cleaned = text
-      .replace(/```json/g, '')
-      .replace(/```/g, '')
-      .trim()
+    const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
     let analysis
     try {
       analysis = JSON.parse(cleaned)
-    } catch (e) {
-      console.log('JSON parse failed. Text was:', cleaned.slice(0, 300))
+    } catch {
+      console.log('JSON parse failed:', cleaned.slice(0, 200))
       return NextResponse.json(
-        { success: false, error: 'AI returned invalid format' },
+        { success: false, error: 'AI returned invalid format. Please try again.' },
         { status: 500 }
       )
     }
 
     analysis.analyzed_at = new Date().toISOString()
-    console.log('Gemini analysis complete. Rating:', analysis.health_rating)
+    console.log('Analysis complete. Rating:', analysis.health_rating)
 
     if (product.barcode) {
       await supabaseAdmin
@@ -106,12 +154,17 @@ export async function POST(req: NextRequest) {
         .eq('barcode', product.barcode)
     }
 
-    return NextResponse.json({ success: true, data: analysis, cached: false })
+    return NextResponse.json({
+      success: true,
+      data: analysis,
+      cached: false,
+      remaining: rateCheck.remaining - 1,
+    })
 
   } catch (err: any) {
     console.error('Analyze error:', err.message)
     return NextResponse.json(
-      { success: false, error: 'Analysis failed' },
+      { success: false, error: 'Something went wrong. Please try again.' },
       { status: 500 }
     )
   }
@@ -138,14 +191,14 @@ NUTRITION PER 100g:
 - Fiber: ${n.fiber ?? 'N/A'}g
 
 INGREDIENTS: ${product.ingredients_text || 'Not available'}
-ADDITIVES: ${product.additives?.join(', ') || 'None listed'}
-ALLERGENS: ${product.allergens?.join(', ') || 'None listed'}
+ADDITIVES: ${(product.additives || []).join(', ') || 'None listed'}
+ALLERGENS: ${(product.allergens || []).join(', ') || 'None listed'}
 
 Return exactly this JSON structure with no extra text:
 {
   "health_rating": "unhealthy",
   "health_score": 3.5,
-  "summary": "Example summary sentence one. Example sentence two.",
+  "summary": "Two sentence summary for an Indian consumer.",
   "is_legitimate": true,
   "safe_consumption": {
     "amount": "1 small pack 26g",
@@ -155,11 +208,20 @@ Return exactly this JSON structure with no extra text:
   "ingredient_warnings": [
     {
       "ingredient": "Sodium",
-      "concern": "High sodium content",
+      "concern": "High sodium content increases blood pressure risk",
       "severity": "high"
     }
   ],
-  "positives": ["Good source of energy", "Contains some protein"],
+  "positives": ["Good source of quick energy", "Contains some protein"],
+  "healthier_alternatives": ["Roasted chana", "Makhana", "Fresh fruit"],
   "bmi_notes": null
-}`
+}
+
+RULES:
+- Flag E621 MSG, artificial colours, TBHQ, BHA, BHT
+- Sodium above 500mg per 100g flag as high
+- Sugar above 15g per 100g flag
+- Trans fat any amount is high severity
+- Apply FSSAI standards where relevant
+- Always include 2-3 healthier_alternatives specific to Indian market`
 }
