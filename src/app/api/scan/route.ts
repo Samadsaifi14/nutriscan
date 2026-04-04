@@ -4,12 +4,16 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 export async function GET(req: NextRequest) {
   const barcode = req.nextUrl.searchParams.get('barcode')
 
-  if (!barcode) {
-    return NextResponse.json({ success: false, error: 'No barcode' }, { status: 400 })
+  if (!barcode || barcode.trim().length < 6) {
+    return NextResponse.json(
+      { success: false, error: 'Invalid barcode' },
+      { status: 400 }
+    )
   }
 
   console.log('Scanning barcode:', barcode)
 
+  // Layer 1 — Check our Supabase cache
   try {
     const { data: cached } = await supabaseAdmin
       .from('products')
@@ -17,136 +21,151 @@ export async function GET(req: NextRequest) {
       .eq('barcode', barcode)
       .single()
 
-    if (cached) {
-      console.log('Found in our DB')
-      return NextResponse.json({ success: true, data: normaliseSupabase(cached), source: 'our_db' })
+    if (cached && cached.name) {
+      console.log('Found in our DB:', cached.name)
+      return NextResponse.json({
+        success: true,
+        source: 'cache',
+        data: formatProduct(cached),
+      })
     }
   } catch (e) {
     console.log('Supabase check failed:', e)
   }
 
-  console.log('Trying Open Food Facts...')
+  // Layer 2 — Open Food Facts
   try {
-    const res = await fetch(
+    console.log('Trying Open Food Facts...')
+    const offRes = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
-      {
-        headers: { 'User-Agent': 'NutriScan/1.0' },
-        signal: AbortSignal.timeout(8000)
-      }
+      { headers: { 'User-Agent': 'HealthOX/1.0 (healthox@example.com)' } }
     )
-    const json = await res.json()
-    console.log('OFF product status:', json.status)
 
-    if (json.status === 1 && json.product) {
-      console.log('Found on Open Food Facts:', json.product.product_name)
-      const product = normaliseOFF(barcode, json.product)
-      await cacheProduct(product, 'off')
-      return NextResponse.json({ success: true, data: product, source: 'open_food_facts' })
+    if (offRes.ok) {
+      const offData = await offRes.json()
+      console.log('OFF status:', offData.status)
+
+      if (offData.status === 1 && offData.product) {
+        const p = offData.product
+        const nutriments = p.nutriments || {}
+
+        const product = {
+          barcode,
+          name: p.product_name || p.product_name_en || p.abbreviated_product_name || 'Unknown Product',
+          brand: p.brands || null,
+          category: p.categories || null,
+          country_of_origin: p.countries_tags?.[0]?.replace('en:', '') || null,
+          image_url: p.image_front_url || p.image_url || null,
+          calories_per_100g: parseNum(nutriments['energy-kcal_100g'] || nutriments['energy-kcal']),
+          protein_per_100g: parseNum(nutriments.proteins_100g || nutriments.proteins),
+          carbs_per_100g: parseNum(nutriments.carbohydrates_100g || nutriments.carbohydrates),
+          fat_per_100g: parseNum(nutriments.fat_100g || nutriments.fat),
+          sugar_per_100g: parseNum(nutriments.sugars_100g || nutriments.sugars),
+          sodium_per_100g: parseSodium(nutriments.sodium_100g || nutriments.sodium, nutriments.salt_100g),
+          fiber_per_100g: parseNum(nutriments.fiber_100g || nutriments.fiber),
+          serving_size_g: parseNum(p.serving_quantity),
+          ingredients_text: p.ingredients_text || null,
+          allergens: parseList(p.allergens_tags),
+          additives: parseList(p.additives_tags),
+          source: 'open_food_facts',
+        }
+
+        // Cache it for future
+        cacheProduct(product)
+
+        console.log('Found on Open Food Facts:', product.name)
+        return NextResponse.json({
+          success: true,
+          source: 'open_food_facts',
+          data: formatProduct(product),
+        })
+      }
     }
   } catch (e) {
-    console.log('Open Food Facts error:', e)
+    console.log('Open Food Facts failed:', e)
   }
 
-  if (process.env.BARCODE_LOOKUP_API_KEY) {
-    try {
-      const res = await fetch(
-        `https://api.barcodelookup.com/v3/products?barcode=${barcode}&formatted=y&key=${process.env.BARCODE_LOOKUP_API_KEY}`,
-        { signal: AbortSignal.timeout(8000) }
-      )
-      const json = await res.json()
-      if (json.products?.length > 0) {
-        const product = normaliseBarcodeLookup(barcode, json.products[0])
-        await cacheProduct(product, 'barcodelookup')
-        return NextResponse.json({ success: true, data: product, source: 'barcode_lookup' })
-      }
-    } catch (e) {
-      console.log('Barcode Lookup error:', e)
-    }
-  }
-
-  console.log('Product not found anywhere')
-  return NextResponse.json(
-    { success: false, error: 'PRODUCT_NOT_FOUND', barcode },
-    { status: 404 }
-  )
+  // Layer 3 — Not found anywhere
+  console.log('Product not found for barcode:', barcode)
+  return NextResponse.json({
+    success: false,
+    error: 'PRODUCT_NOT_FOUND',
+    barcode,
+    message: 'This product is not in our database yet. Use photo mode to read the nutrition label directly.',
+  })
 }
 
-function normaliseOFF(barcode: string, p: any) {
-  const n = p.nutriments || {}
+function parseNum(val: any): number | null {
+  if (val === undefined || val === null || val === '') return null
+  const n = parseFloat(String(val))
+  return isNaN(n) ? null : Math.round(n * 10) / 10
+}
+
+function parseSodium(sodiumVal: any, saltVal: any): number | null {
+  if (sodiumVal !== undefined && sodiumVal !== null && sodiumVal !== '') {
+    const n = parseFloat(String(sodiumVal))
+    if (!isNaN(n)) return Math.round(n * 1000) // convert g to mg
+  }
+  if (saltVal !== undefined && saltVal !== null && saltVal !== '') {
+    const salt = parseFloat(String(saltVal))
+    if (!isNaN(salt)) return Math.round(salt * 400) // salt * 0.4 = sodium, in mg
+  }
+  return null
+}
+
+function parseList(tags: any): string[] {
+  if (!tags || !Array.isArray(tags)) return []
+  return tags.map((t: string) => t.replace(/^en:/, '').replace(/-/g, ' ')).filter(Boolean)
+}
+
+function formatProduct(p: any) {
   return {
-    id: '', barcode,
-    name: p.product_name || p.product_name_en || 'Unknown Product',
-    brand: p.brands,
-    category: p.categories?.split(',')[0]?.trim(),
-    country_of_origin: p.countries_tags?.includes('en:india') ? 'IN' : 'GLOBAL',
-    image_url: p.image_url,
+    id: p.id,
+    barcode: p.barcode,
+    name: p.name || 'Unknown Product',
+    brand: p.brand || null,
+    category: p.category || null,
+    country_of_origin: p.country_of_origin || null,
+    image_url: p.image_url || null,
+    source: p.source || 'cache',
     nutrition: {
-      calories: n['energy-kcal_100g'] || 0,
-      protein: n.proteins_100g || 0,
-      carbs: n.carbohydrates_100g || 0,
-      fat: n.fat_100g || 0,
-      sugar: n.sugars_100g,
-      sodium: n.sodium_100g ? n.sodium_100g * 1000 : undefined,
-      fiber: n.fiber_100g,
+      calories: p.calories_per_100g ?? 0,
+      protein: p.protein_per_100g ?? 0,
+      carbs: p.carbs_per_100g ?? 0,
+      fat: p.fat_per_100g ?? 0,
+      sugar: p.sugar_per_100g ?? null,
+      sodium: p.sodium_per_100g ?? null,
+      fiber: p.fiber_per_100g ?? null,
     },
-    serving_size_g: p.serving_size ? parseFloat(p.serving_size) : undefined,
-    ingredients_text: p.ingredients_text_en || p.ingredients_text,
-    allergens: p.allergens_tags?.map((a: string) => a.replace('en:', '')) || [],
-    additives: p.additives_tags?.map((a: string) => a.replace('en:', '').toUpperCase()) || [],
-    source: 'off',
-    created_at: new Date().toISOString(),
-  }
-}
-
-function normaliseBarcodeLookup(barcode: string, p: any) {
-  return {
-    id: '', barcode,
-    name: p.title || 'Unknown',
-    brand: p.brand,
-    category: p.category,
-    country_of_origin: 'IN',
-    image_url: p.images?.[0],
-    nutrition: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-    ingredients_text: p.ingredients,
-    allergens: [], additives: [],
-    source: 'barcodelookup',
-    created_at: new Date().toISOString(),
-  }
-}
-
-function normaliseSupabase(p: any) {
-  return {
-    id: p.id, barcode: p.barcode, name: p.name, brand: p.brand,
-    category: p.category, country_of_origin: p.country_of_origin,
-    image_url: p.image_url,
-    nutrition: {
-      calories: p.calories_per_100g, protein: p.protein_per_100g,
-      carbs: p.carbs_per_100g, fat: p.fat_per_100g,
-      sugar: p.sugar_per_100g, sodium: p.sodium_per_100g,
-    },
-    serving_size_g: p.serving_size_g,
-    ingredients_text: p.ingredients_text,
+    serving_size_g: p.serving_size_g || null,
+    ingredients_text: p.ingredients_text || null,
     allergens: p.allergens || [],
     additives: p.additives || [],
-    source: p.source,
-    created_at: p.created_at,
   }
 }
 
-async function cacheProduct(product: any, source: string) {
-  const n = product.nutrition
+async function cacheProduct(product: any) {
   try {
     await supabaseAdmin.from('products').upsert({
-      barcode: product.barcode, name: product.name, brand: product.brand,
-      category: product.category, country_of_origin: product.country_of_origin,
+      barcode: product.barcode,
+      name: product.name,
+      brand: product.brand,
+      category: product.category,
+      country_of_origin: product.country_of_origin,
       image_url: product.image_url,
-      calories_per_100g: n.calories, protein_per_100g: n.protein,
-      carbs_per_100g: n.carbs, fat_per_100g: n.fat,
-      sugar_per_100g: n.sugar, sodium_per_100g: n.sodium,
+      calories_per_100g: product.calories_per_100g,
+      protein_per_100g: product.protein_per_100g,
+      carbs_per_100g: product.carbs_per_100g,
+      fat_per_100g: product.fat_per_100g,
+      sugar_per_100g: product.sugar_per_100g,
+      sodium_per_100g: product.sodium_per_100g,
+      fiber_per_100g: product.fiber_per_100g,
+      serving_size_g: product.serving_size_g,
       ingredients_text: product.ingredients_text,
-      allergens: product.allergens, additives: product.additives,
-      source,
-    }, { onConflict: 'barcode' })
+      allergens: product.allergens,
+      additives: product.additives,
+      source: product.source,
+    }, { onConflict: 'barcode', ignoreDuplicates: false })
     console.log('Product cached successfully')
   } catch (e) {
     console.log('Cache failed:', e)
