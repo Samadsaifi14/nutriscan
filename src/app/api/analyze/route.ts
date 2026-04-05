@@ -28,6 +28,15 @@ const ProductSchema = z.object({
 
 const RequestSchema = z.object({
   product: ProductSchema,
+  userProfile: z.object({
+    age: z.number().optional(),
+    bmi: z.number().optional(),
+    weight_goal: z.string().optional(),
+    is_diabetic: z.boolean().optional(),
+    has_bp: z.boolean().optional(),
+    is_vegetarian: z.boolean().optional(),
+    gender: z.string().optional(),
+  }).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -35,19 +44,17 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     const userId = (session as any)?.userId
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'You must be signed in to analyse products' },
-        { status: 401 }
-      )
-    }
+    // Allow guest mode — but still rate limit by IP if no userId
+    const rateLimitKey = userId || req.headers.get('x-forwarded-for') || 'anonymous'
 
-    const rateCheck = await checkRateLimit(userId, 'analyze')
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        { success: false, error: `Analysis limit reached. Please wait ${rateCheck.resetIn} minutes.`, rateLimited: true },
-        { status: 429 }
-      )
+    if (userId) {
+      const rateCheck = await checkRateLimit(userId, 'analyze')
+      if (!rateCheck.allowed) {
+        return NextResponse.json(
+          { success: false, error: `Analysis limit reached. Please wait ${rateCheck.resetIn} minutes.`, rateLimited: true },
+          { status: 429 }
+        )
+      }
     }
 
     const body = await req.json()
@@ -60,10 +67,37 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { product } = parsed.data
+    const { product, userProfile } = parsed.data
 
-    // Check 7 day cache
-    if (product.barcode) {
+    // Fetch user profile from DB if logged in and no profile passed
+    let profile = userProfile
+    if (userId && !profile) {
+      const { data: dbProfile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('age, weight_kg, height_cm, weight_goal, is_diabetic, has_bp, is_vegetarian, gender, daily_calorie_goal')
+        .eq('user_id', userId)
+        .single()
+
+      if (dbProfile) {
+        let bmi = null
+        if (dbProfile.weight_kg && dbProfile.height_cm) {
+          const h = dbProfile.height_cm / 100
+          bmi = parseFloat((dbProfile.weight_kg / (h * h)).toFixed(1))
+        }
+        profile = {
+          age: dbProfile.age || undefined,
+          bmi: bmi || undefined,
+          weight_goal: dbProfile.weight_goal || undefined,
+          is_diabetic: dbProfile.is_diabetic || false,
+          has_bp: dbProfile.has_bp || false,
+          is_vegetarian: dbProfile.is_vegetarian || false,
+          gender: dbProfile.gender || undefined,
+        }
+      }
+    }
+
+    // Check 7 day cache — but skip if we have a user profile (personalised analysis)
+    if (product.barcode && !profile) {
       const { data: cached } = await supabaseAdmin
         .from('products')
         .select('ai_analysis_json, ai_analyzed_at')
@@ -79,7 +113,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const prompt = buildPrompt(product)
+    const prompt = buildPrompt(product, profile)
     console.log('Calling Gemini AI for:', product.name)
 
     const geminiRes = await fetch(
@@ -89,7 +123,7 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 8000 }
+          generationConfig: { temperature: 0.15, maxOutputTokens: 10000 }
         })
       }
     )
@@ -127,9 +161,11 @@ export async function POST(req: NextRequest) {
     }
 
     analysis.analyzed_at = new Date().toISOString()
+    analysis.personalized = !!profile
     console.log(`Analysis done: ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10)`)
 
-    if (product.barcode) {
+    // Cache only if not personalized
+    if (product.barcode && !profile) {
       await supabaseAdmin
         .from('products')
         .update({
@@ -144,7 +180,6 @@ export async function POST(req: NextRequest) {
       success: true,
       data: analysis,
       cached: false,
-      remaining: rateCheck.remaining - 1,
     })
 
   } catch (err: any) {
@@ -156,10 +191,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function buildPrompt(product: any): string {
+function buildPrompt(product: any, userProfile?: any): string {
   const n = product.nutrition || {}
 
-  // Calculate some derived metrics to help Gemini
   const caloriesPer100g = n.calories || 0
   const proteinPer100g = n.protein || 0
   const carbsPer100g = n.carbs || 0
@@ -168,7 +202,6 @@ function buildPrompt(product: any): string {
   const sodiumMgPer100g = n.sodium ?? null
   const fiberPer100g = n.fiber ?? null
 
-  // Nutrient density score hints for Gemini
   const isHighCalorie = caloriesPer100g > 450
   const isHighSugar = sugarPer100g !== null && sugarPer100g > 15
   const isHighSodium = sodiumMgPer100g !== null && sodiumMgPer100g > 500
@@ -181,9 +214,28 @@ function buildPrompt(product: any): string {
   const additives = (product.additives || []).join(', ') || 'None listed'
   const allergens = (product.allergens || []).join(', ') || 'None listed'
 
-  return `You are Dr. Neha Sharma, a certified nutritionist and food safety expert with 15 years of experience analysing Indian packaged foods against FSSAI regulations and WHO guidelines.
+  // Build personalized section
+  const userSection = userProfile ? `
+═══ USER HEALTH PROFILE (personalise all recommendations for this person) ═══
+Age: ${userProfile.age || 'Unknown'}
+BMI: ${userProfile.bmi || 'Unknown'} ${userProfile.bmi ? (userProfile.bmi < 18.5 ? '(Underweight)' : userProfile.bmi < 25 ? '(Normal)' : userProfile.bmi < 30 ? '(Overweight)' : '(Obese)') : ''}
+Gender: ${userProfile.gender || 'Unknown'}
+Weight Goal: ${userProfile.weight_goal || 'maintain'}
+Diabetic: ${userProfile.is_diabetic ? 'YES — flag any sugar/carb concerns prominently' : 'No'}
+High Blood Pressure: ${userProfile.has_bp ? 'YES — flag any sodium concerns prominently' : 'No'}
+Vegetarian: ${userProfile.is_vegetarian ? 'YES' : 'No'}
 
-Your task is to give a PRECISE, ACCURATE, and DIFFERENTIATED health analysis of this specific food product. Do NOT give generic scores — every product must be scored based on its actual nutritional data and ingredients.
+Based on this profile, calculate safe consumption limits that are SPECIFIC to this person's age, BMI and health conditions.
+` : `
+═══ USER PROFILE ═══
+No profile available — provide general safe consumption limits for an average Indian adult.
+`
+
+  return `You are Dr. Neha Sharma, a certified nutritionist and food safety expert with 15 years of experience analysing Indian packaged foods against FSSAI, WHO, ICMR and international food safety guidelines.
+
+Your task is to give a PRECISE, ACCURATE, PERSONALISED, and EVIDENCE-BASED health analysis of this specific food product. Every score, every warning, every recommendation must be grounded in actual nutritional data and scientific evidence.
+
+${userSection}
 
 ═══ PRODUCT DETAILS ═══
 Name: ${product.name}
@@ -209,54 +261,105 @@ ${additives}
 ═══ ALLERGENS ═══
 ${allergens}
 
-═══ DERIVED ANALYSIS HINTS ═══
-- High calorie density: ${isHighCalorie ? 'YES — penalise score' : 'No'}
-- High sugar content: ${isHighSugar ? 'YES — penalise score significantly' : 'No'}
-- High sodium: ${isHighSodium ? 'YES — penalise score' : 'No'}
-- High fat: ${isHighFat ? 'YES — penalise score' : 'No'}
-- Good protein ratio: ${hasGoodProteinRatio ? 'YES — reward score' : 'No'}
-- High fiber: ${isHighFiber ? 'YES — reward score' : 'No'}
-
 ═══ SCORING GUIDE — FOLLOW THIS STRICTLY ═══
 
-Score 8.5–10.0 (Healthy) — Award ONLY to:
-Plain nuts, seeds, oats, dal, legumes, plain milk, fresh/dried fruit with no added sugar, whole grain products with minimal processing, products with protein > 15g AND sugar < 5g AND sodium < 200mg
+Score 8.5–10.0 (Healthy) — ONLY for:
+Plain nuts, seeds, oats, dal, legumes, plain milk, whole grain products with minimal processing, protein > 15g AND sugar < 5g AND sodium < 200mg
 
-Score 7.0–8.4 (Healthy) — Award to:
-Multi-grain biscuits with moderate sugar, roasted snacks with good ingredients, products with good protein, low sugar AND low sodium. Examples: Digestive biscuits, roasted chana, oatmeal
+Score 7.0–8.4 (Healthy) — For:
+Multi-grain products with moderate sugar, roasted snacks with good ingredients, good protein + low sugar + low sodium. Examples: Digestive biscuits, roasted chana, oatmeal
 
-Score 5.5–6.9 (Moderate-Good) — Award to:
-Products with one concerning ingredient but otherwise decent nutrition. Moderate calorie, moderate sodium OR moderate sugar but not both. Examples: Regular atta biscuits, some breakfast cereals, fortified products
+Score 5.5–6.9 (Moderate) — For:
+One concerning ingredient but otherwise decent. Moderate calorie, moderate sodium OR moderate sugar but not both.
 
-Score 4.0–5.4 (Moderate-Poor) — Award to:
-Products with multiple concerning nutrients OR artificial additives OR high sodium/sugar. Examples: Most flavoured biscuits, instant soups, processed cheese
+Score 4.0–5.4 (Moderate-Poor) — For:
+Multiple concerning nutrients OR artificial additives OR high sodium/sugar. Examples: Flavoured biscuits, instant soups
 
-Score 2.5–3.9 (Unhealthy) — Award to:
-Products with seriously concerning ingredients: very high sugar (>25g), very high sodium (>800mg), trans fats, multiple harmful additives like E621/MSG, TBHQ, BHA, BHT, artificial colours. Examples: Regular chips, instant noodles, cream biscuits, energy drinks
+Score 2.5–3.9 (Unhealthy) — For:
+Very high sugar >25g, very high sodium >800mg, trans fats, multiple harmful additives. Examples: Regular chips, instant noodles, cream biscuits
 
-Score 1.0–2.4 (Very Unhealthy) — Award to:
-Products that are nutritionally empty AND contain harmful additives: ultra-processed snacks, candy, soda, heavily fried foods with trans fats and multiple artificial additives
+Score 1.0–2.4 (Very Unhealthy) — For:
+Nutritionally empty AND harmful additives: ultra-processed snacks, candy, soda, heavily fried foods
 
-═══ INGREDIENT FLAGS — CHECK EACH ONE ═══
-If present in ingredients, these MUST appear as warnings:
-- E621 / Monosodium Glutamate (MSG) → severity: medium
-- TBHQ (Tertiary Butylhydroquinone) → severity: high
-- BHA / BHT → severity: high
-- Trans fat / Partially hydrogenated oils → severity: high
-- Sodium nitrite / Sodium nitrate → severity: high
-- Artificial colours (E102, E110, E122, E124, E129, E133) → severity: medium
-- High Fructose Corn Syrup → severity: high
-- Carrageenan → severity: low
-- Sodium benzoate → severity: medium
-- Any sugar listed in first 3 ingredients → severity: medium
+═══ HARMFUL INGREDIENTS DATABASE — CHECK EACH ONE IN THE INGREDIENTS LIST ═══
 
-═══ REQUIRED OUTPUT ═══
-Return ONLY this exact JSON structure — no markdown, no code fences, no extra text:
+For EVERY harmful substance found in the ingredients, you MUST include it in harmful_ingredients with:
+- The exact name as it appears on the label
+- Scientific evidence from WHO, FSSAI, ICMR, PubMed, or major health authorities
+- A valid source URL (use real URLs from WHO, FSSAI, or well-known health institutions)
+- The safe daily limit
+- A personalised safe limit for THIS user based on their age and BMI
+
+SUBSTANCES TO DETECT AND FLAG:
+
+ADDITIVES:
+- E621 / MSG / Monosodium Glutamate → Source: WHO, FSSAI; concern: excitotoxin, may trigger headaches, high sodium contribution
+- TBHQ (E319) → Source: National Toxicology Program USA; concern: linked to cancer in animal studies, oxidative stress
+- BHA (E320) → Source: IARC Group 2B possible carcinogen; concern: endocrine disruptor
+- BHT (E321) → Source: EFSA; concern: possible carcinogen, liver enzyme disruption
+- Sodium Benzoate (E211) → Source: WHO; concern: forms benzene with Vitamin C, possible carcinogen
+- Carrageenan (E407) → Source: Cornucopia Institute; concern: gut inflammation
+- Sodium Nitrite (E250) → Source: IARC Group 1 carcinogen when processed; concern: forms nitrosamines
+- Artificial colours E102/Tartrazine → Source: EFSA 2009; concern: hyperactivity in children, allergic reactions
+- E110/Sunset Yellow → Source: EFSA; concern: hyperactivity, allergic reactions
+- E122/Carmoisine → Source: EFSA; concern: hyperactivity in children
+- E124/Ponceau 4R → Source: EFSA; concern: hyperactivity, banned in USA
+- E129/Allura Red → Source: EFSA; concern: hyperactivity in children
+- High Fructose Corn Syrup / HFCS → Source: American Journal of Clinical Nutrition; concern: obesity, insulin resistance, fatty liver
+- Partially Hydrogenated Oils / Trans Fat → Source: WHO; concern: increases LDL cholesterol, heart disease risk, WHO recommends elimination
+- Potassium Bromate (E924) → Source: IARC Group 2B; concern: possible carcinogen, banned in EU and India but check
+- Acesulfame K (E950) → Source: EFSA; concern: possible effects on gut microbiome
+- Aspartame (E951) → Source: IARC 2023 classified possible carcinogen Group 2B; concern: phenylketonuria risk
+- Sucralose (E955) → Source: Journal of Toxicology 2023; concern: possible gut microbiome disruption
+- Refined Palm Oil → Source: WHO; concern: high saturated fat, environmental concern
+- Maida/Refined Wheat Flour → Source: ICMR; concern: high glycaemic index, spikes blood sugar
+
+NUTRIENTS OF CONCERN:
+- Sugar > 10g per 100g → Source: WHO recommends < 10% of daily calories from free sugars
+- Sodium > 400mg per 100g → Source: WHO recommends < 2000mg sodium per day
+- Saturated fat > 5g per 100g → Source: American Heart Association
+- Trans fat any amount → Source: WHO global elimination target
+
+═══ PERSONALISED SAFE LIMITS CALCULATION ═══
+
+For each harmful ingredient found, calculate a safe daily limit specifically for this user:
+
+Age adjustments:
+- Children (< 18): Reduce adult safe limit by 50%
+- Adults (18-60): Use standard WHO/FSSAI limits
+- Senior (> 60): Reduce adult safe limit by 25%
+
+BMI adjustments:
+- BMI > 30 (Obese): Reduce sugar and fat limits by 30%
+- BMI 25-30 (Overweight): Reduce sugar limits by 20%
+- BMI < 18.5 (Underweight): Standard limits apply
+
+Health condition adjustments:
+- Diabetic: Sugar from this product should be < 5g per serving. Sodium limit halved.
+- High BP: Sodium from this product should be < 200mg per serving.
+
+═══ HEALTHIER ALTERNATIVES ═══
+
+Provide 4-5 specific Indian alternatives that:
+1. Are easily available in Indian markets
+2. Directly substitute this product category
+3. Have better nutritional profiles
+4. Include both branded and homemade options where possible
+5. Are specific to the product (not generic "eat more vegetables")
+
+═══ REQUIRED JSON OUTPUT ═══
+Return ONLY this JSON — no markdown, no code fences, no extra text:
 
 {
   "health_rating": "healthy" or "moderate" or "unhealthy",
-  "health_score": <precise decimal between 1.0 and 10.0, NOT 3.5 for everything>,
-  "summary": "<2-3 sentences specifically about THIS product for an Indian consumer. Mention the product name. Be specific about what makes it healthy or unhealthy. Do not give generic advice.>",
+  "health_score": <precise decimal 1.0-10.0, NOT generic 3.5>,
+  "health_score_breakdown": {
+    "nutrition_score": <1-10, based purely on macros>,
+    "ingredient_safety_score": <1-10, based on additives and harmful ingredients>,
+    "processing_score": <1-10, 10 = minimally processed, 1 = ultra processed>,
+    "overall": <weighted average>
+  },
+  "summary": "<2-3 sentences specifically about THIS product for an Indian consumer. Mention the product name. Be specific.>",
   "detailed_breakdown": {
     "calories": "<good/moderate/high with specific comment>",
     "protein": "<good/low/adequate with specific comment>",
@@ -268,32 +371,59 @@ Return ONLY this exact JSON structure — no markdown, no code fences, no extra 
     "overall_nutrient_density": "high or medium or low"
   },
   "safe_consumption": {
-    "amount": "<specific amount with units, e.g. '1 small pack (26g)' or '2 biscuits (30g)'>",
+    "amount": "<specific amount with units e.g. '1 small pack (26g)' or '2 biscuits (30g)'>",
     "frequency": "<specific frequency e.g. 'Daily is fine' or '2-3 times per week' or 'Max once a week' or 'Avoid entirely'>",
-    "notes": "<specific note relevant to this product, e.g. 'Pair with protein-rich food to balance blood sugar' or null>"
+    "notes": "<personalised note based on user profile or null>",
+    "personalized_for_user": "<if user profile available: specific advice like 'Given your BMI of X and diabetic condition, limit to 1 biscuit per day' or null>"
   },
+  "harmful_ingredients": [
+    {
+      "name": "<exact name as on label>",
+      "also_known_as": ["<other names this ingredient goes by>"],
+      "found_in_product": true,
+      "concern": "<specific health concern, 1-2 sentences, backed by science>",
+      "severity": "high" or "medium" or "low",
+      "scientific_source": "<name of the organisation or study e.g. WHO 2015, IARC 2023, EFSA 2009, FSSAI regulation>",
+      "source_url": "<real URL to the source e.g. https://www.who.int/news-room/fact-sheets/detail/salt-reduction>",
+      "global_safe_limit": "<e.g. WHO recommends max 2000mg sodium per day for adults>",
+      "amount_in_this_product": "<e.g. This product contains 680mg sodium per 100g>",
+      "personalized_safe_limit": "<e.g. For your age and BMI, max 1 serving (30g) per day = 204mg sodium from this product>",
+      "percentage_of_daily_limit": "<e.g. 100g of this product = 34% of your daily sodium limit>"
+    }
+  ],
   "ingredient_warnings": [
     {
       "ingredient": "<exact ingredient name>",
-      "concern": "<specific health concern for Indian consumers>",
+      "concern": "<specific health concern>",
       "severity": "high" or "medium" or "low"
     }
   ],
-  "positives": ["<specific positive about this product, not generic>"],
-  "healthier_alternatives": ["<specific Indian alternative, not generic>"],
+  "positives": ["<specific positive about THIS product, not generic>"],
+  "healthier_alternatives": [
+    {
+      "name": "<specific product or food name>",
+      "reason": "<why it is better, specific nutritional reason>",
+      "availability": "widely_available or supermarket or homemade",
+      "type": "branded or homemade or whole_food"
+    }
+  ],
   "fssai_compliance": "compliant or concern or unknown",
   "diabetic_suitability": "suitable or consume_with_caution or avoid",
   "bp_suitability": "suitable or consume_with_caution or avoid",
-  "child_suitability": "suitable or consume_with_caution or avoid"
+  "child_suitability": "suitable or consume_with_caution or avoid",
+  "pregnancy_suitability": "suitable or consume_with_caution or avoid"
 }
 
-CRITICAL RULES:
-1. health_score MUST reflect the actual nutritional data — do NOT default to 3.5
-2. Products with sugar > 20g per 100g CANNOT score above 5.0
-3. Products with trans fat CANNOT score above 4.0
-4. Products with sodium > 800mg per 100g CANNOT score above 4.5
-5. Plain nuts/seeds/oats should score 8.0+
-6. Chips/instant noodles/cream biscuits should score 2.5–4.0
-7. The summary MUST mention the product name
-8. healthier_alternatives MUST be specific Indian foods, not generic advice`
+CRITICAL RULES — VIOLATING THESE IS NOT ACCEPTABLE:
+1. health_score MUST be based on actual nutrition data — NOT a default 3.5
+2. Sugar > 20g per 100g → score CANNOT exceed 5.0
+3. Trans fat present → score CANNOT exceed 4.0
+4. Sodium > 800mg per 100g → score CANNOT exceed 4.5
+5. Plain nuts/seeds/oats → score MUST be 8.0+
+6. Chips/instant noodles/cream biscuits → score MUST be 2.5-4.0
+7. summary MUST mention the product name
+8. source_url MUST be a real URL to a real health organisation
+9. harmful_ingredients MUST only list ingredients actually present in this product's ingredient list
+10. healthier_alternatives MUST be specific Indian foods or brands, never generic
+11. personalized_safe_limit MUST account for the user's actual age and BMI if provided`
 }

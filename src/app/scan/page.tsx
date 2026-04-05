@@ -28,6 +28,66 @@ const ratingBg: Record<string, string> = {
   unhealthy: 'rgba(220,38,38,0.08)',
 }
 
+// ─── Health Score Ring Component ──────────────────────────────────────────
+function HealthScoreRing({ score, rating }: { score: number; rating: string }) {
+  const color = ratingColors[rating] || '#6b7280'
+  const radius = 36
+  const circumference = 2 * Math.PI * radius
+  const progress = (score / 10) * circumference
+  const gap = circumference - progress
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative w-24 h-24">
+        <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
+          {/* Background track */}
+          <circle
+            cx="48" cy="48" r={radius}
+            fill="none"
+            stroke="rgba(0,0,0,0.06)"
+            strokeWidth="8"
+          />
+          {/* Progress */}
+          <circle
+            cx="48" cy="48" r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={`${progress} ${gap}`}
+            style={{ transition: 'stroke-dasharray 1s ease' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-2xl font-black" style={{ color }}>{score}</span>
+          <span className="text-xs text-[var(--muted)]">/10</span>
+        </div>
+      </div>
+      <span className="text-sm font-bold capitalize mt-1" style={{ color }}>
+        {ratingEmoji[rating]} {rating}
+      </span>
+    </div>
+  )
+}
+
+// ─── Score Breakdown Bar ───────────────────────────────────────────────────
+function ScoreBar({ label, score, color }: { label: string; score: number; color: string }) {
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-1">
+        <span className="text-xs text-[var(--muted)]">{label}</span>
+        <span className="text-xs font-bold" style={{ color }}>{score}/10</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${score * 10}%`, background: color }}
+        />
+      </div>
+    </div>
+  )
+}
+
 export default function ScanPage() {
   const { data: session, status } = useSession()
   const isGuest = status === 'unauthenticated'
@@ -46,6 +106,7 @@ export default function ScanPage() {
   const [photoStatus, setPhotoStatus] = useState('')
   const [quantity, setQuantity] = useState(100)
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'overview' | 'ingredients' | 'alternatives'>('overview')
 
   async function handleBarcode(barcode: string) {
     setShowScanner(false)
@@ -55,6 +116,7 @@ export default function ScanPage() {
     setAnalysis(null)
     setShowVisionMode(false)
     setLoggedMeal(null)
+    setActiveTab('overview')
 
     try {
       const res = await fetch(`/api/scan?barcode=${barcode}`)
@@ -104,7 +166,6 @@ export default function ScanPage() {
       if (json.success) {
         setAnalysis(json.data)
 
-        // Save scan session for logged-in users
         if (!isGuest && productData.barcode) {
           fetch('/api/scan-session', {
             method: 'POST',
@@ -162,7 +223,6 @@ export default function ScanPage() {
     }
   }
 
-  // Handle photo of entire product
   async function handleProductPhoto(imageBase64: string) {
     setShowPhotoMode(false)
     setLoadingPhoto(true)
@@ -171,6 +231,7 @@ export default function ScanPage() {
     setProduct(null)
     setAnalysis(null)
     setLoggedMeal(null)
+    setActiveTab('overview')
 
     try {
       const res = await fetch('/api/scan-product-photo', {
@@ -192,7 +253,6 @@ export default function ScanPage() {
 
       if (json.message) toast.success(json.message)
 
-      // First check if barcode found — look up in database
       if (extracted.barcode) {
         const scanRes = await fetch(`/api/scan?barcode=${extracted.barcode}`)
         const scanJson = await scanRes.json()
@@ -204,7 +264,6 @@ export default function ScanPage() {
         }
       }
 
-      // Build product from photo data
       const photoProduct = {
         barcode: extracted.barcode || `photo-${Date.now()}`,
         name: extracted.name || 'Unknown Product',
@@ -241,7 +300,6 @@ export default function ScanPage() {
 
       setProduct(photoProduct)
 
-      // Save to DB for future
       fetch('/api/products/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -267,7 +325,6 @@ export default function ScanPage() {
     }
   }
 
-  // Handle vision mode capture
   async function handleVisionCapture(imageBase64: string) {
     setVisionStatus('🤖 Gemini is reading the label...')
 
@@ -301,7 +358,6 @@ export default function ScanPage() {
         }
       }
 
-      // Save from label data
       setVisionStatus('💾 Saving product to Indian database...')
       const submitRes = await fetch('/api/products/submit', {
         method: 'POST',
@@ -342,6 +398,10 @@ export default function ScanPage() {
 
   const gradStyle = { background: 'linear-gradient(135deg, #059669, #0ea5e9)' }
 
+  // Count harmful ingredients
+  const harmfulCount = analysis?.harmful_ingredients?.filter((h: any) => h.found_in_product)?.length || 0
+  const highSeverityCount = analysis?.harmful_ingredients?.filter((h: any) => h.severity === 'high' && h.found_in_product)?.length || 0
+
   return (
     <div className="min-h-screen bg-[var(--background)]">
 
@@ -368,8 +428,6 @@ export default function ScanPage() {
 
         {/* Scan buttons */}
         <div className="grid grid-cols-2 gap-3 mb-5">
-
-          {/* Barcode scan */}
           <button
             onClick={() => {
               setShowScanner(true)
@@ -387,7 +445,6 @@ export default function ScanPage() {
             <span className="text-xs opacity-80 font-normal">Point at barcode</span>
           </button>
 
-          {/* Photo of product */}
           <button
             onClick={() => {
               setShowPhotoMode(true)
@@ -424,7 +481,7 @@ export default function ScanPage() {
           <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 flex items-center gap-3 mb-4">
             <div className="w-5 h-5 rounded-full border-2 border-amber-200 border-t-amber-600 animate-spin flex-shrink-0" />
             <p className="text-sm text-amber-700 dark:text-amber-400">
-              🤖 Gemini AI is analysing the ingredients...
+              🤖 Gemini AI is analysing ingredients and checking for harmful substances...
             </p>
           </div>
         )}
@@ -432,8 +489,8 @@ export default function ScanPage() {
         {error && (
           <div className="p-4 rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 mb-4">
             <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">❌ {error}</p>
-            <p className="text-xs text-red-500 dark:text-red-500">
-              Try the Photo Mode button above — just take a clear photo of the product and Gemini will read it directly.
+            <p className="text-xs text-red-500">
+              Try the Photo Mode button above — just take a clear photo of the product.
             </p>
           </div>
         )}
@@ -465,7 +522,6 @@ export default function ScanPage() {
         {product && !loadingProduct && !loadingPhoto && (
           <div className="bg-[var(--card)] rounded-2xl border border-[var(--card-border)] shadow-sm mb-4 overflow-hidden">
 
-            {/* Product image */}
             {product.image_url && (
               <div className="relative w-full h-48 bg-gray-50 dark:bg-slate-800">
                 <Image
@@ -566,7 +622,6 @@ export default function ScanPage() {
                 ))}
               </div>
 
-              {/* Additional nutrition */}
               {(product.nutrition?.sugar !== null || product.nutrition?.sodium !== null || product.nutrition?.fiber !== null) && (
                 <div className="flex gap-3 mb-4 flex-wrap">
                   {product.nutrition?.sugar !== null && (
@@ -663,147 +718,467 @@ export default function ScanPage() {
           </div>
         )}
 
-        {/* AI Analysis card */}
+        {/* ═══ AI ANALYSIS CARD ═══ */}
         {analysis && (
-          <div className="bg-[var(--card)] rounded-2xl border border-[var(--card-border)] shadow-sm p-5 mb-4">
-            <h3 className="text-base font-bold text-[var(--foreground)] mb-4">🤖 AI Health Analysis</h3>
+          <div className="bg-[var(--card)] rounded-2xl border border-[var(--card-border)] shadow-sm mb-4 overflow-hidden">
 
-            {/* Rating */}
-            <div
-              className="flex items-center gap-3 p-4 rounded-xl mb-4"
-              style={{
-                background: ratingBg[analysis.health_rating] || 'rgba(107,114,128,0.08)',
-                border: `1.5px solid ${ratingColors[analysis.health_rating] || '#6b7280'}30`,
-              }}
-            >
-              <span className="text-3xl">{ratingEmoji[analysis.health_rating] || '❓'}</span>
-              <div>
-                <p className="text-lg font-black capitalize"
-                  style={{ color: ratingColors[analysis.health_rating] || '#6b7280' }}>
-                  {analysis.health_rating}
-                </p>
-                <p className="text-xs text-[var(--muted)]">Health Score: {analysis.health_score}/10</p>
-              </div>
-              <div className="ml-auto text-right">
-                <div className="flex gap-0.5">
-                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                    <div
-                      key={n}
-                      className="w-2.5 h-6 rounded-sm transition-all"
-                      style={{
-                        background: n <= analysis.health_score
-                          ? ratingColors[analysis.health_rating] || '#6b7280'
-                          : 'rgba(0,0,0,0.08)',
-                      }}
-                    />
-                  ))}
+            {/* Header with health score ring */}
+            <div className="p-5 border-b border-[var(--card-border)]"
+              style={{ background: ratingBg[analysis.health_rating] || 'rgba(107,114,128,0.04)' }}>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-[var(--muted)] mb-1">🤖 AI Health Analysis</p>
+                  <p className="text-sm text-[var(--foreground)] leading-relaxed">
+                    {analysis.summary}
+                  </p>
+
+                  {/* Personalized indicator */}
+                  {analysis.personalized && (
+                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
+                      style={{ background: 'rgba(5,150,105,0.1)', color: '#059669' }}>
+                      ✨ Personalised for your profile
+                    </div>
+                  )}
+                </div>
+                <div className="flex-shrink-0">
+                  <HealthScoreRing score={analysis.health_score} rating={analysis.health_rating} />
                 </div>
               </div>
             </div>
 
-            {/* Summary */}
-            <p className="text-sm text-[var(--foreground)] leading-relaxed mb-4 p-3 rounded-xl"
-              style={{ background: 'var(--card-border)' }}>
-              {analysis.summary}
-            </p>
-
-            {/* Suitability badges */}
-            {(analysis.diabetic_suitability || analysis.bp_suitability || analysis.child_suitability) && (
-              <div className="flex gap-2 flex-wrap mb-4">
-                {[
-                  { key: 'diabetic_suitability', label: '🩸 Diabetic' },
-                  { key: 'bp_suitability', label: '💊 BP' },
-                  { key: 'child_suitability', label: '👶 Children' },
-                ].map(item => {
-                  const val = analysis[item.key]
-                  if (!val) return null
-                  const color = val === 'suitable' ? '#059669' : val === 'consume_with_caution' ? '#d97706' : '#dc2626'
-                  const bg = val === 'suitable' ? 'rgba(5,150,105,0.1)' : val === 'consume_with_caution' ? 'rgba(217,119,6,0.1)' : 'rgba(220,38,38,0.1)'
-                  const label = val === 'suitable' ? '✓' : val === 'consume_with_caution' ? '⚠' : '✗'
-                  return (
-                    <span key={item.key} className="px-2.5 py-1 rounded-full text-xs font-bold"
-                      style={{ background: bg, color }}>
-                      {item.label} {label}
-                    </span>
-                  )
-                })}
+            {/* Score breakdown */}
+            {analysis.health_score_breakdown && (
+              <div className="px-5 py-4 border-b border-[var(--card-border)]">
+                <p className="text-xs font-bold text-[var(--foreground)] mb-3">📊 Score Breakdown</p>
+                <div className="space-y-2">
+                  <ScoreBar
+                    label="Nutrition Quality"
+                    score={analysis.health_score_breakdown.nutrition_score}
+                    color="#059669"
+                  />
+                  <ScoreBar
+                    label="Ingredient Safety"
+                    score={analysis.health_score_breakdown.ingredient_safety_score}
+                    color={analysis.health_score_breakdown.ingredient_safety_score >= 7 ? '#059669' : analysis.health_score_breakdown.ingredient_safety_score >= 5 ? '#d97706' : '#dc2626'}
+                  />
+                  <ScoreBar
+                    label="Processing Level"
+                    score={analysis.health_score_breakdown.processing_score}
+                    color="#0ea5e9"
+                  />
+                </div>
               </div>
             )}
 
-            {/* Safe consumption */}
-            {analysis.safe_consumption && (
-              <div className="p-3 rounded-xl mb-4"
-                style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)' }}>
-                <p className="text-xs font-bold text-[var(--foreground)] mb-2">✅ Safe Consumption</p>
-                <p className="text-xs text-[var(--foreground)]">
-                  <strong>Amount:</strong> {analysis.safe_consumption.amount}
+            {/* Harmful ingredients alert banner */}
+            {harmfulCount > 0 && (
+              <div className="px-5 py-3 border-b border-[var(--card-border)]"
+                style={{
+                  background: highSeverityCount > 0 ? 'rgba(220,38,38,0.06)' : 'rgba(217,119,6,0.06)',
+                }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{highSeverityCount > 0 ? '🚨' : '⚠️'}</span>
+                  <div>
+                    <p className="text-xs font-bold"
+                      style={{ color: highSeverityCount > 0 ? '#dc2626' : '#d97706' }}>
+                      {harmfulCount} harmful ingredient{harmfulCount > 1 ? 's' : ''} detected
+                      {highSeverityCount > 0 ? ` · ${highSeverityCount} high severity` : ''}
+                    </p>
+                    <p className="text-xs text-[var(--muted)]">
+                      Tap "Ingredients" tab below for detailed scientific analysis
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab navigation */}
+            <div className="flex border-b border-[var(--card-border)]">
+              {[
+                { key: 'overview', label: '📋 Overview' },
+                { key: 'ingredients', label: `🧪 Ingredients ${harmfulCount > 0 ? `(${harmfulCount})` : ''}` },
+                { key: 'alternatives', label: '🥗 Alternatives' },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key as any)}
+                  className="flex-1 py-2.5 text-xs font-bold transition-all"
+                  style={{
+                    color: activeTab === tab.key ? '#059669' : 'var(--muted)',
+                    borderBottom: activeTab === tab.key ? '2px solid #059669' : '2px solid transparent',
+                    background: activeTab === tab.key ? 'rgba(5,150,105,0.04)' : 'transparent',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* ─── OVERVIEW TAB ─── */}
+            {activeTab === 'overview' && (
+              <div className="p-5 space-y-4">
+
+                {/* Suitability badges */}
+                {(analysis.diabetic_suitability || analysis.bp_suitability || analysis.child_suitability || analysis.pregnancy_suitability) && (
+                  <div>
+                    <p className="text-xs font-bold text-[var(--foreground)] mb-2">👤 Suitability</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { key: 'diabetic_suitability', label: '🩸 Diabetic' },
+                        { key: 'bp_suitability', label: '💊 BP' },
+                        { key: 'child_suitability', label: '👶 Children' },
+                        { key: 'pregnancy_suitability', label: '🤰 Pregnancy' },
+                      ].map(item => {
+                        const val = analysis[item.key]
+                        if (!val) return null
+                        const color = val === 'suitable' ? '#059669' : val === 'consume_with_caution' ? '#d97706' : '#dc2626'
+                        const bg = val === 'suitable' ? 'rgba(5,150,105,0.1)' : val === 'consume_with_caution' ? 'rgba(217,119,6,0.1)' : 'rgba(220,38,38,0.1)'
+                        const icon = val === 'suitable' ? '✓' : val === 'consume_with_caution' ? '⚠' : '✗'
+                        return (
+                          <span key={item.key} className="px-2.5 py-1 rounded-full text-xs font-bold"
+                            style={{ background: bg, color }}>
+                            {item.label} {icon}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Safe consumption */}
+                {analysis.safe_consumption && (
+                  <div className="p-4 rounded-xl"
+                    style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)' }}>
+                    <p className="text-xs font-bold text-[var(--foreground)] mb-3">✅ Safe Consumption</p>
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-[var(--foreground)]">
+                        <strong>Amount:</strong> {analysis.safe_consumption.amount}
+                      </p>
+                      <p className="text-xs text-[var(--foreground)]">
+                        <strong>Frequency:</strong> {analysis.safe_consumption.frequency}
+                      </p>
+                      {analysis.safe_consumption.notes && (
+                        <p className="text-xs text-[var(--muted)] pt-1 border-t border-[var(--card-border)]">
+                          💡 {analysis.safe_consumption.notes}
+                        </p>
+                      )}
+                      {analysis.safe_consumption.personalized_for_user && (
+                        <div className="pt-2 border-t border-[var(--card-border)]">
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold mb-1"
+                            style={{ background: 'rgba(5,150,105,0.15)', color: '#059669' }}>
+                            ✨ Your personalised limit
+                          </span>
+                          <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                            {analysis.safe_consumption.personalized_for_user}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Positives */}
+                {analysis.positives?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold text-[var(--foreground)] mb-2">👍 What is good</p>
+                    <div className="space-y-1">
+                      {analysis.positives.map((p: string, i: number) => (
+                        <div key={i} className="text-xs text-[var(--foreground)] px-3 py-2 rounded-lg flex items-start gap-2"
+                          style={{ background: 'rgba(5,150,105,0.06)' }}>
+                          <span className="text-emerald-500 flex-shrink-0">•</span>
+                          {p}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Detailed breakdown */}
+                {analysis.detailed_breakdown && (
+                  <div>
+                    <p className="text-xs font-bold text-[var(--foreground)] mb-2">📊 Detailed Breakdown</p>
+                    <div className="space-y-2">
+                      {[
+                        { key: 'calories', label: 'Calories' },
+                        { key: 'protein', label: 'Protein' },
+                        { key: 'sugar', label: 'Sugar' },
+                        { key: 'sodium', label: 'Sodium' },
+                        { key: 'fat', label: 'Fat' },
+                        { key: 'fiber', label: 'Fiber' },
+                      ].map(item => {
+                        const val = analysis.detailed_breakdown[item.key]
+                        if (!val) return null
+                        const isGood = val.toLowerCase().startsWith('good') || val.toLowerCase().startsWith('low')
+                        const isBad = val.toLowerCase().startsWith('high') || val.toLowerCase().startsWith('very high')
+                        return (
+                          <div key={item.key} className="flex items-start gap-2 py-1.5 border-b border-[var(--card-border)] last:border-0">
+                            <span className="text-xs flex-shrink-0 w-14 font-bold text-[var(--muted)]">{item.label}</span>
+                            <span className="text-xs"
+                              style={{ color: isGood ? '#059669' : isBad ? '#dc2626' : 'var(--foreground)' }}>
+                              {val}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-xs text-[var(--muted)]">
+                  Analysed by Gemini AI · {new Date(analysis.analyzed_at).toLocaleDateString()}
+                  {analysis.personalized && ' · Personalised analysis'}
                 </p>
-                <p className="text-xs text-[var(--foreground)]">
-                  <strong>Frequency:</strong> {analysis.safe_consumption.frequency}
-                </p>
-                {analysis.safe_consumption.notes && (
-                  <p className="text-xs text-[var(--muted)] mt-1">{analysis.safe_consumption.notes}</p>
+              </div>
+            )}
+
+            {/* ─── INGREDIENTS TAB ─── */}
+            {activeTab === 'ingredients' && (
+              <div className="p-5 space-y-4">
+
+                {/* Harmful ingredients with sources */}
+                {analysis.harmful_ingredients?.filter((h: any) => h.found_in_product)?.length > 0 ? (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <p className="text-xs font-bold text-[var(--foreground)]">🚨 Harmful Ingredients Found</p>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white"
+                        style={{ background: '#dc2626' }}>
+                        {analysis.harmful_ingredients.filter((h: any) => h.found_in_product).length}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {analysis.harmful_ingredients
+                        .filter((h: any) => h.found_in_product)
+                        .sort((a: any, b: any) => {
+                          const order = { high: 0, medium: 1, low: 2 }
+                          return (order[a.severity as keyof typeof order] || 3) - (order[b.severity as keyof typeof order] || 3)
+                        })
+                        .map((h: any, i: number) => (
+                          <div key={i}
+                            className="rounded-2xl overflow-hidden border"
+                            style={{
+                              borderColor: h.severity === 'high' ? 'rgba(220,38,38,0.3)' : h.severity === 'medium' ? 'rgba(217,119,6,0.3)' : 'rgba(156,163,175,0.3)',
+                            }}>
+
+                            {/* Ingredient header */}
+                            <div className="px-4 py-3 flex items-center justify-between"
+                              style={{
+                                background: h.severity === 'high' ? 'rgba(220,38,38,0.08)' : h.severity === 'medium' ? 'rgba(217,119,6,0.08)' : 'rgba(156,163,175,0.06)',
+                              }}>
+                              <div className="flex items-center gap-2">
+                                <span className="text-base">
+                                  {h.severity === 'high' ? '🔴' : h.severity === 'medium' ? '🟡' : '🟢'}
+                                </span>
+                                <div>
+                                  <p className="text-sm font-black text-[var(--foreground)]">{h.name}</p>
+                                  {h.also_known_as?.length > 0 && (
+                                    <p className="text-xs text-[var(--muted)]">
+                                      Also known as: {h.also_known_as.slice(0, 2).join(', ')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full text-xs font-bold capitalize text-white"
+                                style={{
+                                  background: h.severity === 'high' ? '#dc2626' : h.severity === 'medium' ? '#d97706' : '#6b7280'
+                                }}>
+                                {h.severity} risk
+                              </span>
+                            </div>
+
+                            {/* Concern */}
+                            <div className="px-4 py-3 border-b border-[var(--card-border)]">
+                              <p className="text-xs text-[var(--foreground)] leading-relaxed">{h.concern}</p>
+                            </div>
+
+                            {/* Amount in product */}
+                            {h.amount_in_this_product && (
+                              <div className="px-4 py-2 border-b border-[var(--card-border)] bg-gray-50 dark:bg-slate-800/50">
+                                <p className="text-xs text-[var(--muted)]">
+                                  📊 <span className="font-bold text-[var(--foreground)]">{h.amount_in_this_product}</span>
+                                  {h.percentage_of_daily_limit && (
+                                    <span className="ml-1">· {h.percentage_of_daily_limit}</span>
+                                  )}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Safe limits */}
+                            <div className="px-4 py-3 border-b border-[var(--card-border)]">
+                              <div className="space-y-2">
+                                {h.global_safe_limit && (
+                                  <div>
+                                    <p className="text-xs font-bold text-[var(--muted)] mb-0.5">🌍 Global Safe Limit</p>
+                                    <p className="text-xs text-[var(--foreground)]">{h.global_safe_limit}</p>
+                                  </div>
+                                )}
+                                {h.personalized_safe_limit && (
+                                  <div className="pt-2 border-t border-[var(--card-border)]">
+                                    <p className="text-xs font-bold mb-0.5" style={{ color: '#059669' }}>
+                                      ✨ Your personalised limit
+                                    </p>
+                                    <p className="text-xs text-[var(--foreground)]">{h.personalized_safe_limit}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Scientific source */}
+                            {h.scientific_source && (
+                              <div className="px-4 py-2.5"
+                                style={{ background: 'rgba(14,165,233,0.04)' }}>
+                                <p className="text-xs text-[var(--muted)] mb-1">📚 Scientific Source</p>
+                                <p className="text-xs font-bold text-[var(--foreground)] mb-1">{h.scientific_source}</p>
+                                {h.source_url && (
+                                  
+                                    href={h.source_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs underline break-all"
+                                    style={{ color: '#0ea5e9' }}
+                                  >
+                                    {h.source_url}
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-3">✅</div>
+                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">
+                      No harmful ingredients detected
+                    </p>
+                    <p className="text-xs text-[var(--muted)]">
+                      This product does not contain any of the 20+ harmful substances we screen for
+                    </p>
+                  </div>
+                )}
+
+                {/* General ingredient warnings */}
+                {analysis.ingredient_warnings?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold text-[var(--foreground)] mb-2">⚠️ Other Ingredient Notes</p>
+                    <div className="space-y-2">
+                      {analysis.ingredient_warnings.map((w: any, i: number) => (
+                        <div key={i} className="flex items-start gap-2 p-3 rounded-xl border-l-4"
+                          style={{
+                            background: w.severity === 'high' ? 'rgba(220,38,38,0.05)' : w.severity === 'medium' ? 'rgba(217,119,6,0.05)' : 'rgba(0,0,0,0.03)',
+                            borderColor: w.severity === 'high' ? '#dc2626' : w.severity === 'medium' ? '#d97706' : '#9ca3af',
+                          }}>
+                          <span className="text-sm flex-shrink-0">
+                            {w.severity === 'high' ? '🔴' : w.severity === 'medium' ? '🟡' : '🟢'}
+                          </span>
+                          <div>
+                            <p className="text-xs font-bold text-[var(--foreground)]">{w.ingredient}</p>
+                            <p className="text-xs text-[var(--muted)]">{w.concern}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Disclaimer */}
+                <div className="p-3 rounded-xl text-xs text-[var(--muted)] leading-relaxed"
+                  style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid var(--card-border)' }}>
+                  ℹ️ Analysis based on WHO, FSSAI, ICMR and EFSA guidelines. Sources are provided for verification. This is informational — consult a healthcare professional for medical advice.
+                </div>
+              </div>
+            )}
+
+            {/* ─── ALTERNATIVES TAB ─── */}
+            {activeTab === 'alternatives' && (
+              <div className="p-5 space-y-4">
+
+                <div>
+                  <p className="text-xs font-bold text-[var(--foreground)] mb-1">🥗 Healthier Alternatives</p>
+                  <p className="text-xs text-[var(--muted)] mb-3">
+                    Specific Indian alternatives that are better for your health
+                  </p>
+
+                  {Array.isArray(analysis.healthier_alternatives) && analysis.healthier_alternatives.length > 0 ? (
+                    <div className="space-y-3">
+                      {analysis.healthier_alternatives.map((alt: any, i: number) => {
+                        // Handle both string and object format
+                        const isObject = typeof alt === 'object' && alt !== null
+                        const name = isObject ? alt.name : alt
+                        const reason = isObject ? alt.reason : null
+                        const availability = isObject ? alt.availability : null
+                        const type = isObject ? alt.type : null
+
+                        const typeColors: Record<string, string> = {
+                          branded: 'rgba(139,92,246,0.1)',
+                          homemade: 'rgba(5,150,105,0.1)',
+                          whole_food: 'rgba(14,165,233,0.1)',
+                        }
+                        const typeLabels: Record<string, string> = {
+                          branded: '🏷️ Brand',
+                          homemade: '🏠 Homemade',
+                          whole_food: '🌾 Whole food',
+                        }
+
+                        return (
+                          <div key={i}
+                            className="p-4 rounded-2xl border border-[var(--card-border)]"
+                            style={{ background: 'rgba(5,150,105,0.03)' }}>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+                                  style={{ background: 'rgba(5,150,105,0.1)' }}>
+                                  {type === 'homemade' ? '🏠' : type === 'whole_food' ? '🌾' : '✅'}
+                                </div>
+                                <p className="text-sm font-bold text-[var(--foreground)]">{name}</p>
+                              </div>
+                              {type && (
+                                <span className="px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0"
+                                  style={{
+                                    background: typeColors[type] || 'rgba(0,0,0,0.06)',
+                                    color: 'var(--foreground)',
+                                  }}>
+                                  {typeLabels[type] || type}
+                                </span>
+                              )}
+                            </div>
+                            {reason && (
+                              <p className="text-xs text-[var(--muted)] leading-relaxed ml-10">{reason}</p>
+                            )}
+                            {availability && (
+                              <p className="text-xs ml-10 mt-1"
+                                style={{ color: '#059669' }}>
+                                📍 {availability.replace(/_/g, ' ')}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-[var(--muted)] text-sm">
+                      No alternatives available for this product
+                    </div>
+                  )}
+                </div>
+
+                {/* Why switch section */}
+                {analysis.health_rating !== 'healthy' && (
+                  <div className="p-4 rounded-2xl"
+                    style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)' }}>
+                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-2">
+                      💚 Why switch?
+                    </p>
+                    <p className="text-xs text-[var(--muted)] leading-relaxed">
+                      Switching to healthier alternatives even 2-3 times a week can significantly reduce your
+                      intake of harmful additives and improve your overall nutrition. Small changes add up over time.
+                    </p>
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Ingredient warnings */}
-            {analysis.ingredient_warnings?.length > 0 && (
-              <div className="mb-4">
-                <p className="text-xs font-bold text-[var(--foreground)] mb-2">⚠️ Ingredient Warnings</p>
-                <div className="space-y-2">
-                  {analysis.ingredient_warnings.map((w: any, i: number) => (
-                    <div key={i} className="flex items-start gap-2 p-3 rounded-xl border-l-4"
-                      style={{
-                        background: w.severity === 'high' ? 'rgba(220,38,38,0.05)' : w.severity === 'medium' ? 'rgba(217,119,6,0.05)' : 'rgba(0,0,0,0.03)',
-                        borderColor: w.severity === 'high' ? '#dc2626' : w.severity === 'medium' ? '#d97706' : '#9ca3af',
-                      }}>
-                      <span className="text-sm flex-shrink-0">
-                        {w.severity === 'high' ? '🔴' : w.severity === 'medium' ? '🟡' : '🟢'}
-                      </span>
-                      <div>
-                        <p className="text-xs font-bold text-[var(--foreground)]">{w.ingredient}</p>
-                        <p className="text-xs text-[var(--muted)]">{w.concern}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Positives */}
-            {analysis.positives?.length > 0 && (
-              <div className="mb-4">
-                <p className="text-xs font-bold text-[var(--foreground)] mb-2">👍 What is good</p>
-                <div className="space-y-1">
-                  {analysis.positives.map((p: string, i: number) => (
-                    <div key={i} className="text-xs text-[var(--foreground)] px-3 py-2 rounded-lg"
-                      style={{ background: 'rgba(5,150,105,0.06)' }}>
-                      • {p}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Healthier alternatives */}
-            {analysis.healthier_alternatives?.length > 0 && (
-              <div className="mb-4">
-                <p className="text-xs font-bold text-[var(--foreground)] mb-2">🥗 Healthier alternatives</p>
-                <div className="flex gap-2 flex-wrap">
-                  {analysis.healthier_alternatives.map((alt: string, i: number) => (
-                    <span key={i} className="px-3 py-1.5 rounded-full text-xs font-medium"
-                      style={{ background: 'rgba(5,150,105,0.08)', color: '#059669', border: '1px solid rgba(5,150,105,0.2)' }}>
-                      {alt}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <p className="text-xs text-[var(--muted)]">
-              Analysed by Gemini AI · {new Date(analysis.analyzed_at).toLocaleDateString()}
-            </p>
           </div>
         )}
 
@@ -828,7 +1203,7 @@ export default function ScanPage() {
   )
 }
 
-// ─── Vision Label Capture (for unknown barcodes) ───────────────────────────
+// ─── Vision Label Capture ───────────────────────────────────────────────────
 function VisionCapture({ onCapture }: { onCapture: (b64: string) => void }) {
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
@@ -901,7 +1276,6 @@ function ProductPhotoCapture({
   onCapture: (b64: string) => void
   onClose: () => void
 }) {
-  const videoRef = useState<HTMLVideoElement | null>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
   const [cameraStarted, setCameraStarted] = useState(false)
@@ -947,7 +1321,6 @@ function ProductPhotoCapture({
     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
       <div className="bg-[var(--card)] rounded-2xl overflow-hidden w-full max-w-md">
 
-        {/* Header */}
         <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--card-border)]">
           <div>
             <h2 className="text-base font-bold text-[var(--foreground)]">🖼️ Product Photo Mode</h2>
@@ -961,15 +1334,14 @@ function ProductPhotoCapture({
 
         {!cameraStarted ? (
           <div className="p-6">
-            {/* Instructions */}
-            <div className="space-y-3 mb-6">
+            <div className="space-y-2 mb-5">
               <p className="text-sm font-bold text-[var(--foreground)] mb-3">
-                Gemini AI will read the product photo and extract:
+                Gemini AI will read and extract:
               </p>
               {[
                 '📦 Product name and brand',
-                '🔢 Barcode number (if visible)',
-                '📊 Full nutrition facts (calories, protein, carbs, fat)',
+                '🔢 Barcode number',
+                '📊 Full nutrition facts per 100g',
                 '🧪 Ingredients and additives',
                 '⚠️ Allergen information',
                 '💰 MRP and net weight',
@@ -977,8 +1349,7 @@ function ProductPhotoCapture({
                 '🌿 Veg/Non-veg certification',
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ background: '#059669' }} />
+                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#059669' }} />
                   <p className="text-xs text-[var(--muted)]">{item}</p>
                 </div>
               ))}
@@ -986,7 +1357,7 @@ function ProductPhotoCapture({
 
             <div className="p-3 rounded-xl mb-5 text-xs leading-relaxed"
               style={{ background: 'rgba(5,150,105,0.06)', color: '#059669', border: '1px solid rgba(5,150,105,0.15)' }}>
-              💡 <strong>Tip:</strong> For best results, photograph the back or side of the packet where the nutrition table and ingredients are printed. Good lighting helps a lot!
+              💡 <strong>Tip:</strong> Photograph the back or side where the nutrition table and ingredients are printed. Good lighting is important!
             </div>
 
             <button
@@ -1002,7 +1373,6 @@ function ProductPhotoCapture({
           </div>
         ) : (
           <div>
-            {/* Camera view */}
             <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
               <video
                 ref={el => {
@@ -1013,18 +1383,14 @@ function ProductPhotoCapture({
                   }
                 }}
                 className="w-full h-full object-cover"
-                muted
-                playsInline
+                muted playsInline
               />
-
-              {/* Corner guides */}
               <div className="absolute inset-4 pointer-events-none">
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
                 <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
                 <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
                 <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
               </div>
-
               <div className="absolute bottom-3 left-0 right-0 flex justify-center">
                 <span className="bg-black/70 text-white text-xs px-3 py-1.5 rounded-full">
                   Point at product label or nutrition table
@@ -1032,7 +1398,6 @@ function ProductPhotoCapture({
               </div>
             </div>
 
-            {/* Capture button */}
             <div className="p-4">
               <button
                 onClick={handleCapture}
