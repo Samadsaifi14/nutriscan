@@ -1023,14 +1023,14 @@ export default function ScanPage() {
                               </div>
                             </div>
 
-                            {/* Scientific source */}
+                            {/* Scientific source — FIXED: added <a tag */}
                             {h.scientific_source && (
                               <div className="px-4 py-2.5"
                                 style={{ background: 'rgba(14,165,233,0.04)' }}>
                                 <p className="text-xs text-[var(--muted)] mb-1">📚 Scientific Source</p>
                                 <p className="text-xs font-bold text-[var(--foreground)] mb-1">{h.scientific_source}</p>
                                 {h.source_url && (
-                                  
+                                  <a
                                     href={h.source_url}
                                     target="_blank"
                                     rel="noopener noreferrer"

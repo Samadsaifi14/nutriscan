@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
+import { callGemini, GeminiError } from '@/lib/gemini'
 
 const ProductSchema = z.object({
   barcode: z.string().optional(),
@@ -116,36 +117,8 @@ export async function POST(req: NextRequest) {
     const prompt = buildPrompt(product, profile)
     console.log('Calling Gemini AI for:', product.name)
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.15, maxOutputTokens: 10000 }
-        })
-      }
-    )
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text()
-      console.log('Gemini error:', errText)
-      return NextResponse.json(
-        { success: false, error: 'AI service temporarily unavailable. Please try again.' },
-        { status: 500 }
-      )
-    }
-
-    const geminiData = await geminiRes.json()
-    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
-
-    if (!text) {
-      return NextResponse.json(
-        { success: false, error: 'AI returned empty response. Please try again.' },
-        { status: 500 }
-      )
-    }
+    // ─── Use the new Gemini wrapper with retry + timeout + error handling ───
+    const { text, usage } = await callGemini(prompt)
 
     const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
@@ -162,7 +135,7 @@ export async function POST(req: NextRequest) {
 
     analysis.analyzed_at = new Date().toISOString()
     analysis.personalized = !!profile
-    console.log(`Analysis done: ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10)`)
+    console.log(`Analysis done: ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10) | Tokens: ${usage.inputTokens}in/${usage.outputTokens}out`)
 
     // Cache only if not personalized
     if (product.barcode && !profile) {
@@ -183,6 +156,38 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (err: any) {
+    // ─── Handle Gemini-specific errors ───
+    if (err instanceof GeminiError) {
+      console.error(`GeminiError [${err.type}]:`, err.message)
+      switch (err.type) {
+        case 'rate_limit':
+          return NextResponse.json(
+            { success: false, error: 'AI service is busy. Please wait a moment and try again.', rateLimited: true },
+            { status: 429 }
+          )
+        case 'timeout':
+          return NextResponse.json(
+            { success: false, error: 'AI analysis timed out. Please try again.' },
+            { status: 504 }
+          )
+        case 'network':
+          return NextResponse.json(
+            { success: false, error: 'Network error connecting to AI service. Please try again.' },
+            { status: 502 }
+          )
+        case 'invalid_response':
+          return NextResponse.json(
+            { success: false, error: 'AI returned an unexpected response. Please try again.' },
+            { status: 500 }
+          )
+        default:
+          return NextResponse.json(
+            { success: false, error: 'AI service temporarily unavailable. Please try again.' },
+            { status: 500 }
+          )
+      }
+    }
+
     console.error('Analyze error:', err.message)
     return NextResponse.json(
       { success: false, error: 'Something went wrong. Please try again.' },
