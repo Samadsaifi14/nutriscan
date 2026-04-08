@@ -33,12 +33,13 @@ export function WeeklyChart() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date()
       d.setDate(d.getDate() - i)
-      const key = d.toISOString().split('T')[0]
+      d.setHours(0, 0, 0, 0)
+      const key = d.toLocaleDateString('en-CA')
       dayMap[key] = 0
     }
 
     data?.forEach(log => {
-      const key = log.logged_at.split('T')[0]
+      const key = new Date(log.logged_at).toLocaleDateString('en-CA')
       if (dayMap[key] !== undefined) {
         dayMap[key] += log.calories || 0
       }

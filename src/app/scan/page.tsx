@@ -152,10 +152,13 @@ export default function ScanPage() {
       })
 
       if (!res.ok) {
-        const errJson = await res.json()
-        if (errJson.rateLimited) {
-          toast.error('Analysis limit reached. Try again in an hour.')
-        }
+        const errText = await res.text()
+        let errMsg = 'AI analysis failed. Please try again.'
+        try {
+          const errJson = JSON.parse(errText)
+          errMsg = errJson.error || errMsg
+        } catch { /* use default */ }
+        toast.error(errMsg)
         setLoadingAnalysis(false)
         return
       }
@@ -199,27 +202,31 @@ export default function ScanPage() {
     }
 
     const qty = quantity || 100
-    const res = await fetch('/api/log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        product_name: product.name,
-        barcode: product.barcode || null,
-        quantity_g: qty,
-        calories_per_100g: product.nutrition?.calories || 0,
-        protein_per_100g: product.nutrition?.protein || 0,
-        carbs_per_100g: product.nutrition?.carbs || 0,
-        fat_per_100g: product.nutrition?.fat || 0,
-        sodium_per_100g: product.nutrition?.sodium || 0,
-        meal_type: mealType,
+    try {
+      const res = await fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_name: product.name,
+          barcode: product.barcode || null,
+          quantity_g: qty,
+          calories_per_100g: product.nutrition?.calories || 0,
+          protein_per_100g: product.nutrition?.protein || 0,
+          carbs_per_100g: product.nutrition?.carbs || 0,
+          fat_per_100g: product.nutrition?.fat || 0,
+          sodium_per_100g: product.nutrition?.sodium || 0,
+          meal_type: mealType,
+        })
       })
-    })
-    const json = await res.json()
-    if (json.success) {
-      setLoggedMeal(mealType)
-      toast.success(`✅ Logged ${qty}g as ${mealType}!`)
-    } else {
-      toast.error(json.error || 'Failed to log. Make sure you are signed in.')
+      const json = await res.json()
+      if (json.success) {
+        setLoggedMeal(mealType)
+        toast.success(`✅ Logged ${qty}g as ${mealType}!`)
+      } else {
+        toast.error(json.error || 'Failed to log. Make sure you are signed in.')
+      }
+    } catch {
+      toast.error('Network error. Please try again.')
     }
   }
 
@@ -313,10 +320,10 @@ export default function ScanPage() {
           nutrition_per_100g: extracted.nutrition_per_100g,
           source: 'gemini_photo',
         })
-      }).catch(console.error)
+      }).catch(() => {})
 
-      setLoadingPhoto(false)
       await runAnalysis(photoProduct)
+      setLoadingPhoto(false)
 
     } catch (e) {
       console.log('Photo scan error:', e)

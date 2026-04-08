@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    const userId = (session as any)?.userId
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required', tip: 'Please sign in to scan product photos.' },
+        { status: 401 }
+      )
+    }
+
     const { imageBase64 } = await req.json()
 
     if (!imageBase64) {

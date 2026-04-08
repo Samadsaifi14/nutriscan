@@ -48,14 +48,12 @@ export async function POST(req: NextRequest) {
     // Allow guest mode — but still rate limit by IP if no userId
     const rateLimitKey = userId || req.headers.get('x-forwarded-for') || 'anonymous'
 
-    if (userId) {
-      const rateCheck = await checkRateLimit(userId, 'analyze')
-      if (!rateCheck.allowed) {
-        return NextResponse.json(
-          { success: false, error: `Analysis limit reached. Please wait ${rateCheck.resetIn} minutes.`, rateLimited: true },
-          { status: 429 }
-        )
-      }
+    const rateCheck = await checkRateLimit(rateLimitKey, 'analyze')
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: `Analysis limit reached. Please wait ${rateCheck.resetIn} minutes.`, rateLimited: true },
+        { status: 429 }
+      )
     }
 
     const body = await req.json()
@@ -69,6 +67,18 @@ export async function POST(req: NextRequest) {
     }
 
     const { product, userProfile } = parsed.data
+
+    // Normalize: convert null to undefined so Zod-optional fields are consistent
+    const normalizedProduct = {
+      ...product,
+      brand: product.brand ?? undefined,
+      category: product.category ?? undefined,
+      country_of_origin: product.country_of_origin ?? undefined,
+      image_url: product.image_url ?? undefined,
+      ingredients_text: product.ingredients_text ?? undefined,
+      allergens: product.allergens ?? undefined,
+      additives: product.additives ?? undefined,
+    }
 
     // Fetch user profile from DB if logged in and no profile passed
     let profile = userProfile
@@ -114,7 +124,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const prompt = buildPrompt(product, profile)
+    const prompt = buildPrompt(normalizedProduct, profile)
     console.log('Calling Gemini AI for:', product.name)
 
     // ─── Use the new Gemini wrapper with retry + timeout + error handling ───

@@ -69,6 +69,9 @@ export default function DashboardPage() {
           .limit(10)
       ])
 
+      if (todayResult.error) console.error('Dashboard todayLogs error:', todayResult.error.message)
+      if (recentResult.error) console.error('Dashboard recentLogs error:', recentResult.error.message)
+
       return {
         profile,
         todayLogs: todayResult.data || [],

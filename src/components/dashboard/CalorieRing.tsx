@@ -60,7 +60,7 @@ export function CalorieRing({ consumed, goal, label }: CalorieRingProps) {
       <p style={{ fontSize: '13px', fontWeight: 500, marginTop: '4px', color }}>
         {pct >= 100
           ? 'Goal reached!'
-          : `${Math.round(goal - consumed)} kcal remaining`}
+          : `${Math.max(0, Math.round(goal - consumed))} kcal remaining`}
       </p>
     </div>
   )

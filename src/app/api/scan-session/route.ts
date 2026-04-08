@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (existing) {
-    await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from('scan_sessions')
       .update({
         ai_health_rating,
@@ -33,6 +33,12 @@ export async function POST(req: NextRequest) {
         scanned_at: new Date().toISOString()
       })
       .eq('id', existing.id)
+      .eq('user_id', userId)
+
+    if (updateError) {
+      console.log('Scan session update error:', updateError.message)
+      return NextResponse.json({ success: false, error: updateError.message }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true, action: 'updated' })
   }

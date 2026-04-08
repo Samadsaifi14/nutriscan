@@ -24,7 +24,10 @@ export async function POST(req: NextRequest) {
   } = await req.json()
 
   // ── Calculate BMI ──────────────────────────────────────────
-  const heightM = height_cm / 100
+  const heightM = height_cm > 0 ? height_cm / 100 : 0
+  if (!heightM) {
+    return NextResponse.json({ success: false, error: 'Height must be greater than 0' }, { status: 400 })
+  }
   const bmi = parseFloat((weight_kg / (heightM * heightM)).toFixed(1))
 
   // ── Calculate BMR using Mifflin-St Jeor ───────────────────

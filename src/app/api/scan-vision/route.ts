@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 const RequestSchema = z.object({
   imageBase64: z.string().min(100, 'Image data is too small — please try again'),
@@ -31,6 +33,16 @@ const FAILURE_REASONS = {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    const userId = (session as any)?.userId
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required', tip: 'Please sign in to scan product labels.' },
+        { status: 401 }
+      )
+    }
+
     const body = await req.json()
     const parsed = RequestSchema.safeParse(body)
 

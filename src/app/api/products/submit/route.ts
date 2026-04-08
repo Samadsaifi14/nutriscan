@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
         additives: body.additives || [],
         allergens: body.allergens || [],
         source: 'gemini_vision',
-        submitted_by: body.submitted_by,
       }, { onConflict: 'barcode', ignoreDuplicates: false })
       .select()
       .single()

@@ -4,21 +4,22 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 export async function GET(req: NextRequest) {
   const barcode = req.nextUrl.searchParams.get('barcode')
 
-  if (!barcode || barcode.trim().length < 6) {
+  const trimmedBarcode = barcode?.trim()
+  if (!trimmedBarcode || trimmedBarcode.length < 6) {
     return NextResponse.json(
       { success: false, error: 'Invalid barcode' },
       { status: 400 }
     )
   }
 
-  console.log('Scanning barcode:', barcode)
+  console.log('Scanning barcode:', trimmedBarcode)
 
   // Layer 1 — Check our Supabase cache
   try {
     const { data: cached } = await supabaseAdmin
       .from('products')
       .select('*')
-      .eq('barcode', barcode)
+      .eq('barcode', trimmedBarcode)
       .single()
 
     if (cached && cached.name) {
@@ -36,8 +37,8 @@ export async function GET(req: NextRequest) {
   // Layer 2 — Open Food Facts
   try {
     console.log('Trying Open Food Facts...')
-    const offRes = await fetch(
-      `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
+      const offRes = await fetch(
+      `https://world.openfoodfacts.org/api/v0/product/${trimmedBarcode}.json`,
       { headers: { 'User-Agent': 'HealthOX/1.0 (healthox@example.com)' } }
     )
 
@@ -108,7 +109,7 @@ function parseSodium(sodiumVal: any, saltVal: any): number | null {
   }
   if (saltVal !== undefined && saltVal !== null && saltVal !== '') {
     const salt = parseFloat(String(saltVal))
-    if (!isNaN(salt)) return Math.round(salt * 400) // salt * 0.4 = sodium, in mg
+    if (!isNaN(salt)) return Math.round(salt * 1000 * 0.4) // salt (g) → sodium (mg): multiply by 0.4
   }
   return null
 }

@@ -40,7 +40,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
     const res = await fetch(url, { ...options, signal: controller.signal })
     return res
   } catch (err: any) {
-    if (err.name === 'AbortError') throw new GeminiError('timeout', 'Gemini request timed out after 15s')
+      if (err.name === 'AbortError') throw new GeminiError('timeout', `Gemini request timed out after ${timeoutMs / 1000}s`)
     throw new GeminiError('network', `Network error: ${err.message}`)
   } finally {
     clearTimeout(timer)

@@ -47,7 +47,9 @@ export default function HistoryPage() {
   const filtered = filter === 'all' ? logs || [] : (logs || []).filter((l: any) => l.meal_type === filter)
 
   const grouped = filtered.reduce((acc: any, log: any) => {
-    const date = new Date(log.logged_at).toLocaleDateString('en-IN', {
+    const logDate = new Date(log.logged_at)
+    logDate.setHours(0, 0, 0, 0)
+    const date = logDate.toLocaleDateString('en-IN', {
       weekday: 'long', day: 'numeric', month: 'short'
     })
     if (!acc[date]) acc[date] = []
@@ -56,7 +58,6 @@ export default function HistoryPage() {
   }, {})
 
   const totalCalories = (logs || []).reduce((s: number, l: any) => s + (l.calories || 0), 0)
-  const totalMeals = (logs || []).length
 
   return (
     <div className="min-h-screen bg-[var(--background)]">

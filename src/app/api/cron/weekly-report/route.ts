@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     .select('user_id, email, name, weekly_report_email, email_unsubscribed')
     .neq('email', null)
     .or('weekly_report_email.is.null,weekly_report_email.eq.true')
-    .or('email_unsubscribed.is.null,email_unsubscribed.eq.false')
+    .not('email_unsubscribed', 'eq', true)
 
   if (usersError) {
     console.log('Error fetching users:', usersError.message)

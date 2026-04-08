@@ -12,9 +12,9 @@ export async function checkRateLimit(
 ): Promise<{ allowed: boolean; remaining: number; resetIn: number }> {
   const limit = LIMITS[action]
   const windowStart = new Date(Date.now() - limit.windowMinutes * 60 * 1000).toISOString()
+  const now = new Date().toISOString()
 
   try {
-    // Count recent requests from this user
     const { count } = await supabaseAdmin
       .from('rate_limits')
       .select('*', { count: 'exact', head: true })
@@ -27,12 +27,17 @@ export async function checkRateLimit(
     const allowed = used < limit.max
 
     if (allowed) {
-      // Log this request
-      await supabaseAdmin.from('rate_limits').insert({
-        user_id: userId,
-        action,
-        created_at: new Date().toISOString(),
-      })
+      const { error: insertError } = await supabaseAdmin
+        .from('rate_limits')
+        .insert({
+          user_id: userId,
+          action,
+          created_at: now,
+        })
+
+      if (insertError) {
+        console.error('Rate limit insert failed (possible race):', insertError.message)
+      }
     }
 
     return {
@@ -41,8 +46,7 @@ export async function checkRateLimit(
       resetIn: limit.windowMinutes,
     }
   } catch (e) {
-    // If rate limit table doesn't exist yet, allow the request
-    console.log('Rate limit check failed:', e)
-    return { allowed: true, remaining: 99, resetIn: 60 }
+    console.error('Rate limit check failed:', e)
+    return { allowed: false, remaining: 0, resetIn: 5 }
   }
 }
