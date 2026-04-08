@@ -1,6 +1,6 @@
 export class GeminiError extends Error {
   constructor(
-    public type: 'rate_limit' | 'timeout' | 'network' | 'api_error' | 'invalid_response',
+    public type: 'rate_limit' | 'timeout' | 'network' | 'api_error' | 'unavailable' | 'invalid_response',
     message: string,
     public statusCode?: number
   ) {
@@ -20,7 +20,7 @@ interface GeminiConfig {
 const DEFAULTS: Required<Omit<GeminiConfig, 'model'>> = {
   temperature: 0.15,
   maxTokens: 10000,
-  timeoutMs: 15000,
+  timeoutMs: 20000,
   maxRetries: 3,
 }
 
@@ -40,7 +40,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
     const res = await fetch(url, { ...options, signal: controller.signal })
     return res
   } catch (err: any) {
-      if (err.name === 'AbortError') throw new GeminiError('timeout', `Gemini request timed out after ${timeoutMs / 1000}s`)
+    if (err.name === 'AbortError') throw new GeminiError('timeout', `Gemini request timed out after ${timeoutMs / 1000}s`)
     throw new GeminiError('network', `Network error: ${err.message}`)
   } finally {
     clearTimeout(timer)
@@ -54,18 +54,11 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries: number): Pr
       return await fn()
     } catch (err: any) {
       lastError = err
-      if (err instanceof GeminiError && err.type === 'rate_limit') {
-        if (attempt < maxRetries) {
+      if (err instanceof GeminiError) {
+        const retryable = ['rate_limit', 'network', 'unavailable'].includes(err.type)
+        if (retryable && attempt < maxRetries) {
           const delay = Math.pow(2, attempt) * 1000
-          console.log(`Gemini rate limited — retry ${attempt + 1}/${maxRetries} in ${delay}ms`)
-          await new Promise(r => setTimeout(r, delay))
-          continue
-        }
-      }
-      if (err instanceof GeminiError && err.type === 'network') {
-        if (attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 1000
-          console.log(`Gemini network error — retry ${attempt + 1}/${maxRetries} in ${delay}ms`)
+          console.log(`Gemini ${err.type} — retry ${attempt + 1}/${maxRetries} in ${delay}ms`)
           await new Promise(r => setTimeout(r, delay))
           continue
         }
@@ -74,6 +67,14 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries: number): Pr
     }
   }
   throw lastError
+}
+
+function handleGeminiResponse(res: Response, body?: string): string {
+  if (res.status === 429) throw new GeminiError('rate_limit', 'Gemini rate limit exceeded', 429)
+  if (res.status === 503) throw new GeminiError('unavailable', 'Gemini is temporarily overloaded. Please try again.', 503)
+  if (res.status === 504) throw new GeminiError('timeout', 'Gemini request timed out', 504)
+  if (!res.ok) throw new GeminiError('api_error', `Gemini API error ${res.status}: ${body || ''}`, res.status)
+  return body || ''
 }
 
 export async function callGemini(
@@ -102,13 +103,16 @@ export async function callGemini(
       }),
     }, timeoutMs)
 
-    if (res.status === 429) throw new GeminiError('rate_limit', 'Gemini rate limit exceeded', 429)
-    if (!res.ok) {
-      const body = await res.text()
-      throw new GeminiError('api_error', `Gemini API error ${res.status}: ${body}`, res.status)
+    const body = await res.text()
+    handleGeminiResponse(res, body)
+
+    let data: any
+    try {
+      data = JSON.parse(body)
+    } catch {
+      throw new GeminiError('invalid_response', 'Gemini returned invalid JSON')
     }
 
-    const data = await res.json()
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text
     if (!text) throw new GeminiError('invalid_response', 'Gemini returned empty response')
 
@@ -149,11 +153,8 @@ export async function streamGemini(
       }),
     }, timeoutMs)
 
-    if (res.status === 429) throw new GeminiError('rate_limit', 'Gemini rate limit exceeded', 429)
-    if (!res.ok) {
-      const body = await res.text()
-      throw new GeminiError('api_error', `Gemini API error ${res.status}: ${body}`, res.status)
-    }
+    const body = await res.text()
+    handleGeminiResponse(res, body)
 
     if (!res.body) throw new GeminiError('api_error', 'No response body from Gemini')
 

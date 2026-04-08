@@ -202,6 +202,11 @@ export async function POST(req: NextRequest) {
     if (err instanceof GeminiError) {
       console.error(`GeminiError [${err.type}]:`, err.message)
       switch (err.type) {
+        case 'unavailable':
+          return NextResponse.json(
+            { success: false, error: 'Gemini AI is temporarily overloaded. Please wait 30 seconds and try again.', details: 'This is a temporary issue on our end.' },
+            { status: 503 }
+          )
         case 'rate_limit':
           return NextResponse.json(
             { success: false, error: 'AI service is busy. Please wait a moment and try again.', rateLimited: true },

@@ -158,6 +158,12 @@ Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
   } catch (err: any) {
     if (err instanceof GeminiError) {
       console.error(`Gemini Vision Error [${err.type}]:`, err.message)
+      if (err.type === 'unavailable') {
+        return NextResponse.json(
+          { success: false, error: 'Gemini AI is temporarily overloaded. Please wait 30 seconds and try again.', tip: 'This is a temporary issue — just retry in a moment.' },
+          { status: 503 }
+        )
+      }
       if (err.type === 'timeout') {
         return NextResponse.json(
           { success: false, error: 'AI timed out. Try a clearer photo.', tip: 'Make sure the label is clearly visible and well-lit.' },
@@ -166,13 +172,12 @@ Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
       }
       if (err.type === 'rate_limit') {
         return NextResponse.json(
-          { success: false, error: 'AI service is busy. Please wait a moment.', tip: 'Too many requests right now.' },
+          { success: false, error: 'AI rate limit reached. Please wait a moment.', tip: 'Too many requests right now.' },
           { status: 429 }
         )
       }
-    } else {
-      console.error('Vision error:', err.message)
     }
+    console.error('Vision error:', err.message)
     return NextResponse.json(
       {
         success: false,

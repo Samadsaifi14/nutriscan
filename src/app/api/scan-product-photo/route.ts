@@ -129,11 +129,14 @@ IMPORTANT: Extract whatever is visible. Even if only partial information is avai
   } catch (err: any) {
     if (err instanceof GeminiError) {
       console.error(`Gemini Photo Error [${err.type}]:`, err.message)
+      if (err.type === 'unavailable') {
+        return NextResponse.json({ success: false, error: 'Gemini AI is temporarily overloaded. Please wait 30 seconds and try again.' }, { status: 503 })
+      }
       if (err.type === 'timeout') {
         return NextResponse.json({ success: false, error: 'AI timed out reading the photo. Please try again.' }, { status: 504 })
       }
       if (err.type === 'rate_limit') {
-        return NextResponse.json({ success: false, error: 'AI service is busy. Please wait a moment.' }, { status: 429 })
+        return NextResponse.json({ success: false, error: 'AI rate limit reached. Please wait a moment.' }, { status: 429 })
       }
     } else {
       console.error('Photo scan error:', err.message)
