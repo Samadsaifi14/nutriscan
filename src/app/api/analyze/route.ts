@@ -56,11 +56,43 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
+
+    // ── DIAGNOSTIC: Log exactly what we receive ───────────────────────────────
+    console.log('Analyze API — raw body keys:', Object.keys(body))
+    console.log('Analyze API — product keys:', Object.keys(body.product || {}))
+    console.log('Analyze API — nutrition:', JSON.stringify(body.product?.nutrition))
+
+    // ── PRE-VALIDATION: Catch common issues before Zod ───────────────────────
+    if (!body.product) {
+      console.error('PRE-VALID FAIL: body.product is missing')
+      return NextResponse.json(
+        { success: false, error: 'No product data provided', details: 'body.product is missing' },
+        { status: 400 }
+      )
+    }
+    if (!body.product.name || typeof body.product.name !== 'string' || body.product.name.trim() === '') {
+      console.error('PRE-VALID FAIL: product.name is empty or invalid:', body.product.name)
+      return NextResponse.json(
+        { success: false, error: 'Product name is missing', details: `product.name = "${body.product.name}"` },
+        { status: 400 }
+      )
+    }
+    if (!body.product.nutrition || typeof body.product.nutrition !== 'object') {
+      console.error('PRE-VALID FAIL: product.nutrition is missing or not an object')
+      return NextResponse.json(
+        { success: false, error: 'Nutrition data is missing', details: 'product.nutrition is missing' },
+        { status: 400 }
+      )
+    }
+
     const parsed = RequestSchema.safeParse(body)
 
     if (!parsed.success) {
+      const issueSummary = parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(' | ')
+      console.error('Zod validation FAILED:', issueSummary)
+      console.error('Zod raw data:', JSON.stringify(body, null, 2))
       return NextResponse.json(
-        { success: false, error: 'Invalid product data: ' + parsed.error.issues.map(i => i.message).join(', ') },
+        { success: false, error: 'Invalid product data', details: issueSummary },
         { status: 400 }
       )
     }
@@ -122,25 +154,32 @@ export async function POST(req: NextRequest) {
 
     const prompt = buildPrompt(normalizedProduct, profile)
     console.log('Calling Gemini AI for:', product.name)
+    console.log('Prompt length:', prompt.length, 'chars')
 
     const { text, usage } = await callGemini(prompt)
+    console.log('Gemini raw response (first 500 chars):', text.slice(0, 500))
 
     const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
+    console.log('Cleaned JSON length:', cleaned.length, 'chars')
 
     let analysis
     try {
       analysis = JSON.parse(cleaned)
+      console.log('JSON parsed OK — keys:', Object.keys(analysis))
     } catch {
-      console.log('JSON parse failed:', cleaned.slice(0, 300))
+      console.error('JSON parse FAILED. Raw response:', cleaned.slice(0, 500))
       return NextResponse.json(
-        { success: false, error: 'AI returned invalid format. Please try again.' },
+        { success: false, error: 'AI returned invalid format. Please try again.', details: cleaned.slice(0, 200) },
         { status: 500 }
       )
     }
 
     analysis.analyzed_at = new Date().toISOString()
     analysis.personalized = !!profile
-    console.log(`Analysis done: ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10) | Tokens: ${usage.inputTokens}in/${usage.outputTokens}out`)
+    console.log(`✅ Analysis done: ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10) | Tokens: ${usage.inputTokens}in/${usage.outputTokens}out`)
+    console.log(`  harmful_ingredients: ${analysis.harmful_ingredients?.length || 0}`)
+    console.log(`  healthier_alternatives: ${analysis.healthier_alternatives?.length || 0}`)
+    console.log(`  summary: ${analysis.summary?.slice(0, 100)}...`)
 
     if (product.barcode && !profile) {
       await supabaseAdmin

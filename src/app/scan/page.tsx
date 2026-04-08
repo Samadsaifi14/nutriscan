@@ -99,6 +99,11 @@ export default function ScanPage() {
   const [quantity, setQuantity] = useState(100)
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'ingredients' | 'alternatives'>('overview')
+  const [debugLog, setDebugLog] = useState<string[]>([])
+
+  function debug(msg: string) {
+    setDebugLog(prev => [...prev.slice(-19), `[${new Date().toLocaleTimeString()}] ${msg}`])
+  }
 
   async function handleBarcode(barcode: string) {
     setShowScanner(false)
@@ -117,6 +122,8 @@ export default function ScanPage() {
       const json = await res.json()
       setLoadingProduct(false)
 
+      debug(`Scan API response: success=${json.success}, source=${json.source}`)
+
       if (!json.success && json.error === 'PRODUCT_NOT_FOUND') {
         setNotFoundBarcode(barcode)
         setShowVisionMode(true)
@@ -129,6 +136,7 @@ export default function ScanPage() {
       }
 
       setProduct(json.data)
+      debug(`Product loaded: ${json.data.name}`)
       await runAnalysis(json.data)
     } catch (e) {
       setLoadingProduct(false)
@@ -144,34 +152,55 @@ export default function ScanPage() {
   async function runAnalysis(productData: any) {
     setLoadingAnalysis(true)
     try {
+      debug('Sending product to AI analysis...')
+      debug(`Product data: name="${productData.name}", nutrition keys=${Object.keys(productData.nutrition || {}).join(',')}`)
+
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ product: productData })
       })
 
+      const text = await res.text()
+      let json: any
+      try {
+        json = JSON.parse(text)
+      } catch {
+        console.error('runAnalysis: could not parse response as JSON:', text.slice(0, 300))
+        debug(`ERROR: Server returned non-JSON (${res.status}): ${text.slice(0, 200)}`)
+        toast.error('Server returned an invalid response. Check server console for details.')
+        setLoadingAnalysis(false)
+        return
+      }
+
+      debug(`Analyze API response: status=${res.status}, success=${json.success}`)
+
       if (!res.ok) {
-        const errText = await res.text()
-        let errMsg = 'AI analysis failed. Please try again.'
-        try {
-          const errJson = JSON.parse(errText)
-          errMsg = errJson.error || errMsg
-        } catch { /* use default */ }
+        const errMsg = json.error || json.details || `Server error (${res.status})`
+        console.error('runAnalysis: API error:', res.status, errMsg)
+        debug(`ERROR: ${errMsg}`)
         toast.error(errMsg)
         setLoadingAnalysis(false)
         return
       }
 
-      const text = await res.text()
-      const json = JSON.parse(text)
-
       if (json.success) {
-        setAnalysis(json.data)
+        const data = json.data
+        debug(`Analysis received: rating=${data.health_rating}, score=${data.health_score}`)
+        debug(`  harmful_ingredients: ${data.harmful_ingredients?.length || 0}`)
+        debug(`  healthier_alternatives: ${data.healthier_alternatives?.length || 0}`)
+
+        if (!data.health_rating || !data.health_score) {
+          console.warn('runAnalysis: WARNING — analysis data missing health_rating or health_score:', JSON.stringify(data))
+          debug('WARNING: Analysis missing required fields!')
+        }
+
+        setAnalysis(data)
 
         event(AnalyticsEvents.VIEW_ANALYSIS, {
           product_name: productData.name,
-          health_rating: json.data.health_rating,
-          health_score: json.data.health_score,
+          health_rating: data.health_rating,
+          health_score: data.health_score,
           source: productData.source || 'unknown',
         })
 
@@ -183,17 +212,23 @@ export default function ScanPage() {
               barcode: productData.barcode,
               product_name: productData.name,
               product_image: productData.image_url,
-              ai_health_rating: json.data.health_rating,
-              ai_health_score: json.data.health_score,
+              ai_health_rating: data.health_rating,
+              ai_health_score: data.health_score,
             })
           }).catch(console.error)
         }
       } else {
-        toast.error(json.error || 'AI analysis failed. Please try again.')
+        const errMsg = json.error || 'AI analysis failed. Please try again.'
+        const details = json.details || ''
+        console.error('runAnalysis: analysis failed:', errMsg, details ? `| Details: ${details}` : '')
+        debug(`ERROR: ${errMsg}${details ? ` | ${details}` : ''}`)
+        toast.error(errMsg + (details ? `\n\n${details}` : ''))
       }
     } catch (e) {
-      console.log('Analysis error:', e)
-      toast.error('Analysis failed. Please try again.')
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('runAnalysis: unexpected error:', msg)
+      debug(`FATAL ERROR: ${msg}`)
+      toast.error('Analysis failed: ' + msg)
     } finally {
       setLoadingAnalysis(false)
     }
@@ -1451,6 +1486,20 @@ function ProductPhotoCapture({
               </p>
             </div>
           </div>
+        )}
+
+        {/* ── DEBUG PANEL (shows scan/analysis flow in real-time) ── */}
+        {debugLog.length > 0 && (
+          <details className="mt-6 p-3 rounded-xl bg-gray-900 text-green-400 text-xs font-mono">
+            <summary className="cursor-pointer font-bold text-green-300 mb-2 select-none">
+              🔧 Debug Log ({debugLog.length} entries)
+            </summary>
+            <div className="space-y-0.5">
+              {debugLog.map((line, i) => (
+                <div key={i} className="break-all">{line}</div>
+              ))}
+            </div>
+          </details>
         )}
       </div>
     </div>
