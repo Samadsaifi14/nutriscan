@@ -1,5 +1,6 @@
 "use client"
 import { signIn } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
