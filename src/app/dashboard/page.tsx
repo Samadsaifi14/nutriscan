@@ -12,6 +12,7 @@ import NutrientAlerts from '@/components/dashboard/NutrientAlerts'
 import LastScanned from '@/components/dashboard/LastScanned'
 import { SkeletonDashboard } from '@/components/Skeleton'
 import { supabase } from '@/lib/supabase'
+import { event, AnalyticsEvents } from '@/lib/analytics'
 
 interface DashboardData {
   totalCalories: number
@@ -33,7 +34,7 @@ export default function DashboardPage() {
 
   const userId = (session as any)?.userId
 
-  const { data, isLoading } = useQuery<DashboardData>({
+  const { data, isLoading, refetch } = useQuery<DashboardData>({
     queryKey: ['dashboard', userId],
     queryFn: async () => {
       const profileRes = await fetch('/api/profile')
@@ -42,11 +43,15 @@ export default function DashboardPage() {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
 
-      const { data: logs } = await supabase
+      const { data: logs, error: logsError } = await supabase
         .from('food_logs')
         .select('calories, protein_g, carbs_g, fat_g')
         .eq('user_id', userId)
         .gte('logged_at', today.toISOString())
+
+      if (logsError) {
+        console.error('Failed to load food logs:', logsError)
+      }
 
       const totals = (logs || []).reduce(
         (acc: any, l: any) => ({
@@ -72,6 +77,15 @@ export default function DashboardPage() {
     staleTime: 1000 * 60 * 2,
   })
 
+  useEffect(() => {
+    if (userId) {
+      event(AnalyticsEvents.VIEW_ANALYSIS, {
+        page: 'dashboard',
+        user_id: userId,
+      })
+    }
+  }, [userId])
+
   if (status === 'loading' || isLoading) return <SkeletonDashboard />
 
   const isNewUser = !data?.profile?.profile_completed
@@ -85,16 +99,26 @@ export default function DashboardPage() {
       <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 px-4 pt-14 pb-20 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10"
           style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 0%, transparent 50%), radial-gradient(circle at 20% 80%, white 0%, transparent 50%)' }} />
-        <div className="relative">
-          <p className="text-emerald-100 text-sm font-medium">
-            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
-          <h1 className="text-2xl font-black text-white mt-0.5">
-            {isNewUser ? `Welcome, ${userName}! 👋` : `Hello, ${userName} 👋`}
-          </h1>
-          {isNewUser && (
-            <p className="text-emerald-100 text-sm mt-1">Let's set up your health profile</p>
-          )}
+        <div className="relative flex items-start justify-between">
+          <div>
+            <p className="text-emerald-100 text-sm font-medium">
+              {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+            <h1 className="text-2xl font-black text-white mt-0.5">
+              {isNewUser ? `Welcome, ${userName}! 👋` : `Hello, ${userName} 👋`}
+            </h1>
+            {isNewUser && (
+              <p className="text-emerald-100 text-sm mt-1">Let's set up your health profile</p>
+            )}
+          </div>
+          <button
+            onClick={() => refetch()}
+            title="Refresh data"
+            className="mt-1 p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
+            aria-label="Refresh dashboard"
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

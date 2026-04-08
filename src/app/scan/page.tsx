@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
+import { event, AnalyticsEvents } from '@/lib/analytics'
 
 const BarcodeScanner = dynamic(
   () => import('@/components/scanner/BarcodeScanner'),
@@ -109,6 +110,8 @@ export default function ScanPage() {
     setLoggedMeal(null)
     setActiveTab('overview')
 
+    event(AnalyticsEvents.SCAN_BARCODE, { barcode })
+
     try {
       const res = await fetch(`/api/scan?barcode=${barcode}`)
       const json = await res.json()
@@ -129,7 +132,12 @@ export default function ScanPage() {
       await runAnalysis(json.data)
     } catch (e) {
       setLoadingProduct(false)
-      setError('Network error. Please check your connection and try again.')
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine
+      setError(
+        isOffline
+          ? 'You appear to be offline. Please check your internet connection and try again.'
+          : 'Network error. Please check your connection and try again.'
+      )
     }
   }
 
@@ -159,6 +167,13 @@ export default function ScanPage() {
 
       if (json.success) {
         setAnalysis(json.data)
+
+        event(AnalyticsEvents.VIEW_ANALYSIS, {
+          product_name: productData.name,
+          health_rating: json.data.health_rating,
+          health_score: json.data.health_score,
+          source: productData.source || 'unknown',
+        })
 
         if (!isGuest && productData.barcode) {
           fetch('/api/scan-session', {
@@ -213,6 +228,12 @@ export default function ScanPage() {
       if (json.success) {
         setLoggedMeal(mealType)
         toast.success(`✅ Logged ${qty}g as ${mealType}!`)
+        event(AnalyticsEvents.LOG_MEAL, {
+          product_name: product.name,
+          meal_type: mealType,
+          quantity_g: qty,
+          calories: Math.round((product.nutrition?.calories || 0) * qty / 100),
+        })
       } else {
         toast.error(json.error || 'Failed to log. Make sure you are signed in.')
       }
@@ -230,6 +251,8 @@ export default function ScanPage() {
     setAnalysis(null)
     setLoggedMeal(null)
     setActiveTab('overview')
+
+    event(AnalyticsEvents.SCAN_PHOTO, {})
 
     try {
       const res = await fetch('/api/scan-product-photo', {
@@ -491,9 +514,40 @@ export default function ScanPage() {
         {error && (
           <div className="p-4 rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 mb-4">
             <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">❌ {error}</p>
-            <p className="text-xs text-red-500">
-              Try the Photo Mode button above — just take a clear photo of the product.
-            </p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <button
+                onClick={() => {
+                  setError(null)
+                  setProduct(null)
+                  setAnalysis(null)
+                }}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={() => {
+                  setError(null)
+                  setProduct(null)
+                  setAnalysis(null)
+                  setShowScanner(true)
+                }}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white dark:bg-gray-800 text-[var(--foreground)] border border-[var(--card-border)] hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                🔄 Try Again
+              </button>
+              <button
+                onClick={() => {
+                  setError(null)
+                  setProduct(null)
+                  setAnalysis(null)
+                  setShowPhotoMode(true)
+                }}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white dark:bg-gray-800 text-[var(--foreground)] border border-[var(--card-border)] hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                📷 Photo Mode
+              </button>
+            </div>
           </div>
         )}
 
@@ -1019,7 +1073,7 @@ export default function ScanPage() {
                                 <p className="text-xs text-[var(--muted)] mb-1">📚 Scientific Source</p>
                                 <p className="text-xs font-bold text-[var(--foreground)] mb-1">{h.scientific_source}</p>
                                 {h.source_url && (
-                                  
+                                  <a
                                     href={h.source_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
