@@ -1,230 +1,228 @@
 "use client"
+import { useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { CalorieRing } from '@/components/dashboard/CalorieRing'
-import { WeeklyChart } from '@/components/dashboard/WeeklyChart'
-import { RecentScans } from '@/components/dashboard/RecentScans'
+import { Scan, Plus, Sparkles } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import CalorieRing from '@/components/dashboard/CalorieRing'
+import WeeklyChart from '@/components/dashboard/WeeklyChart'
+import RecentScans from '@/components/dashboard/RecentScans'
+import MealStreak from '@/components/dashboard/MealStreak'
+import NutrientAlerts from '@/components/dashboard/NutrientAlerts'
+import LastScanned from '@/components/dashboard/LastScanned'
 import { SkeletonDashboard } from '@/components/Skeleton'
-import toast from 'react-hot-toast'
+import { supabase } from '@/lib/supabase'
 
-function MacroBar({ label, value, total, color }: {
-  label: string
-  value: number
-  total: number
-  color: string
-}) {
-  const pct = total > 0 ? Math.min((value / total) * 100, 100) : 0
-  return (
-    <div className="flex-1">
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-xs text-[var(--muted)] font-medium">{label}</span>
-        <span className="text-xs font-bold text-[var(--foreground)]">{Math.round(value)}g</span>
-      </div>
-      <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, background: color }}
-        />
-      </div>
-    </div>
-  )
+interface DashboardData {
+  totalCalories: number
+  totalProtein:  number
+  totalCarbs:    number
+  totalFat:      number
+  dailyCalorieGoal: number
+  mealCount:     number
+  profile:       any
 }
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const queryClient = useQueryClient()
-  const [dailyGoal, setDailyGoal] = useState(2000)
-  const userId = (session as any)?.userId
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['dashboard', userId],
-    queryFn: async () => {
-      if (!userId) return null
-
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('daily_calorie_goal, profile_completed, name')
-        .eq('user_id', userId)
-        .single()
-
-      if (profile && !profile.profile_completed) {
-        router.push('/profile-setup')
-        return null
-      }
-
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-
-      const [todayResult, recentResult] = await Promise.all([
-        supabase.from('food_logs').select('*')
-          .eq('user_id', userId)
-          .gte('logged_at', todayStart.toISOString()),
-        supabase.from('food_logs').select('*')
-          .eq('user_id', userId)
-          .order('logged_at', { ascending: false })
-          .limit(10)
-      ])
-
-      if (todayResult.error) console.error('Dashboard todayLogs error:', todayResult.error.message)
-      if (recentResult.error) console.error('Dashboard recentLogs error:', recentResult.error.message)
-
-      return {
-        profile,
-        todayLogs: todayResult.data || [],
-        recentLogs: recentResult.data || [],
-      }
-    },
-    enabled: !!userId,
-  })
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
-  }, [status])
+  }, [status, router])
 
-  useEffect(() => {
-    if (data?.profile?.daily_calorie_goal) {
-      setDailyGoal(data.profile.daily_calorie_goal)
-    }
-  }, [data])
+  const userId = (session as any)?.userId
 
-  if (status === 'loading' || (status === 'authenticated' && isLoading)) {
-    return <SkeletonDashboard />
-  }
+  const { data, isLoading } = useQuery<DashboardData>({
+    queryKey: ['dashboard', userId],
+    queryFn: async () => {
+      const profileRes = await fetch('/api/profile')
+      const profile = profileRes.ok ? (await profileRes.json()).data : null
 
-  const todayLogs = data?.todayLogs || []
-  const recentLogs = data?.recentLogs || []
-  const todayCalories = todayLogs.reduce((s: number, l: any) => s + (l.calories || 0), 0)
-  const todayProtein = todayLogs.reduce((s: number, l: any) => s + (l.protein_g || 0), 0)
-  const todayCarbs = todayLogs.reduce((s: number, l: any) => s + (l.carbs_g || 0), 0)
-  const todayFat = todayLogs.reduce((s: number, l: any) => s + (l.fat_g || 0), 0)
-  const todayMeals = todayLogs.length
-  const progressPct = Math.min(Math.round((todayCalories / dailyGoal) * 100), 100)
-  const firstName = session?.user?.name?.split(' ')[0] || 'there'
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
 
-  const now = new Date()
-  const hour = now.getHours()
-  const greeting = hour < 12 ? '🌅 Good morning' : hour < 17 ? '☀️ Good afternoon' : '🌙 Good evening'
+      const { data: logs } = await supabase
+        .from('food_logs')
+        .select('calories, protein_g, carbs_g, fat_g')
+        .eq('user_id', userId)
+        .gte('logged_at', today.toISOString())
+
+      const totals = (logs || []).reduce(
+        (acc: any, l: any) => ({
+          calories: acc.calories + (l.calories   || 0),
+          protein:  acc.protein  + (l.protein_g  || 0),
+          carbs:    acc.carbs    + (l.carbs_g    || 0),
+          fat:      acc.fat      + (l.fat_g      || 0),
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      )
+
+      return {
+        totalCalories:    Math.round(totals.calories),
+        totalProtein:     Math.round(totals.protein),
+        totalCarbs:       Math.round(totals.carbs),
+        totalFat:         Math.round(totals.fat),
+        dailyCalorieGoal: profile?.daily_calorie_goal || 2000,
+        mealCount:        (logs || []).length,
+        profile,
+      }
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2,
+  })
+
+  if (status === 'loading' || isLoading) return <SkeletonDashboard />
+
+  const isNewUser = !data?.profile?.profile_completed
+  const hasNoLogs = (data?.mealCount ?? 0) === 0
+  const userName  = session?.user?.name?.split(' ')[0] || 'there'
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
 
-      {/* Header with gradient */}
-      <div
-        className="relative px-5 pt-12 pb-8 overflow-hidden"
-        style={{
-          background: 'linear-gradient(135deg, #059669 0%, #0ea5e9 100%)',
-        }}
-      >
-        {/* Decorative circles */}
-        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-8 w-24 h-24 bg-white/5 rounded-full translate-y-1/2" />
-
-        <div className="relative flex justify-between items-start mb-6 max-w-2xl mx-auto">
-          <div>
-            <p className="text-emerald-100 text-sm font-medium mb-1">{greeting}</p>
-            <h1 className="text-3xl font-black text-white">{firstName}</h1>
-            <p className="text-emerald-100 text-xs mt-1">
-              {now.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-          </div>
-          <button
-            onClick={() => router.push('/scan')}
-            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 active:bg-white/40 text-white px-4 py-2.5 rounded-2xl text-sm font-bold transition-all border border-white/20"
-          >
-            <span>📷</span> Scan
-          </button>
-        </div>
-
-        {/* Today's progress bar */}
-        <div className="relative bg-white/10 rounded-2xl p-4 max-w-2xl mx-auto border border-white/20">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-white text-sm font-semibold">Today's Progress</span>
-            <span className="text-emerald-100 text-xs">{progressPct}% of goal</span>
-          </div>
-          <div className="h-2.5 bg-white/20 rounded-full overflow-hidden mb-2">
-            <div
-              className="h-full rounded-full transition-all duration-1000"
-              style={{
-                width: `${progressPct}%`,
-                background: progressPct >= 100
-                  ? '#ef4444'
-                  : progressPct >= 75
-                  ? '#f59e0b'
-                  : 'rgba(255,255,255,0.9)',
-              }}
-            />
-          </div>
-          <div className="flex justify-between text-xs text-emerald-100">
-            <span>{Math.round(todayCalories)} kcal consumed</span>
-            <span>{Math.max(0, dailyGoal - Math.round(todayCalories))} kcal remaining</span>
-          </div>
+      {/* ── Gradient Header ──────────────────────────────────── */}
+      <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 px-4 pt-14 pb-20 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 0%, transparent 50%), radial-gradient(circle at 20% 80%, white 0%, transparent 50%)' }} />
+        <div className="relative">
+          <p className="text-emerald-100 text-sm font-medium">
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
+          <h1 className="text-2xl font-black text-white mt-0.5">
+            {isNewUser ? `Welcome, ${userName}! 👋` : `Hello, ${userName} 👋`}
+          </h1>
+          {isNewUser && (
+            <p className="text-emerald-100 text-sm mt-1">Let's set up your health profile</p>
+          )}
         </div>
       </div>
 
-      <div className="px-4 py-5 max-w-2xl mx-auto space-y-4">
+      <div className="px-4 -mt-12 pb-8 space-y-4">
 
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3 animate-fade-in-up">
-          {[
-            { label: 'Calories', value: Math.round(todayCalories), unit: 'kcal', color: '#059669' },
-            { label: 'Meals', value: todayMeals, unit: 'today', color: '#0ea5e9' },
-            { label: 'Goal', value: dailyGoal, unit: 'kcal', color: '#8b5cf6' },
-          ].map((stat, i) => (
-            <div
-              key={stat.label}
-              className="bg-[var(--card)] rounded-2xl p-4 border border-[var(--card-border)] shadow-sm text-center"
-              style={{ animationDelay: `${i * 0.05}s` }}
-            >
-              <p className="text-2xl font-black" style={{ color: stat.color }}>
-                {stat.value}
-              </p>
-              <p className="text-xs text-[var(--muted)] mt-0.5">{stat.unit}</p>
-              <p className="text-xs font-medium text-[var(--foreground)] mt-0.5">{stat.label}</p>
+        {/* ── Profile Setup CTA ────────────────────────────────── */}
+        {isNewUser && (
+          <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800 shadow-lg
+            flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-6 h-6 text-emerald-500" />
             </div>
-          ))}
-        </div>
-
-        {/* Calorie ring + macros */}
-        <div className="grid grid-cols-2 gap-3 animate-fade-in-up stagger-1">
-          <CalorieRing consumed={todayCalories} goal={dailyGoal} label="Daily Calories" />
-
-          <div className="bg-[var(--card)] rounded-2xl p-4 border border-[var(--card-border)] shadow-sm">
-            <p className="text-xs font-bold text-[var(--foreground)] mb-4">🥩 Macros Today</p>
-            {todayCalories > 0 ? (
-              <div className="space-y-3">
-                <MacroBar label="Protein" value={todayProtein} total={todayProtein + todayCarbs + todayFat} color="#059669" />
-                <MacroBar label="Carbs" value={todayCarbs} total={todayProtein + todayCarbs + todayFat} color="#0ea5e9" />
-                <MacroBar label="Fat" value={todayFat} total={todayProtein + todayCarbs + todayFat} color="#f59e0b" />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-24 text-center">
-                <span className="text-3xl mb-2">🍽️</span>
-                <p className="text-xs text-[var(--muted)]">Log a meal to see macros</p>
-              </div>
-            )}
+            <div className="flex-1">
+              <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Complete your profile</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                Get personalised health scores and calorie goals
+              </p>
+            </div>
+            <button
+              onClick={() => router.push('/profile-setup')}
+              className="flex-shrink-0 px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors">
+              Set Up
+            </button>
           </div>
+        )}
+
+        {/* ── Calorie Ring ─────────────────────────────────────── */}
+        <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+          {hasNoLogs ? (
+            <EmptyCalorieState onScan={() => router.push('/scan')} />
+          ) : (
+            <>
+              <CalorieRing
+                consumed={data?.totalCalories ?? 0}
+                goal={data?.dailyCalorieGoal ?? 2000}
+              />
+              <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <MacroPill label="Protein" value={data?.totalProtein ?? 0} unit="g" color="text-blue-500" />
+                <MacroPill label="Carbs"   value={data?.totalCarbs   ?? 0} unit="g" color="text-amber-500" />
+                <MacroPill label="Fat"     value={data?.totalFat     ?? 0} unit="g" color="text-rose-500" />
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Weekly chart */}
-        <div className="animate-fade-in-up stagger-2">
-          <WeeklyChart />
-        </div>
+        {/* ── Meal Streak ──────────────────────────────────────── */}
+        <MealStreak />
 
-        {/* Recent meals */}
-        <div className="animate-fade-in-up stagger-3">
-          <RecentScans
-            logs={recentLogs}
-            onDelete={(id) => {
-              queryClient.invalidateQueries({ queryKey: ['dashboard', userId] })
-              toast.success('Meal removed')
-            }}
-          />
-        </div>
+        {/* ── Last Scanned Shortcut ────────────────────────────── */}
+        <LastScanned />
 
+        {/* ── Nutrient Alerts (only if user has logs) ──────────── */}
+        {!hasNoLogs && <NutrientAlerts />}
+
+        {/* ── Weekly Chart ─────────────────────────────────────── */}
+        {hasNoLogs ? (
+          <EmptyWeeklyState />
+        ) : (
+          <WeeklyChart userId={userId} />
+        )}
+
+        {/* ── Recent Meals ─────────────────────────────────────── */}
+        {hasNoLogs ? (
+          <EmptyMealsState onScan={() => router.push('/scan')} />
+        ) : (
+          <RecentScans userId={userId} />
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+function MacroPill({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
+  return (
+    <div className="text-center">
+      <p className={`text-lg font-black tabular-nums ${color}`}>
+        {value}<span className="text-xs font-medium">{unit}</span>
+      </p>
+      <p className="text-xs text-gray-400 dark:text-gray-500">{label}</p>
+    </div>
+  )
+}
+
+function EmptyCalorieState({ onScan }: { onScan: () => void }) {
+  return (
+    <div className="flex flex-col items-center py-6 text-center">
+      <div className="w-20 h-20 rounded-full border-4 border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center mb-4">
+        <Plus className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+      </div>
+      <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">No meals logged today</p>
+      <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Scan a product to start tracking</p>
+      <button
+        onClick={onScan}
+        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-colors">
+        <Scan className="w-4 h-4" /> Scan a Product
+      </button>
+    </div>
+  )
+}
+
+function EmptyWeeklyState() {
+  return (
+    <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+      <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Weekly Overview</p>
+      <div className="flex items-end justify-between gap-1 h-24 opacity-30">
+        {[42, 28, 55, 35, 62, 20, 48].map((h, i) => (
+          <div key={i} className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-t-md" style={{ height: `${h}%` }} />
+        ))}
+      </div>
+      <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-3">Log meals to see your weekly trend</p>
+    </div>
+  )
+}
+
+function EmptyMealsState({ onScan }: { onScan: () => void }) {
+  return (
+    <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+      <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Today's Meals</p>
+      <div className="flex flex-col items-center py-8 text-center">
+        <p className="text-2xl mb-3">🥗</p>
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Your plate is empty</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Scan a product and log it to see it here</p>
+        <button
+          onClick={onScan}
+          className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+          <Scan className="w-4 h-4" /> Start scanning
+        </button>
       </div>
     </div>
   )

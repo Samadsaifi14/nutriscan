@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { callGemini, GeminiError } from '@/lib/gemini'
 
 export async function POST(req: NextRequest) {
   try {
@@ -82,34 +83,10 @@ If the image does not show a food product at all, return:
 
 IMPORTANT: Extract whatever is visible. Even if only partial information is available, return what you can see. Do not make up or guess values — use null for anything not clearly visible.`
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }
-            ]
-          }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
-        })
-      }
-    )
-
-    if (!geminiRes.ok) {
-      const err = await geminiRes.text()
-      console.log('Gemini error:', err)
-      return NextResponse.json(
-        { success: false, error: 'AI service failed. Please try again.' },
-        { status: 500 }
-      )
-    }
-
-    const geminiData = await geminiRes.json()
-    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
+    const { text } = await callGemini(prompt, imageBase64, {
+      temperature: 0.1,
+      maxTokens: 8192,
+    })
 
     if (!text) {
       return NextResponse.json(
@@ -150,7 +127,17 @@ IMPORTANT: Extract whatever is visible. Even if only partial information is avai
     })
 
   } catch (err: any) {
-    console.error('Photo scan error:', err.message)
+    if (err instanceof GeminiError) {
+      console.error(`Gemini Photo Error [${err.type}]:`, err.message)
+      if (err.type === 'timeout') {
+        return NextResponse.json({ success: false, error: 'AI timed out reading the photo. Please try again.' }, { status: 504 })
+      }
+      if (err.type === 'rate_limit') {
+        return NextResponse.json({ success: false, error: 'AI service is busy. Please wait a moment.' }, { status: 429 })
+      }
+    } else {
+      console.error('Photo scan error:', err.message)
+    }
     return NextResponse.json(
       { success: false, error: 'Something went wrong. Please try again.' },
       { status: 500 }

@@ -28,7 +28,6 @@ const ratingBg: Record<string, string> = {
   unhealthy: 'rgba(220,38,38,0.08)',
 }
 
-// ─── Health Score Ring Component ──────────────────────────────────────────
 function HealthScoreRing({ score, rating }: { score: number; rating: string }) {
   const color = ratingColors[rating] || '#6b7280'
   const radius = 36
@@ -40,14 +39,7 @@ function HealthScoreRing({ score, rating }: { score: number; rating: string }) {
     <div className="flex flex-col items-center">
       <div className="relative w-24 h-24">
         <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
-          {/* Background track */}
-          <circle
-            cx="48" cy="48" r={radius}
-            fill="none"
-            stroke="rgba(0,0,0,0.06)"
-            strokeWidth="8"
-          />
-          {/* Progress */}
+          <circle cx="48" cy="48" r={radius} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="8" />
           <circle
             cx="48" cy="48" r={radius}
             fill="none"
@@ -70,7 +62,6 @@ function HealthScoreRing({ score, rating }: { score: number; rating: string }) {
   )
 }
 
-// ─── Score Breakdown Bar ───────────────────────────────────────────────────
 function ScoreBar({ label, score, color }: { label: string; score: number; color: string }) {
   return (
     <div>
@@ -251,7 +242,11 @@ export default function ScanPage() {
 
       if (!json.success) {
         setLoadingPhoto(false)
-        setError(json.error || 'Could not read the product. Try better lighting or a clearer angle.')
+        if (res.status === 401) {
+          setError('Please sign in to scan product photos.')
+        } else {
+          setError(json.error || 'Could not read the product. Try better lighting or a clearer angle.')
+        }
         return
       }
 
@@ -345,7 +340,11 @@ export default function ScanPage() {
 
       if (!json.success || !json.data) {
         setVisionStatus(`❌ ${json.error || 'Could not read label'}`)
-        toast.error(json.tip || 'Try better lighting or use manual barcode entry')
+        if (res.status === 401) {
+          toast.error('Please sign in to scan product labels')
+        } else {
+          toast.error(json.tip || 'Try better lighting or use manual barcode entry')
+        }
         return
       }
 
@@ -405,14 +404,12 @@ export default function ScanPage() {
 
   const gradStyle = { background: 'linear-gradient(135deg, #059669, #0ea5e9)' }
 
-  // Count harmful ingredients
   const harmfulCount = analysis?.harmful_ingredients?.filter((h: any) => h.found_in_product)?.length || 0
   const highSeverityCount = analysis?.harmful_ingredients?.filter((h: any) => h.severity === 'high' && h.found_in_product)?.length || 0
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
 
-      {/* Header */}
       <div className="px-5 pt-12 pb-6" style={gradStyle}>
         <h1 className="text-2xl font-black text-white mb-1">HealthOX Scanner</h1>
         <p className="text-emerald-100 text-sm">
@@ -433,7 +430,6 @@ export default function ScanPage() {
 
       <div className="px-4 py-5 max-w-lg mx-auto">
 
-        {/* Scan buttons */}
         <div className="grid grid-cols-2 gap-3 mb-5">
           <button
             onClick={() => {
@@ -474,7 +470,6 @@ export default function ScanPage() {
           </button>
         </div>
 
-        {/* Loading states */}
         {(loadingProduct || loadingPhoto) && (
           <div className="flex flex-col items-center py-10 gap-3">
             <div className="w-12 h-12 rounded-full border-4 border-emerald-100 border-t-emerald-600 animate-spin" />
@@ -502,7 +497,6 @@ export default function ScanPage() {
           </div>
         )}
 
-        {/* Vision mode */}
         {showVisionMode && (
           <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)] mb-4">
             <div className="flex items-start gap-3 mb-4">
@@ -525,7 +519,6 @@ export default function ScanPage() {
           </div>
         )}
 
-        {/* Product card */}
         {product && !loadingProduct && !loadingPhoto && (
           <div className="bg-[var(--card)] rounded-2xl border border-[var(--card-border)] shadow-sm mb-4 overflow-hidden">
 
@@ -543,7 +536,6 @@ export default function ScanPage() {
 
             <div className="p-5">
 
-              {/* Source badge */}
               <div className="flex items-center gap-2 flex-wrap mb-3">
                 {product.source === 'gemini_vision' && (
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold text-amber-700 dark:text-amber-400"
@@ -576,7 +568,6 @@ export default function ScanPage() {
                 <p className="text-sm text-[var(--muted)] mb-4">{product.brand}</p>
               )}
 
-              {/* Photo extras */}
               {product._photo_extras && (
                 <div className="grid grid-cols-2 gap-2 mb-4">
                   {product._photo_extras.mrp && (
@@ -612,7 +603,6 @@ export default function ScanPage() {
                 </div>
               )}
 
-              {/* Nutrition grid */}
               <div className="grid grid-cols-4 gap-2 mb-4">
                 {[
                   { label: 'Calories', value: Math.round(product.nutrition?.calories || 0), unit: 'kcal' },
@@ -651,7 +641,6 @@ export default function ScanPage() {
 
               <p className="text-xs text-[var(--muted)] mb-4">Per 100g · Source: {product.source}</p>
 
-              {/* Quantity selector */}
               <div className="mb-4">
                 <label className="block text-xs font-bold text-[var(--foreground)] mb-2">
                   How much did you eat?
@@ -678,7 +667,6 @@ export default function ScanPage() {
                 </p>
               </div>
 
-              {/* Meal type buttons */}
               {loggedMeal ? (
                 <div className="p-3 rounded-xl text-center text-sm font-bold text-emerald-700 dark:text-emerald-400"
                   style={{ background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)' }}>
@@ -729,7 +717,6 @@ export default function ScanPage() {
         {analysis && (
           <div className="bg-[var(--card)] rounded-2xl border border-[var(--card-border)] shadow-sm mb-4 overflow-hidden">
 
-            {/* Header with health score ring */}
             <div className="p-5 border-b border-[var(--card-border)]"
               style={{ background: ratingBg[analysis.health_rating] || 'rgba(107,114,128,0.04)' }}>
               <div className="flex items-center justify-between gap-4">
@@ -738,8 +725,6 @@ export default function ScanPage() {
                   <p className="text-sm text-[var(--foreground)] leading-relaxed">
                     {analysis.summary}
                   </p>
-
-                  {/* Personalized indicator */}
                   {analysis.personalized && (
                     <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
                       style={{ background: 'rgba(5,150,105,0.1)', color: '#059669' }}>
@@ -753,36 +738,24 @@ export default function ScanPage() {
               </div>
             </div>
 
-            {/* Score breakdown */}
             {analysis.health_score_breakdown && (
               <div className="px-5 py-4 border-b border-[var(--card-border)]">
                 <p className="text-xs font-bold text-[var(--foreground)] mb-3">📊 Score Breakdown</p>
                 <div className="space-y-2">
-                  <ScoreBar
-                    label="Nutrition Quality"
-                    score={analysis.health_score_breakdown.nutrition_score}
-                    color="#059669"
-                  />
+                  <ScoreBar label="Nutrition Quality" score={analysis.health_score_breakdown.nutrition_score} color="#059669" />
                   <ScoreBar
                     label="Ingredient Safety"
                     score={analysis.health_score_breakdown.ingredient_safety_score}
                     color={analysis.health_score_breakdown.ingredient_safety_score >= 7 ? '#059669' : analysis.health_score_breakdown.ingredient_safety_score >= 5 ? '#d97706' : '#dc2626'}
                   />
-                  <ScoreBar
-                    label="Processing Level"
-                    score={analysis.health_score_breakdown.processing_score}
-                    color="#0ea5e9"
-                  />
+                  <ScoreBar label="Processing Level" score={analysis.health_score_breakdown.processing_score} color="#0ea5e9" />
                 </div>
               </div>
             )}
 
-            {/* Harmful ingredients alert banner */}
             {harmfulCount > 0 && (
               <div className="px-5 py-3 border-b border-[var(--card-border)]"
-                style={{
-                  background: highSeverityCount > 0 ? 'rgba(220,38,38,0.06)' : 'rgba(217,119,6,0.06)',
-                }}>
+                style={{ background: highSeverityCount > 0 ? 'rgba(220,38,38,0.06)' : 'rgba(217,119,6,0.06)' }}>
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{highSeverityCount > 0 ? '🚨' : '⚠️'}</span>
                   <div>
@@ -799,7 +772,6 @@ export default function ScanPage() {
               </div>
             )}
 
-            {/* Tab navigation */}
             <div className="flex border-b border-[var(--card-border)]">
               {[
                 { key: 'overview', label: '📋 Overview' },
@@ -825,7 +797,6 @@ export default function ScanPage() {
             {activeTab === 'overview' && (
               <div className="p-5 space-y-4">
 
-                {/* Suitability badges */}
                 {(analysis.diabetic_suitability || analysis.bp_suitability || analysis.child_suitability || analysis.pregnancy_suitability) && (
                   <div>
                     <p className="text-xs font-bold text-[var(--foreground)] mb-2">👤 Suitability</p>
@@ -852,7 +823,6 @@ export default function ScanPage() {
                   </div>
                 )}
 
-                {/* Safe consumption */}
                 {analysis.safe_consumption && (
                   <div className="p-4 rounded-xl"
                     style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)' }}>
@@ -900,7 +870,25 @@ export default function ScanPage() {
                   </div>
                 )}
 
-                {/* Detailed breakdown */}
+                {/* ─── LONG-TERM RISKS ─── */}
+                {analysis.long_term_risks?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold text-[var(--foreground)] mb-2">⏳ Long-Term Risks</p>
+                    <div className="space-y-1">
+                      {analysis.long_term_risks.map((risk: string, i: number) => (
+                        <div
+                          key={i}
+                          className="text-xs text-[var(--foreground)] px-3 py-2 rounded-lg flex items-start gap-2"
+                          style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.1)' }}
+                        >
+                          <span className="text-red-400 flex-shrink-0 mt-0.5">⚠</span>
+                          {risk}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {analysis.detailed_breakdown && (
                   <div>
                     <p className="text-xs font-bold text-[var(--foreground)] mb-2">📊 Detailed Breakdown</p>
@@ -942,7 +930,6 @@ export default function ScanPage() {
             {activeTab === 'ingredients' && (
               <div className="p-5 space-y-4">
 
-                {/* Harmful ingredients with sources */}
                 {analysis.harmful_ingredients?.filter((h: any) => h.found_in_product)?.length > 0 ? (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
@@ -967,7 +954,6 @@ export default function ScanPage() {
                               borderColor: h.severity === 'high' ? 'rgba(220,38,38,0.3)' : h.severity === 'medium' ? 'rgba(217,119,6,0.3)' : 'rgba(156,163,175,0.3)',
                             }}>
 
-                            {/* Ingredient header */}
                             <div className="px-4 py-3 flex items-center justify-between"
                               style={{
                                 background: h.severity === 'high' ? 'rgba(220,38,38,0.08)' : h.severity === 'medium' ? 'rgba(217,119,6,0.08)' : 'rgba(156,163,175,0.06)',
@@ -993,12 +979,10 @@ export default function ScanPage() {
                               </span>
                             </div>
 
-                            {/* Concern */}
                             <div className="px-4 py-3 border-b border-[var(--card-border)]">
                               <p className="text-xs text-[var(--foreground)] leading-relaxed">{h.concern}</p>
                             </div>
 
-                            {/* Amount in product */}
                             {h.amount_in_this_product && (
                               <div className="px-4 py-2 border-b border-[var(--card-border)] bg-gray-50 dark:bg-slate-800/50">
                                 <p className="text-xs text-[var(--muted)]">
@@ -1010,7 +994,6 @@ export default function ScanPage() {
                               </div>
                             )}
 
-                            {/* Safe limits */}
                             <div className="px-4 py-3 border-b border-[var(--card-border)]">
                               <div className="space-y-2">
                                 {h.global_safe_limit && (
@@ -1030,14 +1013,13 @@ export default function ScanPage() {
                               </div>
                             </div>
 
-                            {/* Scientific source — FIXED: added <a tag */}
                             {h.scientific_source && (
                               <div className="px-4 py-2.5"
                                 style={{ background: 'rgba(14,165,233,0.04)' }}>
                                 <p className="text-xs text-[var(--muted)] mb-1">📚 Scientific Source</p>
                                 <p className="text-xs font-bold text-[var(--foreground)] mb-1">{h.scientific_source}</p>
                                 {h.source_url && (
-                                  <a
+                                  
                                     href={h.source_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -1065,7 +1047,6 @@ export default function ScanPage() {
                   </div>
                 )}
 
-                {/* General ingredient warnings */}
                 {analysis.ingredient_warnings?.length > 0 && (
                   <div>
                     <p className="text-xs font-bold text-[var(--foreground)] mb-2">⚠️ Other Ingredient Notes</p>
@@ -1089,7 +1070,6 @@ export default function ScanPage() {
                   </div>
                 )}
 
-                {/* Disclaimer */}
                 <div className="p-3 rounded-xl text-xs text-[var(--muted)] leading-relaxed"
                   style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid var(--card-border)' }}>
                   ℹ️ Analysis based on WHO, FSSAI, ICMR and EFSA guidelines. Sources are provided for verification. This is informational — consult a healthcare professional for medical advice.
@@ -1100,7 +1080,6 @@ export default function ScanPage() {
             {/* ─── ALTERNATIVES TAB ─── */}
             {activeTab === 'alternatives' && (
               <div className="p-5 space-y-4">
-
                 <div>
                   <p className="text-xs font-bold text-[var(--foreground)] mb-1">🥗 Healthier Alternatives</p>
                   <p className="text-xs text-[var(--muted)] mb-3">
@@ -1110,7 +1089,6 @@ export default function ScanPage() {
                   {Array.isArray(analysis.healthier_alternatives) && analysis.healthier_alternatives.length > 0 ? (
                     <div className="space-y-3">
                       {analysis.healthier_alternatives.map((alt: any, i: number) => {
-                        // Handle both string and object format
                         const isObject = typeof alt === 'object' && alt !== null
                         const name = isObject ? alt.name : alt
                         const reason = isObject ? alt.reason : null
@@ -1154,8 +1132,7 @@ export default function ScanPage() {
                               <p className="text-xs text-[var(--muted)] leading-relaxed ml-10">{reason}</p>
                             )}
                             {availability && (
-                              <p className="text-xs ml-10 mt-1"
-                                style={{ color: '#059669' }}>
+                              <p className="text-xs ml-10 mt-1" style={{ color: '#059669' }}>
                                 📍 {availability.replace(/_/g, ' ')}
                               </p>
                             )}
@@ -1170,7 +1147,6 @@ export default function ScanPage() {
                   )}
                 </div>
 
-                {/* Why switch section */}
                 {analysis.health_rating !== 'healthy' && (
                   <div className="p-4 rounded-2xl"
                     style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)' }}>
@@ -1191,7 +1167,6 @@ export default function ScanPage() {
 
       </div>
 
-      {/* Barcode Scanner Modal */}
       {showScanner && (
         <BarcodeScanner
           onDetected={handleBarcode}
@@ -1199,7 +1174,6 @@ export default function ScanPage() {
         />
       )}
 
-      {/* Photo Mode Modal */}
       {showPhotoMode && (
         <ProductPhotoCapture
           onCapture={handleProductPhoto}

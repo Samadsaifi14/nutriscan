@@ -45,7 +45,6 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     const userId = (session as any)?.userId
 
-    // Allow guest mode — but still rate limit by IP if no userId
     const rateLimitKey = userId || req.headers.get('x-forwarded-for') || 'anonymous'
 
     const rateCheck = await checkRateLimit(rateLimitKey, 'analyze')
@@ -68,7 +67,6 @@ export async function POST(req: NextRequest) {
 
     const { product, userProfile } = parsed.data
 
-    // Normalize: convert null to undefined so Zod-optional fields are consistent
     const normalizedProduct = {
       ...product,
       brand: product.brand ?? undefined,
@@ -80,7 +78,6 @@ export async function POST(req: NextRequest) {
       additives: product.additives ?? undefined,
     }
 
-    // Fetch user profile from DB if logged in and no profile passed
     let profile = userProfile
     if (userId && !profile) {
       const { data: dbProfile } = await supabaseAdmin
@@ -107,7 +104,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check 7 day cache — but skip if we have a user profile (personalised analysis)
     if (product.barcode && !profile) {
       const { data: cached } = await supabaseAdmin
         .from('products')
@@ -127,7 +123,6 @@ export async function POST(req: NextRequest) {
     const prompt = buildPrompt(normalizedProduct, profile)
     console.log('Calling Gemini AI for:', product.name)
 
-    // ─── Use the new Gemini wrapper with retry + timeout + error handling ───
     const { text, usage } = await callGemini(prompt)
 
     const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
@@ -147,7 +142,6 @@ export async function POST(req: NextRequest) {
     analysis.personalized = !!profile
     console.log(`Analysis done: ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10) | Tokens: ${usage.inputTokens}in/${usage.outputTokens}out`)
 
-    // Cache only if not personalized
     if (product.barcode && !profile) {
       await supabaseAdmin
         .from('products')
@@ -166,7 +160,6 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (err: any) {
-    // ─── Handle Gemini-specific errors ───
     if (err instanceof GeminiError) {
       console.error(`GeminiError [${err.type}]:`, err.message)
       switch (err.type) {
@@ -229,7 +222,6 @@ function buildPrompt(product: any, userProfile?: any): string {
   const additives = (product.additives || []).join(', ') || 'None listed'
   const allergens = (product.allergens || []).join(', ') || 'None listed'
 
-  // Build personalized section
   const userSection = userProfile ? `
 ═══ USER HEALTH PROFILE (personalise all recommendations for this person) ═══
 Age: ${userProfile.age || 'Unknown'}
@@ -414,6 +406,9 @@ Return ONLY this JSON — no markdown, no code fences, no extra text:
     }
   ],
   "positives": ["<specific positive about THIS product, not generic>"],
+  "long_term_risks": [
+    "<specific, evidence-based health consequence of consuming this product regularly>"
+  ],
   "healthier_alternatives": [
     {
       "name": "<specific product or food name>",
@@ -428,6 +423,16 @@ Return ONLY this JSON — no markdown, no code fences, no extra text:
   "child_suitability": "suitable or consume_with_caution or avoid",
   "pregnancy_suitability": "suitable or consume_with_caution or avoid"
 }
+
+LONG-TERM RISKS RULES:
+- Provide 3-5 specific, evidence-based long-term health consequences of consuming THIS product regularly
+- Each risk must be tied to the actual harmful ingredients or nutritional profile found in THIS specific product
+- Base risks only on actual ingredients_text and nutrition data provided
+- If the product is healthy (score > 7), risks can be minimal — reference over-consumption only
+- Do NOT fabricate risks. Only include risks with scientific backing
+- Write in plain language an Indian consumer can understand
+- Example good risk: "Regular consumption of Sodium Benzoate (E211) combined with Vitamin C can form benzene, a known carcinogen linked to increased cancer risk with long-term exposure."
+- Example bad risk: "May cause health issues." — NEVER write this
 
 CRITICAL RULES — VIOLATING THESE IS NOT ACCEPTABLE:
 1. health_score MUST be based on actual nutrition data — NOT a default 3.5

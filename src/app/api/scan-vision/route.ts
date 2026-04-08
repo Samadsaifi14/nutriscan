@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { callGemini, GeminiError } from '@/lib/gemini'
 
 const RequestSchema = z.object({
   imageBase64: z.string().min(100, 'Image data is too small — please try again'),
@@ -98,38 +99,10 @@ Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
   "image_issues": null or "blurry" or "dark" or "no_barcode" or "no_label"
 }`
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }
-            ]
-          }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
-        })
-      }
-    )
-
-    if (!geminiRes.ok) {
-      const err = await geminiRes.text()
-      console.log('Gemini Vision error:', err)
-      return NextResponse.json(
-        {
-          success: false,
-          error: FAILURE_REASONS.generic.message,
-          tip: FAILURE_REASONS.generic.tip,
-        },
-        { status: 500 }
-      )
-    }
-
-    const geminiData = await geminiRes.json()
-    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
+    const { text } = await callGemini(prompt, imageBase64, {
+      temperature: 0.1,
+      maxTokens: 8192,
+    })
 
     if (!text) {
       return NextResponse.json(
@@ -183,7 +156,23 @@ Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
     return NextResponse.json({ success: true, data: extracted })
 
   } catch (err: any) {
-    console.error('Vision error:', err.message)
+    if (err instanceof GeminiError) {
+      console.error(`Gemini Vision Error [${err.type}]:`, err.message)
+      if (err.type === 'timeout') {
+        return NextResponse.json(
+          { success: false, error: 'AI timed out. Try a clearer photo.', tip: 'Make sure the label is clearly visible and well-lit.' },
+          { status: 504 }
+        )
+      }
+      if (err.type === 'rate_limit') {
+        return NextResponse.json(
+          { success: false, error: 'AI service is busy. Please wait a moment.', tip: 'Too many requests right now.' },
+          { status: 429 }
+        )
+      }
+    } else {
+      console.error('Vision error:', err.message)
+    }
     return NextResponse.json(
       {
         success: false,
