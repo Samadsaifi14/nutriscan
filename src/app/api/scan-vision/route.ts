@@ -102,6 +102,7 @@ Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
     const { text } = await callGemini(prompt, imageBase64, {
       temperature: 0.1,
       maxTokens: 8192,
+      model: 'gemini-1.5-flash',
     })
 
     if (!text) {
