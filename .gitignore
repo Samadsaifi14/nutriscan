@@ -35,5 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 #products open food facts
-off_full.csv
 *.csv
+*.gz
+off_full.csvAS
