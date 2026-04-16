@@ -1159,7 +1159,7 @@ describe('Analyze API â€” Gemini Response Parsing', () => {
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { callGemini, GeminiError } from '@/lib/gemini'
@@ -1490,7 +1490,7 @@ ABSOLUTE RULES:
 ## FILE: src/app/api/auth/[...nextauth]/route.ts
 
 `$lang
-import NextAuth, { NextAuthOptions } from "next-auth"
+import { NextAuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
@@ -1507,7 +1507,6 @@ export const authOptions: NextAuthOptions = {
       try {
         if (!user.email) return false
 
-        // Check if this is a brand new user
         const { data: existing } = await supabaseAdmin
           .from('user_profiles')
           .select('user_id, welcome_email_sent')
@@ -1516,7 +1515,6 @@ export const authOptions: NextAuthOptions = {
 
         const isNewUser = !existing
 
-        // Upsert profile
         const { error } = await supabaseAdmin
           .from('user_profiles')
           .upsert({
@@ -1532,7 +1530,6 @@ export const authOptions: NextAuthOptions = {
           return false
         }
 
-        // Send welcome email only to brand new users
         if (isNewUser) {
           console.log('New user â€” sending welcome email to:', user.email)
           const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
@@ -1573,9 +1570,6 @@ export const authOptions: NextAuthOptions = {
     error: '/auth/signin',
   },
 }
-
-const handler = NextAuth(authOptions)
-export { handler as GET, handler as POST }
 ```
 
 ## FILE: src/app/api/cron/weekly-report/route.ts
@@ -1583,6 +1577,7 @@ export { handler as GET, handler as POST }
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { buildUnsubscribeUrls } from '@/lib/tokens'
 
 export async function GET(req: NextRequest) {
   // Security â€” only Vercel cron can call this
@@ -1659,8 +1654,9 @@ export async function GET(req: NextRequest) {
       const firstName = user.name?.split(' ')[0] || 'there'
 
       const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-      const unsubscribeWeeklyUrl = `${baseUrl}/api/unsubscribe?userId=${user.user_id}&type=weekly`
-      const unsubscribeAllUrl = `${baseUrl}/api/unsubscribe?userId=${user.user_id}&type=all`
+
+      // âœ… Token-based unsubscribe URLs (no plain userId in query string)
+      const { weeklyUrl: unsubscribeWeeklyUrl, allUrl: unsubscribeAllUrl } = buildUnsubscribeUrls(user.user_id, baseUrl)
 
       const html = buildWeeklyHTML({
         firstName,
@@ -1887,12 +1883,77 @@ function buildWeeklyHTML(data: {
 }
 ```
 
+## FILE: src/app/api/dashboard/route.ts
+
+`$lang
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  const userId = (session as any)?.userId
+
+  if (!userId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const [profileRes, logsRes] = await Promise.all([
+      supabaseAdmin
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single(),
+      supabaseAdmin
+        .from('food_logs')
+        .select('calories, protein_g, carbs_g, fat_g')
+        .eq('user_id', userId)
+        .gte('logged_at', today.toISOString()),
+    ])
+
+    const profile = profileRes.data
+    const logs = logsRes.data || []
+
+    const totals = logs.reduce(
+      (acc: any, l: any) => ({
+        calories: acc.calories + (l.calories || 0),
+        protein: acc.protein + (l.protein_g || 0),
+        carbs: acc.carbs + (l.carbs_g || 0),
+        fat: acc.fat + (l.fat_g || 0),
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    )
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        totalCalories: Math.round(totals.calories),
+        totalProtein: Math.round(totals.protein),
+        totalCarbs: Math.round(totals.carbs),
+        totalFat: Math.round(totals.fat),
+        dailyCalorieGoal: profile?.daily_calorie_goal || 2000,
+        mealCount: logs.length,
+        profile,
+      },
+    })
+  } catch (err: any) {
+    console.error('Dashboard API error:', err.message)
+    return NextResponse.json({ success: false, error: 'Failed to load dashboard' }, { status: 500 })
+  }
+}
+```
+
 ## FILE: src/app/api/last-scan/route.ts
 
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
  
 export async function GET(req: NextRequest) {
@@ -1917,7 +1978,7 @@ export async function GET(req: NextRequest) {
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function DELETE(req: NextRequest) {
@@ -1966,7 +2027,7 @@ export async function DELETE(req: NextRequest) {
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 
@@ -2066,7 +2127,7 @@ export async function POST(req: NextRequest) {
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
  
 const RDA = { calories: 2000, protein: 50, carbs: 300, fat: 65, sodium: 2000 }
@@ -2173,7 +2234,7 @@ export async function GET(req: NextRequest) {
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 // â”€â”€ Silently contribute a new product to Open Food Facts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -2339,7 +2400,7 @@ export async function POST(req: NextRequest) {
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 const EmailPrefsSchema = z.object({
@@ -2406,7 +2467,7 @@ export async function POST(req: NextRequest) {
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function POST(req: NextRequest) {
@@ -2755,7 +2816,7 @@ async function cacheProduct(product: Record<string, unknown>) {
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { callGemini, GeminiError } from '@/lib/gemini'
 
 export async function POST(req: NextRequest) {
@@ -2909,7 +2970,7 @@ IMPORTANT: Extract whatever is visible. Even if only partial information is avai
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function POST(req: NextRequest) {
@@ -2978,7 +3039,7 @@ export async function POST(req: NextRequest) {
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { callGemini, GeminiError } from '@/lib/gemini'
 
 const RequestSchema = z.object({
@@ -3173,7 +3234,7 @@ Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
  
 export async function GET(req: NextRequest) {
@@ -3243,19 +3304,29 @@ function calcLongest(dates: string[]): number {
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { verifyUnsubscribeToken } from '@/lib/tokens'
 
 export async function GET(req: NextRequest) {
-  const userId = req.nextUrl.searchParams.get('userId')
+  const token = req.nextUrl.searchParams.get('token')
   const type = req.nextUrl.searchParams.get('type') || 'all'
 
+  if (!token) {
+    return new NextResponse(
+      buildHTML('Invalid or missing unsubscribe link.', false),
+      { headers: { 'Content-Type': 'text/html' } }
+    )
+  }
+
+  const userId = verifyUnsubscribeToken(token)
   if (!userId) {
-    return new NextResponse(buildHTML('Invalid unsubscribe link.', false), {
-      headers: { 'Content-Type': 'text/html' }
-    })
+    return new NextResponse(
+      buildHTML('This unsubscribe link has expired or is invalid. Please use the latest email link.', false),
+      { headers: { 'Content-Type': 'text/html' } }
+    )
   }
 
   try {
-    const updates: any = {}
+    const updates: Record<string, any> = {}
 
     if (type === 'weekly') {
       updates.weekly_report_email = false
@@ -3271,22 +3342,25 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error
 
-    const message = type === 'weekly'
-      ? 'You have been unsubscribed from weekly nutrition reports. You will still receive important account emails.'
-      : 'You have been unsubscribed from all HealthOX emails.'
+    const message =
+      type === 'weekly'
+        ? 'You have been unsubscribed from weekly nutrition reports. You will still receive important account emails.'
+        : 'You have been unsubscribed from all HealthOX emails.'
 
     return new NextResponse(buildHTML(message, true), {
-      headers: { 'Content-Type': 'text/html' }
+      headers: { 'Content-Type': 'text/html' },
     })
 
-  } catch (err) {
-    return new NextResponse(buildHTML('Something went wrong. Please try again.', false), {
-      headers: { 'Content-Type': 'text/html' }
-    })
+  } catch {
+    return new NextResponse(
+      buildHTML('Something went wrong. Please try again.', false),
+      { headers: { 'Content-Type': 'text/html' } }
+    )
   }
 }
 
 function buildHTML(message: string, success: boolean): string {
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
   return `
 <!DOCTYPE html>
 <html>
@@ -3305,7 +3379,7 @@ function buildHTML(message: string, success: boolean): string {
       <p style="font-size:14px;color:#6b7280;line-height:1.6;margin:0 0 24px;">
         ${message}
       </p>
-      <a href="${process.env.NEXTAUTH_URL}/dashboard"
+      <a href="${baseUrl}/dashboard"
         style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#059669,#0ea5e9);color:white;text-decoration:none;border-radius:12px;font-size:14px;font-weight:700;">
         Go to HealthOX â†’
       </a>
@@ -3325,9 +3399,23 @@ function buildHTML(message: string, success: boolean): string {
 `$lang
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { buildUnsubscribeUrls } from '@/lib/tokens'
 
 export async function POST(req: NextRequest) {
   try {
+    // âœ… Only allow internal calls (from our own server during sign-in)
+    const host = req.headers.get('host') || ''
+    const origin = req.headers.get('origin') || ''
+    const referer = req.headers.get('referer') || ''
+    const expectedHost = new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000').host
+
+    const internalSecret = req.headers.get('x-internal-secret')
+    if (internalSecret !== process.env.NEXTAUTH_SECRET) {
+      if (!host.includes(expectedHost) && !referer.includes(expectedHost) && !origin.includes(expectedHost)) {
+        return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+      }
+    }
+
     const { userId, email, name } = await req.json()
 
     if (!userId || !email) {
@@ -3336,7 +3424,6 @@ export async function POST(req: NextRequest) {
 
     console.log('Welcome email request for:', email)
 
-    // Double check â€” only send if not already sent
     const { data: profile } = await supabaseAdmin
       .from('user_profiles')
       .select('welcome_email_sent, email_unsubscribed')
@@ -3355,8 +3442,9 @@ export async function POST(req: NextRequest) {
 
     const firstName = name?.split(' ')[0] || 'there'
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const unsubscribeAllUrl = `${baseUrl}/api/unsubscribe?userId=${userId}&type=all`
-    const unsubscribeWeeklyUrl = `${baseUrl}/api/unsubscribe?userId=${userId}&type=weekly`
+
+    // âœ… Secure signed token URLs instead of raw userId
+    const { weeklyUrl: unsubscribeWeeklyUrl, allUrl: unsubscribeAllUrl } = buildUnsubscribeUrls(userId, baseUrl)
 
     const html = buildWelcomeHTML(firstName, baseUrl, unsubscribeAllUrl, unsubscribeWeeklyUrl)
 
@@ -3388,7 +3476,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: JSON.stringify(data) }, { status: 500 })
     }
 
-    // Mark as sent â€” never send again
     await supabaseAdmin
       .from('user_profiles')
       .update({ welcome_email_sent: true })
@@ -3743,17 +3830,17 @@ import MealStreak from '@/components/dashboard/MealStreak'
 import NutrientAlerts from '@/components/dashboard/NutrientAlerts'
 import LastScanned from '@/components/dashboard/LastScanned'
 import { SkeletonDashboard } from '@/components/Skeleton'
-import { supabase } from '@/lib/supabase'
 import { event, AnalyticsEvents } from '@/lib/analytics'
+// âœ… No supabase import â€” data fetching belongs in the API route
 
 interface DashboardData {
-  totalCalories: number
-  totalProtein:  number
-  totalCarbs:    number
-  totalFat:      number
+  totalCalories:    number
+  totalProtein:     number
+  totalCarbs:       number
+  totalFat:         number
   dailyCalorieGoal: number
-  mealCount:     number
-  profile:       any
+  mealCount:        number
+  profile:          any
 }
 
 export default function DashboardPage() {
@@ -3766,44 +3853,15 @@ export default function DashboardPage() {
 
   const userId = (session as any)?.userId
 
+  // âœ… Single API call â€” no direct Supabase access from the client
   const { data, isLoading, refetch } = useQuery<DashboardData>({
     queryKey: ['dashboard', userId],
     queryFn: async () => {
-      const profileRes = await fetch('/api/profile')
-      const profile = profileRes.ok ? (await profileRes.json()).data : null
-
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-
-      const { data: logs, error: logsError } = await supabase
-        .from('food_logs')
-        .select('calories, protein_g, carbs_g, fat_g')
-        .eq('user_id', userId)
-        .gte('logged_at', today.toISOString())
-
-      if (logsError) {
-        console.error('Failed to load food logs:', logsError)
-      }
-
-      const totals = (logs || []).reduce(
-        (acc: any, l: any) => ({
-          calories: acc.calories + (l.calories   || 0),
-          protein:  acc.protein  + (l.protein_g  || 0),
-          carbs:    acc.carbs    + (l.carbs_g    || 0),
-          fat:      acc.fat      + (l.fat_g      || 0),
-        }),
-        { calories: 0, protein: 0, carbs: 0, fat: 0 }
-      )
-
-      return {
-        totalCalories:    Math.round(totals.calories),
-        totalProtein:     Math.round(totals.protein),
-        totalCarbs:       Math.round(totals.carbs),
-        totalFat:         Math.round(totals.fat),
-        dailyCalorieGoal: profile?.daily_calorie_goal || 2000,
-        mealCount:        (logs || []).length,
-        profile,
-      }
+      const res = await fetch('/api/dashboard')
+      if (!res.ok) throw new Error('Failed to load dashboard')
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      return json.data
     },
     enabled: !!userId,
     staleTime: 1000 * 60 * 2,
@@ -3811,10 +3869,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (userId) {
-      event(AnalyticsEvents.VIEW_ANALYSIS, {
-        page: 'dashboard',
-        user_id: userId,
-      })
+      event(AnalyticsEvents.VIEW_ANALYSIS, { page: 'dashboard', user_id: userId })
     }
   }, [userId])
 
@@ -3827,10 +3882,12 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[var(--background)]">
 
-      {/* â”€â”€ Gradient Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Gradient Header */}
       <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 px-4 pt-14 pb-20 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 0%, transparent 50%), radial-gradient(circle at 20% 80%, white 0%, transparent 50%)' }} />
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 0%, transparent 50%), radial-gradient(circle at 20% 80%, white 0%, transparent 50%)' }}
+        />
         <div className="relative flex items-start justify-between">
           <div>
             <p className="text-emerald-100 text-sm font-medium">
@@ -3840,7 +3897,7 @@ export default function DashboardPage() {
               {isNewUser ? `Welcome, ${userName}! ðŸ‘‹` : `Hello, ${userName} ðŸ‘‹`}
             </h1>
             {isNewUser && (
-              <p className="text-emerald-100 text-sm mt-1">Let's set up your health profile</p>
+              <p className="text-emerald-100 text-sm mt-1">Let&apos;s set up your health profile</p>
             )}
           </div>
           <button
@@ -3856,10 +3913,9 @@ export default function DashboardPage() {
 
       <div className="px-4 -mt-12 pb-8 space-y-4">
 
-        {/* â”€â”€ Profile Setup CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Profile Setup CTA */}
         {isNewUser && (
-          <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800 shadow-lg
-            flex items-center gap-4">
+          <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800 shadow-lg flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
               <Sparkles className="w-6 h-6 text-emerald-500" />
             </div>
@@ -3871,13 +3927,14 @@ export default function DashboardPage() {
             </div>
             <button
               onClick={() => router.push('/profile-setup')}
-              className="flex-shrink-0 px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors">
+              className="flex-shrink-0 px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors"
+            >
               Set Up
             </button>
           </div>
         )}
 
-        {/* â”€â”€ Calorie Ring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Calorie Ring */}
         <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
           {hasNoLogs ? (
             <EmptyCalorieState onScan={() => router.push('/scan')} />
@@ -3896,35 +3953,29 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* â”€â”€ Meal Streak â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Meal Streak */}
         <MealStreak />
 
-        {/* â”€â”€ Last Scanned Shortcut â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Last Scanned */}
         <LastScanned />
 
-        {/* â”€â”€ Nutrient Alerts (only if user has logs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Nutrient Alerts */}
         {!hasNoLogs && <NutrientAlerts />}
 
-        {/* â”€â”€ Weekly Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-        {hasNoLogs ? (
-          <EmptyWeeklyState />
-        ) : (
-          <WeeklyChart userId={userId} />
-        )}
+        {/* Weekly Chart */}
+        {hasNoLogs ? <EmptyWeeklyState /> : <WeeklyChart userId={userId} />}
 
-        {/* â”€â”€ Recent Meals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-        {hasNoLogs ? (
-          <EmptyMealsState onScan={() => router.push('/scan')} />
-        ) : (
-          <RecentScans userId={userId} />
-        )}
+        {/* Recent Meals */}
+        {hasNoLogs ? <EmptyMealsState onScan={() => router.push('/scan')} /> : <RecentScans userId={userId} />}
 
       </div>
     </div>
   )
 }
 
-function MacroPill({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
+function MacroPill({ label, value, unit, color }: {
+  label: string; value: number; unit: string; color: string
+}) {
   return (
     <div className="text-center">
       <p className={`text-lg font-black tabular-nums ${color}`}>
@@ -3945,7 +3996,8 @@ function EmptyCalorieState({ onScan }: { onScan: () => void }) {
       <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Scan a product to start tracking</p>
       <button
         onClick={onScan}
-        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-colors">
+        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-colors"
+      >
         <Scan className="w-4 h-4" /> Scan a Product
       </button>
     </div>
@@ -3961,7 +4013,9 @@ function EmptyWeeklyState() {
           <div key={i} className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-t-md" style={{ height: `${h}%` }} />
         ))}
       </div>
-      <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-3">Log meals to see your weekly trend</p>
+      <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-3">
+        Log meals to see your weekly trend
+      </p>
     </div>
   )
 }
@@ -3969,14 +4023,17 @@ function EmptyWeeklyState() {
 function EmptyMealsState({ onScan }: { onScan: () => void }) {
   return (
     <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
-      <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Today's Meals</p>
+      <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Today&apos;s Meals</p>
       <div className="flex flex-col items-center py-8 text-center">
         <p className="text-2xl mb-3">ðŸ¥—</p>
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Your plate is empty</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Scan a product and log it to see it here</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+          Scan a product and log it to see it here
+        </p>
         <button
           onClick={onScan}
-          className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+          className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+        >
           <Scan className="w-4 h-4" /> Start scanning
         </button>
       </div>
@@ -5211,6 +5268,7 @@ export default function HistoryPage() {
   }, {})
 
   const totalCalories = (logs || []).reduce((s: number, l: any) => s + (l.calories || 0), 0)
+  const totalMeals = (logs || []).length  // âœ… Fixed: was never defined before
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -8390,75 +8448,73 @@ export default function BottomNav() {
 interface CalorieRingProps {
   consumed: number
   goal: number
-  label: string
 }
 
-export function CalorieRing({ consumed, goal, label }: CalorieRingProps) {
-  const pct = Math.min((consumed / goal) * 100, 100)
-  const r = 52
-  const cx = 64
-  const cy = 64
-  const circ = 2 * Math.PI * r
-  const dashOffset = circ * (1 - pct / 100)
-  const color = pct < 75 ? '#16a34a' : pct < 100 ? '#d97706' : '#dc2626'
+export function CalorieRing({ consumed, goal }: CalorieRingProps) {
+  const percentage = Math.min(Math.round((consumed / goal) * 100), 100)
+  const remaining = Math.max(goal - consumed, 0)
+
+  // SVG circle math
+  const radius = 70
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (percentage / 100) * circumference
+
+  const getColor = () => {
+    if (percentage > 100) return '#ef4444' // red - over
+    if (percentage > 85) return '#f59e0b'  // amber - close
+    return '#059669'                        // green - good
+  }
 
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '16px',
-      padding: '20px',
-      boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center'
-    }}>
-      <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '8px' }}>
-        {label}
-      </p>
-      <svg width="128" height="128" viewBox="0 0 128 128">
-        <circle
-          cx={cx} cy={cy} r={r}
-          fill="none" stroke="#e5e7eb" strokeWidth="12"
-        />
-        <circle
-          cx={cx} cy={cy} r={r}
-          fill="none" stroke={color} strokeWidth="12"
-          strokeDasharray={circ}
-          strokeDashoffset={dashOffset}
-          strokeLinecap="round"
-          transform="rotate(-90 64 64)"
-          style={{ transition: 'stroke-dashoffset 0.8s ease' }}
-        />
-        <text
-          x={cx} y={cy - 6}
-          textAnchor="middle"
-          fontSize="18" fontWeight="bold" fill="#111827"
-        >
-          {Math.round(consumed)}
-        </text>
-        <text
-          x={cx} y={cy + 14}
-          textAnchor="middle"
-          fontSize="11" fill="#6b7280"
-        >
-          / {goal} kcal
-        </text>
-      </svg>
-      <p style={{ fontSize: '13px', fontWeight: 500, marginTop: '4px', color }}>
-        {pct >= 100
-          ? 'Goal reached!'
-          : `${Math.max(0, Math.round(goal - consumed))} kcal remaining`}
-      </p>
+    <div className="flex flex-col items-center">
+      <div className="relative w-44 h-44">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
+          {/* Background circle */}
+          <circle
+            cx="80" cy="80" r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="12"
+            className="text-gray-100 dark:text-gray-800"
+          />
+          {/* Progress circle */}
+          <circle
+            cx="80" cy="80" r={radius}
+            fill="none"
+            stroke={getColor()}
+            strokeWidth="12"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+        {/* Center text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <p className="text-3xl font-black text-[var(--foreground)] tabular-nums">{consumed}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">of {goal} kcal</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 mt-3">
+        <div className="w-2 h-2 rounded-full" style={{ background: getColor() }} />
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {consumed > goal
+            ? `${consumed - goal} kcal over goal`
+            : `${remaining} kcal remaining`}
+        </p>
+      </div>
     </div>
   )
 }
+
+export default CalorieRing
 ```
 
 ## FILE: src/components/dashboard/LastScanned.tsx
 
 `$lang
 "use client"
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { Scan, Clock, ChevronRight } from 'lucide-react'
 
@@ -8470,89 +8526,112 @@ interface ScanSession {
   scanned_at: string
 }
 
-export default function LastScanned() {
-  const [scan, setScan]       = useState<ScanSession | null>(null)
-  const [loading, setLoading] = useState(true)
+const ratingTextColor: Record<string, string> = {
+  healthy:   'text-emerald-500',
+  moderate:  'text-amber-500',
+  unhealthy: 'text-red-500',
+}
+
+const ratingBgColor: Record<string, string> = {
+  healthy:   'bg-emerald-50 dark:bg-emerald-900/20',
+  moderate:  'bg-amber-50 dark:bg-amber-900/20',
+  unhealthy: 'bg-red-50 dark:bg-red-900/20',
+}
+
+const ratingBadge: Record<string, string> = {
+  healthy:   'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  moderate:  'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  unhealthy: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  const hrs  = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (mins < 1)  return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  if (hrs  < 24) return `${hrs}h ago`
+  return `${days}d ago`
+}
+
+export function LastScanned() {
   const router = useRouter()
 
-  useEffect(() => {
-    fetch('/api/last-scan')
-      .then(r => r.json())
-      .then(r => { if (r.success && r.data) setScan(r.data) })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+  const { data, isLoading } = useQuery<ScanSession | null>({
+    queryKey: ['lastScan'],
+    queryFn: async () => {
+      const res = await fetch('/api/last-scan')
+      if (!res.ok) return null
+      const json = await res.json()
+      return json.success ? json.data : null
+    },
+    staleTime: 1000 * 60 * 3,
+  })
 
-  if (loading) {
-    return (
-      <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse h-20" />
-    )
-  }
+  if (isLoading) return (
+    <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse h-20" />
+  )
 
-  if (!scan) {
-    return (
-      <button
-        onClick={() => router.push('/scan')}
-        className="w-full rounded-2xl p-4 bg-white dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700
-          flex items-center gap-3 hover:border-emerald-400 dark:hover:border-emerald-600 transition-colors group">
-        <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
-          <Scan className="w-5 h-5 text-emerald-500" />
-        </div>
-        <div className="flex-1 text-left">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Scan your first product</p>
-          <p className="text-xs text-gray-400">Tap to open scanner</p>
-        </div>
-        <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors" />
-      </button>
-    )
-  }
+  // Empty state â€” first scan CTA
+  if (!data) return (
+    <button
+      onClick={() => router.push('/scan')}
+      className="w-full rounded-2xl p-4 bg-white dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700
+        flex items-center gap-3 hover:border-emerald-400 dark:hover:border-emerald-600 transition-colors group"
+    >
+      <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+        <Scan className="w-5 h-5 text-emerald-500" />
+      </div>
+      <div className="flex-1 text-left">
+        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Scan your first product</p>
+        <p className="text-xs text-gray-400">Tap to open scanner</p>
+      </div>
+      <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors" />
+    </button>
+  )
 
-  const ratingColor =
-    scan.ai_health_rating === 'healthy'   ? 'text-emerald-500'
-    : scan.ai_health_rating === 'unhealthy' ? 'text-red-500'
-    : 'text-amber-500'
-
-  const ratingBg =
-    scan.ai_health_rating === 'healthy'   ? 'bg-emerald-50 dark:bg-emerald-900/20'
-    : scan.ai_health_rating === 'unhealthy' ? 'bg-red-50 dark:bg-red-900/20'
-    : 'bg-amber-50 dark:bg-amber-900/20'
-
-  const timeAgo = (() => {
-    const diff = Date.now() - new Date(scan.scanned_at).getTime()
-    const mins = Math.floor(diff / 60000)
-    const hrs  = Math.floor(diff / 3600000)
-    const days = Math.floor(diff / 86400000)
-    if (mins < 1)  return 'just now'
-    if (mins < 60) return `${mins}m ago`
-    if (hrs < 24)  return `${hrs}h ago`
-    return `${days}d ago`
-  })()
+  const rating = data.ai_health_rating ?? 'moderate'
 
   return (
     <button
       onClick={() => router.push('/scan')}
       className="w-full rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm
-        flex items-center gap-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors group text-left">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${ratingBg}`}>
-        {scan.product_image
-          ? <img src={scan.product_image} alt={scan.product_name} className="w-10 h-10 rounded-xl object-cover" />
-          : <Scan className={`w-5 h-5 ${ratingColor}`} />}
+        flex items-center gap-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors group text-left"
+    >
+      {/* Product image or icon fallback */}
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden ${ratingBgColor[rating]}`}>
+        {data.product_image
+          ? <img src={data.product_image} alt={data.product_name} className="w-12 h-12 object-cover" />
+          : <span className="text-xl">ðŸ“¦</span>}
       </div>
+
+      {/* Name + rating badge + score */}
       <div className="flex-1 min-w-0">
         <p className="text-xs text-gray-400 dark:text-gray-500 font-medium mb-0.5">Last scanned</p>
-        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{scan.product_name}</p>
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+          {data.product_name}
+        </p>
         <div className="flex items-center gap-2 mt-0.5">
-          {scan.ai_health_score !== null && (
-            <span className={`text-xs font-bold ${ratingColor}`}>
-              {scan.ai_health_score.toFixed(1)}/10
+          {data.ai_health_rating && (
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ratingBadge[rating]}`}>
+              {data.ai_health_rating.toUpperCase()}
+            </span>
+          )}
+          {data.ai_health_score !== null && (
+            <span className={`text-xs font-bold tabular-nums ${ratingTextColor[rating]}`}>
+              {data.ai_health_score.toFixed(1)}/10
             </span>
           )}
           <span className="text-gray-200 dark:text-gray-700">Â·</span>
           <div className="flex items-center gap-1 text-xs text-gray-400">
-            <Clock className="w-3 h-3" /> {timeAgo}
+            <Clock className="w-3 h-3" />
+            {timeAgo(data.scanned_at)}
           </div>
         </div>
       </div>
+
+      {/* Scan again CTA */}
       <div className="flex items-center gap-1 flex-shrink-0">
         <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Scan again</span>
         <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors" />
@@ -8560,60 +8639,67 @@ export default function LastScanned() {
     </button>
   )
 }
+
+export default LastScanned
 ```
 
 ## FILE: src/components/dashboard/MealStreak.tsx
 
 `$lang
 "use client"
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Flame, Trophy } from 'lucide-react'
- 
-interface StreakData {
-  streak: number
-  longest: number
-  loggedToday: boolean
-  lastLoggedAt: string | null
-}
- 
-export default function MealStreak() {
-  const [data, setData]       = useState<StreakData | null>(null)
-  const [loading, setLoading] = useState(true)
- 
-  useEffect(() => {
-    fetch('/api/streak')
-      .then(r => r.json())
-      .then(r => { if (r.success) setData(r) })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
- 
-  if (loading) return (
+
+export function MealStreak() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['streak'],
+    queryFn: async () => {
+      const res = await fetch('/api/streak')
+      if (!res.ok) return null
+      const json = await res.json()
+      return json.success ? json : null
+    },
+    staleTime: 1000 * 60 * 5,
+  })
+
+  if (isLoading) return (
     <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse h-24" />
   )
-  if (!data) return null
- 
-  const { streak, longest, loggedToday } = data
+
+  const streak     = data?.streak     ?? 0
+  const longest    = data?.longest    ?? 0
+  const loggedToday = data?.loggedToday ?? false
+
   const flameColor = streak === 0 ? 'text-gray-300 dark:text-gray-600'
     : streak >= 7  ? 'text-orange-500'
     : streak >= 3  ? 'text-amber-500'
     : 'text-yellow-500'
- 
+
   return (
     <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
       <div className="flex items-center justify-between">
+
+        {/* Left â€” flame + streak count */}
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${streak > 0 ? 'bg-orange-50 dark:bg-orange-900/20' : 'bg-gray-50 dark:bg-gray-800'}`}>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            streak > 0 ? 'bg-orange-50 dark:bg-orange-900/20' : 'bg-gray-50 dark:bg-gray-800'
+          }`}>
             <Flame className={`w-5 h-5 ${flameColor}`} />
           </div>
           <div>
             <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Logging Streak</p>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-gray-900 dark:text-gray-100">{streak}</span>
-              <span className="text-sm text-gray-400 dark:text-gray-500">day{streak !== 1 ? 's' : ''}</span>
+              <span className="text-2xl font-black text-gray-900 dark:text-gray-100 tabular-nums">
+                {streak}
+              </span>
+              <span className="text-sm text-gray-400 dark:text-gray-500">
+                day{streak !== 1 ? 's' : ''}
+              </span>
             </div>
           </div>
         </div>
+
+        {/* Right â€” logged today badge + best streak */}
         <div className="flex flex-col items-end gap-1">
           {loggedToday ? (
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
@@ -8626,17 +8712,24 @@ export default function MealStreak() {
           )}
           {longest > 0 && (
             <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-              <Trophy className="w-3 h-3" /> Best: {longest} day{longest !== 1 ? 's' : ''}
+              <Trophy className="w-3 h-3" />
+              Best: {longest} day{longest !== 1 ? 's' : ''}
             </div>
           )}
         </div>
       </div>
+
+      {/* Milestone banner â€” only at 7+ days */}
       {streak >= 7 && (
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
-          <span className="text-lg">{streak >= 30 ? 'ðŸ†' : streak >= 14 ? 'ðŸ¥‡' : 'ðŸ”¥'}</span>
+          <span className="text-lg">
+            {streak >= 30 ? 'ðŸ†' : streak >= 14 ? 'ðŸ¥‡' : 'ðŸ”¥'}
+          </span>
           <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-            {streak >= 30 ? `${streak}-day legend! Incredible consistency.`
-              : streak >= 14 ? `${streak}-day streak! You're on fire!`
+            {streak >= 30
+              ? `${streak}-day legend! Incredible consistency.`
+              : streak >= 14
+              ? `${streak}-day streak! You're on fire!`
               : `7-day streak! Great habit building!`}
           </p>
         </div>
@@ -8644,15 +8737,18 @@ export default function MealStreak() {
     </div>
   )
 }
+
+export default MealStreak
 ```
 
 ## FILE: src/components/dashboard/NutrientAlerts.tsx
 
 `$lang
 "use client"
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react'
- 
+
 interface Alert {
   nutrient: string
   type: 'deficient' | 'excess'
@@ -8661,72 +8757,104 @@ interface Alert {
   message: string
   severity: 'high' | 'medium'
 }
- 
+
 interface SummaryData {
   avg: { calories: number; protein: number; carbs: number; fat: number; sodium: number }
   rda: { calories: number; protein: number; carbs: number; fat: number; sodium: number }
   alerts: Alert[]
   daysTracked: number
 }
- 
-export default function NutrientAlerts() {
-  const [data, setData]         = useState<SummaryData | null>(null)
-  const [loading, setLoading]   = useState(true)
+
+export function NutrientAlerts() {
   const [expanded, setExpanded] = useState(false)
- 
-  useEffect(() => {
-    fetch('/api/nutrients/summary')
-      .then(r => r.json())
-      .then(r => { if (r.success && r.data) setData(r.data) })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
- 
-  if (loading) return (
+
+  const { data, isLoading } = useQuery<SummaryData | null>({
+    queryKey: ['nutrientAlerts'],
+    queryFn: async () => {
+      const res = await fetch('/api/nutrients/summary')
+      if (!res.ok) return null
+      const json = await res.json()
+      return json.success ? json.data : null
+    },
+    staleTime: 1000 * 60 * 5,
+  })
+
+  if (isLoading) return (
     <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse h-20" />
   )
+
   if (!data) return null
- 
-  const highAlerts   = data.alerts.filter(a => a.severity === 'high')
-  const allAlerts    = [...highAlerts, ...data.alerts.filter(a => a.severity === 'medium')]
- 
+
+  const highAlerts = data.alerts.filter(a => a.severity === 'high')
+  const allAlerts  = [...highAlerts, ...data.alerts.filter(a => a.severity === 'medium')]
+
+  // All-clear state
   if (allAlerts.length === 0) return (
     <div className="rounded-2xl p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 shadow-sm flex items-center gap-3">
       <span className="text-2xl">âœ…</span>
       <div>
-        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Nutrient Balance Looks Good!</p>
-        <p className="text-xs text-emerald-600/70 dark:text-emerald-500">Based on your last {data.daysTracked} day{data.daysTracked !== 1 ? 's' : ''} of tracking</p>
+        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+          Nutrient Balance Looks Good!
+        </p>
+        <p className="text-xs text-emerald-600/70 dark:text-emerald-500">
+          Based on your last {data.daysTracked} day{data.daysTracked !== 1 ? 's' : ''} of tracking
+        </p>
       </div>
     </div>
   )
- 
+
   return (
-    <div className={`rounded-2xl bg-white dark:bg-gray-900 border shadow-sm overflow-hidden
-      ${highAlerts.length > 0 ? 'border-red-100 dark:border-red-900/40' : 'border-amber-100 dark:border-amber-900/40'}`}>
-      <button className="w-full flex items-center justify-between p-4 text-left" onClick={() => setExpanded(x => !x)}>
+    <div className={`rounded-2xl bg-white dark:bg-gray-900 border shadow-sm overflow-hidden ${
+      highAlerts.length > 0
+        ? 'border-red-100 dark:border-red-900/40'
+        : 'border-amber-100 dark:border-amber-900/40'
+    }`}>
+
+      {/* Collapsible header */}
+      <button
+        className="w-full flex items-center justify-between p-4 text-left"
+        onClick={() => setExpanded(x => !x)}
+      >
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
-            ${highAlerts.length > 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
-            <AlertTriangle className={`w-5 h-5 ${highAlerts.length > 0 ? 'text-red-500' : 'text-amber-500'}`} />
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            highAlerts.length > 0
+              ? 'bg-red-50 dark:bg-red-900/20'
+              : 'bg-amber-50 dark:bg-amber-900/20'
+          }`}>
+            <AlertTriangle className={`w-5 h-5 ${
+              highAlerts.length > 0 ? 'text-red-500' : 'text-amber-500'
+            }`} />
           </div>
           <div>
-            <p className={`text-sm font-bold ${highAlerts.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+            <p className={`text-sm font-bold ${
+              highAlerts.length > 0
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-amber-600 dark:text-amber-400'
+            }`}>
               {allAlerts.length} Nutrient Alert{allAlerts.length !== 1 ? 's' : ''}
             </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">{data.daysTracked}-day average Â· Tap to view</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              {data.daysTracked}-day average Â· Tap to view
+            </p>
           </div>
         </div>
         {expanded
           ? <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0" />
           : <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />}
       </button>
+
+      {/* Expanded alert list */}
       {expanded && (
         <div className="px-4 pb-4 space-y-2.5 border-t border-gray-100 dark:border-gray-800 pt-3">
           {allAlerts.map((alert, i) => (
-            <div key={i} className={`rounded-xl p-3 flex items-start gap-3
-              ${alert.severity === 'high'
-                ? 'bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30'
-                : 'bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30'}`}>
+            <div
+              key={i}
+              className={`rounded-xl p-3 flex items-start gap-3 border ${
+                alert.severity === 'high'
+                  ? 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30'
+                  : 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'
+              }`}
+            >
               <div className="flex-shrink-0 mt-0.5">
                 {alert.type === 'deficient'
                   ? <TrendingDown className={`w-4 h-4 ${alert.severity === 'high' ? 'text-red-500' : 'text-amber-500'}`} />
@@ -8734,15 +8862,20 @@ export default function NutrientAlerts() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{alert.nutrient}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase
-                    ${alert.type === 'deficient'
+                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                    {alert.nutrient}
+                  </span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase ${
+                    alert.type === 'deficient'
                       ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                      : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'}`}>
+                      : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                  }`}>
                     {alert.type === 'deficient' ? 'Too Low' : 'Too High'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{alert.message}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {alert.message}
+                </p>
               </div>
             </div>
           ))}
@@ -8751,6 +8884,8 @@ export default function NutrientAlerts() {
     </div>
   )
 }
+
+export default NutrientAlerts
 ```
 
 ## FILE: src/components/dashboard/RecentScans.tsx
@@ -8758,27 +8893,31 @@ export default function NutrientAlerts() {
 `$lang
 "use client"
 import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
 interface FoodLog {
   id: string
   product_name: string
   calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
   meal_type: string
   logged_at: string
   quantity_g: number
 }
 
 interface RecentScansProps {
-  logs: FoodLog[]
-  onDelete: (id: string) => void
+  userId: string
 }
 
 const mealEmoji: Record<string, string> = {
   breakfast: 'ðŸŒ…',
   lunch: 'â˜€ï¸',
   dinner: 'ðŸŒ™',
-  snack: 'ðŸŽ',
+  snack: 'ðŸ¿',
 }
 
 const mealColors: Record<string, string> = {
@@ -8788,8 +8927,30 @@ const mealColors: Record<string, string> = {
   snack: 'bg-green-50 dark:bg-green-900/20',
 }
 
-export function RecentScans({ logs, onDelete }: RecentScansProps) {
+export function RecentScans({ userId }: RecentScansProps) {
+  const queryClient = useQueryClient()
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const { data: meals, isLoading } = useQuery({
+    queryKey: ['recentMeals', userId],
+    queryFn: async () => {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const { data, error } = await supabase
+        .from('food_logs')
+        .select('id, product_name, calories, protein_g, carbs_g, fat_g, meal_type, logged_at, quantity_g')
+        .eq('user_id', userId)
+        .gte('logged_at', today.toISOString())
+        .order('logged_at', { ascending: false })
+        .limit(10)
+
+      if (error) throw error
+      return (data || []) as FoodLog[]
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2,
+  })
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Remove "${name}" from your meal history?`)) return
@@ -8799,29 +8960,45 @@ export function RecentScans({ logs, onDelete }: RecentScansProps) {
       const res = await fetch('/api/log/delete', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
+        body: JSON.stringify({ id }),
       })
       const json = await res.json()
       if (json.success) {
-        onDelete(id)
+        // Optimistically remove from cache
+        queryClient.setQueryData<FoodLog[]>(['recentMeals', userId], old =>
+          (old || []).filter(m => m.id !== id)
+        )
+        // Invalidate weekly chart too since calories changed
+        queryClient.invalidateQueries({ queryKey: ['weeklyChart', userId] })
         toast.success('Meal removed')
       } else {
         toast.error('Failed to delete. Try again.')
       }
     } catch {
       toast.error('Something went wrong.')
+    } finally {
+      setDeletingId(null)
     }
-    setDeletingId(null)
   }
 
-  if (logs.length === 0) {
+  if (isLoading) {
     return (
-      <div className="bg-[var(--card)] rounded-2xl p-8 border border-[var(--card-border)] text-center">
+      <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <div className="h-24 flex items-center justify-center">
+          <p className="text-xs text-gray-400 animate-pulse">Loading meals...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!meals || meals.length === 0) {
+    return (
+      <div className="rounded-2xl p-8 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-center">
         <div className="text-4xl mb-3">ðŸ½ï¸</div>
-        <p className="text-sm font-medium text-[var(--foreground)] mb-1">
-          No meals logged yet
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          No meals logged today
         </p>
-        <p className="text-xs text-[var(--muted)]">
+        <p className="text-xs text-gray-400">
           Scan a product and log it to see your meals here
         </p>
       </div>
@@ -8829,63 +9006,64 @@ export function RecentScans({ logs, onDelete }: RecentScansProps) {
   }
 
   return (
-    <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)] shadow-sm">
-
+    <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">
-          ðŸ• Recent Meals
-        </h3>
-        <span className="text-xs text-[var(--muted)]">
-          {logs.length} meal{logs.length !== 1 ? 's' : ''}
+        <p className="text-sm font-bold text-gray-700 dark:text-gray-300">
+          ðŸ• Today's Meals
+        </p>
+        <span className="text-xs text-gray-400">
+          {meals.length} meal{meals.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       <div className="flex flex-col gap-2">
-        {logs.map(log => (
+        {meals.map(meal => (
           <div
-            key={log.id}
+            key={meal.id}
             className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
-              deletingId === log.id
+              deletingId === meal.id
                 ? 'opacity-50 bg-red-50 dark:bg-red-900/20'
-                : 'bg-gray-50 dark:bg-slate-800/50'
+                : 'bg-gray-50 dark:bg-gray-800/50'
             }`}
           >
             {/* Meal type icon */}
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
-              mealColors[log.meal_type] || 'bg-gray-100 dark:bg-slate-700'
+              mealColors[meal.meal_type] || 'bg-gray-100 dark:bg-gray-700'
             }`}>
-              {mealEmoji[log.meal_type] || 'ðŸ½ï¸'}
+              {mealEmoji[meal.meal_type] || 'ðŸ½ï¸'}
             </div>
 
             {/* Product info */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[var(--foreground)] truncate">
-                {log.product_name}
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">
+                {meal.product_name}
               </p>
-              <p className="text-xs text-[var(--muted)] mt-0.5">
-                {log.quantity_g}g Â·{' '}
-                <span className="capitalize">{log.meal_type}</span> Â·{' '}
-                {new Date(log.logged_at).toLocaleDateString('en-IN', {
-                  day: 'numeric', month: 'short'
-                })}
+              <p className="text-xs text-gray-400 mt-0.5">
+                {meal.quantity_g}g Â· <span className="capitalize">{meal.meal_type}</span>
               </p>
+              {/* Macros row */}
+              <div className="flex gap-2 mt-1">
+                <span className="text-[10px] text-blue-500 font-medium">P {Math.round(meal.protein_g)}g</span>
+                <span className="text-[10px] text-yellow-500 font-medium">C {Math.round(meal.carbs_g)}g</span>
+                <span className="text-[10px] text-red-400 font-medium">F {Math.round(meal.fat_g)}g</span>
+              </div>
             </div>
 
             {/* Calories */}
             <div className="text-right flex-shrink-0 mr-1">
-              <p className="text-sm font-bold text-green-600 dark:text-green-400">
-                {Math.round(log.calories)}
+              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                {Math.round(meal.calories)}
               </p>
-              <p className="text-xs text-[var(--muted)]">kcal</p>
+              <p className="text-[10px] text-gray-400">kcal</p>
             </div>
 
             {/* Delete button */}
             <button
-              onClick={() => handleDelete(log.id, log.product_name)}
-              disabled={deletingId === log.id}
+              onClick={() => handleDelete(meal.id, meal.product_name)}
+              disabled={deletingId === meal.id}
               className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 dark:border-red-800 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {deletingId === log.id ? (
+              {deletingId === meal.id ? (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2" className="animate-spin">
                   <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3"/>
@@ -8907,227 +9085,113 @@ export function RecentScans({ logs, onDelete }: RecentScansProps) {
     </div>
   )
 }
+
+export default RecentScans
 ```
 
 ## FILE: src/components/dashboard/WeeklyChart.tsx
 
 `$lang
 "use client"
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useSession } from 'next-auth/react'
-
-interface DayData {
-  day: string
-  calories: number
-}
 
 interface WeeklyChartProps {
-  userId?: string
+  userId: string
 }
 
 export function WeeklyChart({ userId }: WeeklyChartProps) {
-  const { data: session } = useSession()
-  const [days, setDays] = useState<DayData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const effectiveUserId = userId || (session as any)?.userId
-
-  useEffect(() => {
-    if (effectiveUserId) {
-      fetchWeeklyData()
-    } else {
-      setLoading(false)
-    }
-  }, [effectiveUserId])
-
-  async function fetchWeeklyData() {
-    setLoading(true)
-    setError(null)
-    try {
+  const { data: weekData, isLoading } = useQuery({
+    queryKey: ['weeklyChart', userId],
+    queryFn: async () => {
       const weekAgo = new Date()
       weekAgo.setDate(weekAgo.getDate() - 6)
+      weekAgo.setHours(0, 0, 0, 0)
 
-      const { data, error: queryError } = await supabase
+      const { data: logs, error } = await supabase
         .from('food_logs')
         .select('calories, logged_at')
-        .eq('user_id', effectiveUserId)
+        .eq('user_id', userId)
         .gte('logged_at', weekAgo.toISOString())
 
-      if (queryError) {
-        console.error('WeeklyChart error:', queryError)
-        setError('Could not load weekly data')
-        setLoading(false)
-        return
-      }
+      if (error) throw error
 
+      // Build a map keyed by YYYY-MM-DD, initialized to 0
       const dayMap: Record<string, number> = {}
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
       for (let i = 6; i >= 0; i--) {
         const d = new Date()
         d.setDate(d.getDate() - i)
         d.setHours(0, 0, 0, 0)
-        const key = d.toLocaleDateString('en-CA')
-        dayMap[key] = 0
+        dayMap[d.toLocaleDateString('en-CA')] = 0
       }
 
-      data?.forEach(log => {
+      // Aggregate calories per day
+      logs?.forEach(log => {
         const key = new Date(log.logged_at).toLocaleDateString('en-CA')
-        if (dayMap[key] !== undefined) {
-          dayMap[key] += log.calories || 0
-        }
+        if (key in dayMap) dayMap[key] += log.calories || 0
       })
 
-      const result = Object.entries(dayMap).map(([date, calories]) => ({
-        day: dayNames[new Date(date).getDay()],
+      // Convert to array with short weekday labels
+      return Object.entries(dayMap).map(([date, calories]) => ({
+        label: new Date(date).toLocaleDateString('en-IN', { weekday: 'short' }),
         calories: Math.round(calories),
       }))
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+  })
 
-      setDays(result)
-    } catch (e) {
-      console.error('WeeklyChart fetch failed:', e)
-      setError('Could not load weekly data')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const maxCal = Math.max(...(weekData || []).map(d => d.calories), 1)
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '20px',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-      }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#111827', marginBottom: '16px' }}>
-          ðŸ“Š This Week
-        </h3>
-        <div style={{ display: 'flex', gap: '8px', height: '120px', alignItems: 'flex-end' }}>
-          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} style={{
-              flex: 1,
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-            }}>
-              <div style={{
-                width: '100%',
-                height: '30%',
-                background: '#e5e7eb',
-                borderRadius: '4px 4px 0 0',
-                animation: 'pulse 1.5s ease-in-out infinite',
-              }} />
-              <span style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>...</span>
-            </div>
-          ))}
+      <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <div className="h-32 flex items-center justify-center">
+          <p className="text-xs text-gray-400 animate-pulse">Loading chart...</p>
         </div>
       </div>
     )
   }
 
-  if (error) {
-    return (
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '20px',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-      }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#111827', marginBottom: '12px' }}>
-          ðŸ“Š This Week
-        </h3>
-        <p style={{ textAlign: 'center', color: '#ef4444', fontSize: '13px' }}>
-          âš ï¸ {error}
-        </p>
-        <button
-          onClick={fetchWeeklyData}
-          style={{
-            display: 'block',
-            margin: '8px auto 0',
-            padding: '6px 16px',
-            background: '#16a34a',
-            color: 'white',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 600,
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          Retry
-        </button>
-      </div>
-    )
-  }
-
-  const maxCal = Math.max(...days.map(d => d.calories), 2000)
-
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '16px',
-      padding: '20px',
-      boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-    }}>
-      <h3 style={{
-        fontSize: '15px',
-        fontWeight: 600,
-        color: '#111827',
-        marginBottom: '16px',
-      }}>
-        ðŸ“Š This Week
-      </h3>
+    <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+      <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Weekly Overview</p>
 
-      <div style={{
-        display: 'flex',
-        alignItems: 'flex-end',
-        gap: '8px',
-        height: '120px',
-      }}>
-        {days.map((d, i) => (
-          <div key={i} style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4px',
-            height: '100%',
-            justifyContent: 'flex-end',
-          }}>
-            <span style={{ fontSize: '10px', color: '#6b7280' }}>
-              {d.calories > 0 ? d.calories : ''}
-            </span>
-            <div style={{
-              width: '100%',
-              height: `${Math.max((d.calories / maxCal) * 90, d.calories > 0 ? 4 : 0)}%`,
-              background: d.calories > 2000 ? '#dc2626' : '#16a34a',
-              borderRadius: '4px 4px 0 0',
-              transition: 'height 0.5s ease',
-              minHeight: d.calories > 0 ? '4px' : '0',
-            }} />
-            <span style={{ fontSize: '11px', color: '#6b7280' }}>{d.day}</span>
-          </div>
-        ))}
+      <div className="flex items-end justify-between gap-1 h-24">
+        {(weekData || []).map((d, i) => {
+          const heightPct = d.calories > 0
+            ? Math.max((d.calories / maxCal) * 100, 4)
+            : 0
+
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <span className="text-[10px] text-gray-400 tabular-nums">
+                {d.calories > 0 ? d.calories : ''}
+              </span>
+              <div
+                className="w-full rounded-t-md transition-all duration-500"
+                style={{
+                  height: `${heightPct}%`,
+                  background: d.calories > 0
+                    ? 'linear-gradient(to top, #059669, #34d399)'
+                    : '#e5e7eb',
+                  minHeight: d.calories > 0 ? '4px' : '0',
+                }}
+              />
+              <span className="text-[10px] text-gray-400 font-medium">{d.label}</span>
+            </div>
+          )
+        })}
       </div>
 
-      {days.every(d => d.calories === 0) && (
-        <p style={{
-          textAlign: 'center',
-          color: '#9ca3af',
-          fontSize: '13px',
-          marginTop: '8px',
-        }}>
-          No meals logged this week yet
-        </p>
+      {weekData?.every(d => d.calories === 0) && (
+        <p className="text-center text-xs text-gray-400 mt-2">No meals logged this week yet</p>
       )}
     </div>
   )
 }
+
+export default WeeklyChart
 ```
 
 ## FILE: src/components/ErrorBoundary.tsx
@@ -10107,6 +10171,95 @@ export const AnalyticsEvents = {
 } as const
 ```
 
+## FILE: src/lib/auth.ts
+
+`$lang
+import { NextAuthOptions } from 'next-auth'
+import GoogleProvider from 'next-auth/providers/google'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+
+export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    }),
+  ],
+  callbacks: {
+    async signIn({ user }) {
+      try {
+        if (!user.email) return false
+
+        const { data: existing } = await supabaseAdmin
+          .from('user_profiles')
+          .select('user_id, welcome_email_sent')
+          .eq('user_id', user.id)
+          .single()
+
+        const isNewUser = !existing
+
+        const { error } = await supabaseAdmin
+          .from('user_profiles')
+          .upsert(
+            {
+              user_id: user.id,
+              email: user.email,
+              name: user.name,
+              avatar_url: user.image,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id' }
+          )
+
+        if (error) {
+          console.error('Supabase upsert error:', error.message)
+          return false
+        }
+
+        if (isNewUser) {
+          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+          fetch(`${baseUrl}/api/welcome-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              email: user.email,
+              name: user.name,
+            }),
+          }).catch((err) =>
+            console.log('Welcome email trigger error:', err.message)
+          )
+        }
+
+        return true
+      } catch (err) {
+        console.error('SignIn error:', err)
+        return false
+      }
+    },
+
+    async jwt({ token, account }) {
+      if (account) {
+        token.provider = account.provider
+      }
+      return token
+    },
+
+    async session({ session, token }) {
+      if (session.user) {
+        session.userId = token.sub ?? ''
+      }
+      return session
+    },
+  },
+  pages: {
+    signIn: '/auth/signin',
+    error: '/auth/signin',
+  },
+}
+```
+
 ## FILE: src/lib/gemini.ts
 
 `$lang
@@ -10394,6 +10547,75 @@ export const supabaseAdmin = createClient(
 )
 ```
 
+## FILE: src/lib/tokens.ts
+
+`$lang
+import crypto from 'crypto'
+
+const SECRET = process.env.NEXTAUTH_SECRET || 'fallback-secret-change-me'
+
+/**
+ * Creates a signed token for unsubscribe links.
+ * Token = base64(userId:expiry:signature)
+ */
+export function createUnsubscribeToken(userId: string): string {
+  // Token valid for 30 days
+  const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000
+  const payload = `${userId}:${expiry}`
+  const signature = crypto
+    .createHmac('sha256', SECRET)
+    .update(payload)
+    .digest('hex')
+  const token = Buffer.from(`${payload}:${signature}`).toString('base64url')
+  return token
+}
+
+/**
+ * Verifies an unsubscribe token and returns the userId if valid.
+ * Returns null if invalid or expired.
+ */
+export function verifyUnsubscribeToken(token: string): string | null {
+  try {
+    const decoded = Buffer.from(token, 'base64url').toString('utf-8')
+    const parts = decoded.split(':')
+    if (parts.length !== 3) return null
+
+    const [userId, expiryStr, signature] = parts
+    const expiry = parseInt(expiryStr, 10)
+
+    // Check expiry
+    if (Date.now() > expiry) return null
+
+    // Verify signature
+    const payload = `${userId}:${expiryStr}`
+    const expectedSig = crypto
+      .createHmac('sha256', SECRET)
+      .update(payload)
+      .digest('hex')
+
+    if (signature !== expectedSig) return null
+
+    return userId
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Helper to build signed unsubscribe URLs
+ */
+export function buildUnsubscribeUrls(
+  userId: string,
+  baseUrl: string
+): { weeklyUrl: string; allUrl: string } {
+  const token = createUnsubscribeToken(userId)
+  return {
+    weeklyUrl: `${baseUrl}/api/unsubscribe?token=${token}&type=weekly`,
+    allUrl: `${baseUrl}/api/unsubscribe?token=${token}&type=all`,
+  }
+}
+```
+
 ## FILE: src/test/setup.ts
 
 `$lang
@@ -10443,6 +10665,29 @@ export interface UserProfile {
   has_bp?: boolean
   is_vegetarian?: boolean
   is_vegan?: boolean
+}
+```
+
+## FILE: src/types/next-auth.d.ts
+
+`$lang
+import 'next-auth'
+
+declare module 'next-auth' {
+  interface Session {
+    userId: string
+    user: {
+      name?: string | null
+      email?: string | null
+      image?: string | null
+    }
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    provider?: string
+  }
 }
 ```
 

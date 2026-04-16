@@ -5,6 +5,7 @@ import Providers from '@/components/Providers'
 import BottomNav from '@/components/BottomNav'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
+import Analytics from '@/components/Analytics'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
@@ -28,10 +29,7 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'NutriScan',
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 }
 
 export const viewport: Viewport = {
@@ -58,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ServiceWorkerRegister />
           </ErrorBoundary>
         </Providers>
+        <Analytics />
       </body>
     </html>
   )

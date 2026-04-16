@@ -11,17 +11,17 @@ import MealStreak from '@/components/dashboard/MealStreak'
 import NutrientAlerts from '@/components/dashboard/NutrientAlerts'
 import LastScanned from '@/components/dashboard/LastScanned'
 import { SkeletonDashboard } from '@/components/Skeleton'
-import { supabase } from '@/lib/supabase'
 import { event, AnalyticsEvents } from '@/lib/analytics'
+// ✅ No supabase import — data fetching belongs in the API route
 
 interface DashboardData {
-  totalCalories: number
-  totalProtein:  number
-  totalCarbs:    number
-  totalFat:      number
+  totalCalories:    number
+  totalProtein:     number
+  totalCarbs:       number
+  totalFat:         number
   dailyCalorieGoal: number
-  mealCount:     number
-  profile:       any
+  mealCount:        number
+  profile:          any
 }
 
 export default function DashboardPage() {
@@ -34,44 +34,15 @@ export default function DashboardPage() {
 
   const userId = (session as any)?.userId
 
+  // ✅ Single API call — no direct Supabase access from the client
   const { data, isLoading, refetch } = useQuery<DashboardData>({
     queryKey: ['dashboard', userId],
     queryFn: async () => {
-      const profileRes = await fetch('/api/profile')
-      const profile = profileRes.ok ? (await profileRes.json()).data : null
-
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-
-      const { data: logs, error: logsError } = await supabase
-        .from('food_logs')
-        .select('calories, protein_g, carbs_g, fat_g')
-        .eq('user_id', userId)
-        .gte('logged_at', today.toISOString())
-
-      if (logsError) {
-        console.error('Failed to load food logs:', logsError)
-      }
-
-      const totals = (logs || []).reduce(
-        (acc: any, l: any) => ({
-          calories: acc.calories + (l.calories   || 0),
-          protein:  acc.protein  + (l.protein_g  || 0),
-          carbs:    acc.carbs    + (l.carbs_g    || 0),
-          fat:      acc.fat      + (l.fat_g      || 0),
-        }),
-        { calories: 0, protein: 0, carbs: 0, fat: 0 }
-      )
-
-      return {
-        totalCalories:    Math.round(totals.calories),
-        totalProtein:     Math.round(totals.protein),
-        totalCarbs:       Math.round(totals.carbs),
-        totalFat:         Math.round(totals.fat),
-        dailyCalorieGoal: profile?.daily_calorie_goal || 2000,
-        mealCount:        (logs || []).length,
-        profile,
-      }
+      const res = await fetch('/api/dashboard')
+      if (!res.ok) throw new Error('Failed to load dashboard')
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      return json.data
     },
     enabled: !!userId,
     staleTime: 1000 * 60 * 2,
@@ -79,10 +50,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (userId) {
-      event(AnalyticsEvents.VIEW_ANALYSIS, {
-        page: 'dashboard',
-        user_id: userId,
-      })
+      event(AnalyticsEvents.VIEW_ANALYSIS, { page: 'dashboard', user_id: userId })
     }
   }, [userId])
 
@@ -95,10 +63,12 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[var(--background)]">
 
-      {/* ── Gradient Header ──────────────────────────────────── */}
+      {/* Gradient Header */}
       <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 px-4 pt-14 pb-20 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 0%, transparent 50%), radial-gradient(circle at 20% 80%, white 0%, transparent 50%)' }} />
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 0%, transparent 50%), radial-gradient(circle at 20% 80%, white 0%, transparent 50%)' }}
+        />
         <div className="relative flex items-start justify-between">
           <div>
             <p className="text-emerald-100 text-sm font-medium">
@@ -108,7 +78,7 @@ export default function DashboardPage() {
               {isNewUser ? `Welcome, ${userName}! 👋` : `Hello, ${userName} 👋`}
             </h1>
             {isNewUser && (
-              <p className="text-emerald-100 text-sm mt-1">Let's set up your health profile</p>
+              <p className="text-emerald-100 text-sm mt-1">Let&apos;s set up your health profile</p>
             )}
           </div>
           <button
@@ -124,10 +94,9 @@ export default function DashboardPage() {
 
       <div className="px-4 -mt-12 pb-8 space-y-4">
 
-        {/* ── Profile Setup CTA ────────────────────────────────── */}
+        {/* Profile Setup CTA */}
         {isNewUser && (
-          <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800 shadow-lg
-            flex items-center gap-4">
+          <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800 shadow-lg flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
               <Sparkles className="w-6 h-6 text-emerald-500" />
             </div>
@@ -139,13 +108,14 @@ export default function DashboardPage() {
             </div>
             <button
               onClick={() => router.push('/profile-setup')}
-              className="flex-shrink-0 px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors">
+              className="flex-shrink-0 px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors"
+            >
               Set Up
             </button>
           </div>
         )}
 
-        {/* ── Calorie Ring ─────────────────────────────────────── */}
+        {/* Calorie Ring */}
         <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
           {hasNoLogs ? (
             <EmptyCalorieState onScan={() => router.push('/scan')} />
@@ -164,35 +134,29 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* ── Meal Streak ──────────────────────────────────────── */}
+        {/* Meal Streak */}
         <MealStreak />
 
-        {/* ── Last Scanned Shortcut ────────────────────────────── */}
+        {/* Last Scanned */}
         <LastScanned />
 
-        {/* ── Nutrient Alerts (only if user has logs) ──────────── */}
+        {/* Nutrient Alerts */}
         {!hasNoLogs && <NutrientAlerts />}
 
-        {/* ── Weekly Chart ─────────────────────────────────────── */}
-        {hasNoLogs ? (
-          <EmptyWeeklyState />
-        ) : (
-          <WeeklyChart userId={userId} />
-        )}
+        {/* Weekly Chart */}
+        {hasNoLogs ? <EmptyWeeklyState /> : <WeeklyChart userId={userId} />}
 
-        {/* ── Recent Meals ─────────────────────────────────────── */}
-        {hasNoLogs ? (
-          <EmptyMealsState onScan={() => router.push('/scan')} />
-        ) : (
-          <RecentScans userId={userId} />
-        )}
+        {/* Recent Meals */}
+        {hasNoLogs ? <EmptyMealsState onScan={() => router.push('/scan')} /> : <RecentScans userId={userId} />}
 
       </div>
     </div>
   )
 }
 
-function MacroPill({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
+function MacroPill({ label, value, unit, color }: {
+  label: string; value: number; unit: string; color: string
+}) {
   return (
     <div className="text-center">
       <p className={`text-lg font-black tabular-nums ${color}`}>
@@ -213,7 +177,8 @@ function EmptyCalorieState({ onScan }: { onScan: () => void }) {
       <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Scan a product to start tracking</p>
       <button
         onClick={onScan}
-        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-colors">
+        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-colors"
+      >
         <Scan className="w-4 h-4" /> Scan a Product
       </button>
     </div>
@@ -229,7 +194,9 @@ function EmptyWeeklyState() {
           <div key={i} className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-t-md" style={{ height: `${h}%` }} />
         ))}
       </div>
-      <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-3">Log meals to see your weekly trend</p>
+      <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-3">
+        Log meals to see your weekly trend
+      </p>
     </div>
   )
 }
@@ -237,14 +204,17 @@ function EmptyWeeklyState() {
 function EmptyMealsState({ onScan }: { onScan: () => void }) {
   return (
     <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
-      <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Today's Meals</p>
+      <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Today&apos;s Meals</p>
       <div className="flex flex-col items-center py-8 text-center">
         <p className="text-2xl mb-3">🥗</p>
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Your plate is empty</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Scan a product and log it to see it here</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+          Scan a product and log it to see it here
+        </p>
         <button
           onClick={onScan}
-          className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+          className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+        >
           <Scan className="w-4 h-4" /> Start scanning
         </button>
       </div>

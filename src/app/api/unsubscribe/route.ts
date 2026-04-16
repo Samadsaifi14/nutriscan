@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { verifyUnsubscribeToken } from '@/lib/tokens'
 
 export async function GET(req: NextRequest) {
-  const userId = req.nextUrl.searchParams.get('userId')
+  const token = req.nextUrl.searchParams.get('token')
   const type = req.nextUrl.searchParams.get('type') || 'all'
 
+  if (!token) {
+    return new NextResponse(
+      buildHTML('Invalid or missing unsubscribe link.', false),
+      { headers: { 'Content-Type': 'text/html' } }
+    )
+  }
+
+  const userId = verifyUnsubscribeToken(token)
   if (!userId) {
-    return new NextResponse(buildHTML('Invalid unsubscribe link.', false), {
-      headers: { 'Content-Type': 'text/html' }
-    })
+    return new NextResponse(
+      buildHTML('This unsubscribe link has expired or is invalid. Please use the latest email link.', false),
+      { headers: { 'Content-Type': 'text/html' } }
+    )
   }
 
   try {
-    const updates: any = {}
+    const updates: Record<string, any> = {}
 
     if (type === 'weekly') {
       updates.weekly_report_email = false
@@ -28,22 +38,25 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error
 
-    const message = type === 'weekly'
-      ? 'You have been unsubscribed from weekly nutrition reports. You will still receive important account emails.'
-      : 'You have been unsubscribed from all HealthOX emails.'
+    const message =
+      type === 'weekly'
+        ? 'You have been unsubscribed from weekly nutrition reports. You will still receive important account emails.'
+        : 'You have been unsubscribed from all HealthOX emails.'
 
     return new NextResponse(buildHTML(message, true), {
-      headers: { 'Content-Type': 'text/html' }
+      headers: { 'Content-Type': 'text/html' },
     })
 
-  } catch (err) {
-    return new NextResponse(buildHTML('Something went wrong. Please try again.', false), {
-      headers: { 'Content-Type': 'text/html' }
-    })
+  } catch {
+    return new NextResponse(
+      buildHTML('Something went wrong. Please try again.', false),
+      { headers: { 'Content-Type': 'text/html' } }
+    )
   }
 }
 
 function buildHTML(message: string, success: boolean): string {
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
   return `
 <!DOCTYPE html>
 <html>
@@ -62,7 +75,7 @@ function buildHTML(message: string, success: boolean): string {
       <p style="font-size:14px;color:#6b7280;line-height:1.6;margin:0 0 24px;">
         ${message}
       </p>
-      <a href="${process.env.NEXTAUTH_URL}/dashboard"
+      <a href="${baseUrl}/dashboard"
         style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#059669,#0ea5e9);color:white;text-decoration:none;border-radius:12px;font-size:14px;font-weight:700;">
         Go to HealthOX →
       </a>

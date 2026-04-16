@@ -58,6 +58,7 @@ export default function HistoryPage() {
   }, {})
 
   const totalCalories = (logs || []).reduce((s: number, l: any) => s + (l.calories || 0), 0)
+  const totalMeals = (logs || []).length
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -144,7 +145,7 @@ export default function HistoryPage() {
                     {dateLogs.map((log: any) => (
                       <div
                         key={log.id}
-                        className={`flex items-center gap-3 p-4 bg-[var(--card)] rounded-2xl border border-[var(--card-border)] hover:border-emerald-200 dark:hover:border-emerald-800 transition-all`}
+                        className="flex items-center gap-3 p-4 bg-[var(--card)] rounded-2xl border border-[var(--card-border)] hover:border-emerald-200 dark:hover:border-emerald-800 transition-all"
                       >
                         <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl bg-gradient-to-br ${mealColors[log.meal_type] || 'from-gray-100 to-gray-50'} flex-shrink-0`}>
                           {mealEmoji[log.meal_type] || '🍽️'}

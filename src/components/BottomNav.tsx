@@ -1,152 +1,49 @@
+// src/components/BottomNav.tsx
 "use client"
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Home, Scan, Clock, User } from 'lucide-react'
 
-const navItems = [
-  {
-    href: '/dashboard',
-    label: 'Home',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24"
-        fill={active ? 'currentColor' : 'none'}
-        stroke="currentColor" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-        <polyline points="9 22 9 12 15 12 15 22"/>
-      </svg>
-    )
-  },
-  {
-    href: '/scan',
-    label: 'Scan',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24"
-        fill="none" stroke="currentColor" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round">
-        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-        <circle cx="12" cy="13" r="4" fill={active ? 'currentColor' : 'none'}/>
-      </svg>
-    )
-  },
-  {
-    href: '/history',
-    label: 'Meals',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24"
-        fill="none" stroke="currentColor" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <polyline points="12 6 12 12 16 14" strokeWidth={active ? '2.5' : '2'}/>
-      </svg>
-    )
-  },
-  {
-    href: '/profile-setup',
-    label: 'Profile',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24"
-        fill={active ? 'currentColor' : 'none'}
-        stroke="currentColor" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-        <circle cx="12" cy="7" r="4"/>
-      </svg>
-    )
-  },
+const NAV_ITEMS = [
+  { href: '/dashboard', label: 'Home', icon: Home, authRequired: true },
+  { href: '/scan', label: 'Scan', icon: Scan, authRequired: false },
+  { href: '/history', label: 'History', icon: Clock, authRequired: true },
+  { href: '/profile-setup', label: 'Profile', icon: User, authRequired: true },
 ]
 
 export default function BottomNav() {
   const pathname = usePathname()
-  const router = useRouter()
-  const { status } = useSession()
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+  const { data: session } = useSession()
 
-  useEffect(() => setMounted(true), [])
+  // Hide nav on auth pages
+  if (pathname?.startsWith('/auth')) return null
 
-  if (
-    pathname === '/auth/signin' ||
-    pathname === '/' ||
-    status === 'unauthenticated'
-  ) return null
+  const visibleItems = session
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter(item => !item.authRequired)
 
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-50"
-      style={{
-        background: 'var(--card)',
-        borderTop: '1px solid var(--card-border)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        boxShadow: '0 -4px 24px rgba(0,0,0,0.08)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-      }}
-    >
-      <div className="max-w-lg mx-auto flex items-center justify-around px-2 py-1.5">
-
-        {navItems.map(item => {
-          const active = pathname === item.href
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 safe-area-bottom">
+      <div className="flex items-center justify-around max-w-lg mx-auto px-4 py-2">
+        {visibleItems.map(item => {
+          const isActive = pathname === item.href
+          const Icon = item.icon
           return (
-            <button
+            <Link
               key={item.href}
-              onClick={() => router.push(item.href)}
-              className="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all duration-200 relative"
-              style={{
-                color: active ? 'var(--brand)' : 'var(--muted)',
-                background: active
-                  ? 'linear-gradient(135deg, rgba(5,150,105,0.12), rgba(14,165,233,0.08))'
-                  : 'transparent',
-                minWidth: '56px',
-              }}
+              href={item.href}
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors ${
+                isActive
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
             >
-              {active && (
-                <div
-                  className="absolute inset-0 rounded-2xl"
-                  style={{
-                    border: '1px solid rgba(5,150,105,0.2)',
-                  }}
-                />
-              )}
-              {item.icon(active)}
-              <span className="text-xs font-semibold">{item.label}</span>
-            </button>
+              <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+              <span className="text-xs font-medium">{item.label}</span>
+            </Link>
           )
         })}
-
-        {/* Dark mode toggle */}
-        {mounted && (
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all duration-200"
-            style={{ color: 'var(--muted)', minWidth: '56px' }}
-          >
-            {theme === 'dark' ? (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="12" r="5"/>
-                <line x1="12" y1="1" x2="12" y2="3"/>
-                <line x1="12" y1="21" x2="12" y2="23"/>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                <line x1="1" y1="12" x2="3" y2="12"/>
-                <line x1="21" y1="12" x2="23" y2="12"/>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-              </svg>
-            ) : (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-              </svg>
-            )}
-            <span className="text-xs font-semibold">
-              {theme === 'dark' ? 'Light' : 'Dark'}
-            </span>
-          </button>
-        )}
-
       </div>
     </nav>
   )

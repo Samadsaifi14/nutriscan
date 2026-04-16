@@ -5,20 +5,19 @@ declare global {
   }
 }
 
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+const canTrack = () => GA_ID && typeof window !== 'undefined'
 
 export function pageView(url: string): void {
-  if (!GA_MEASUREMENT_ID || typeof window === 'undefined') return
-  window.gtag?.('config', GA_MEASUREMENT_ID, {
-    page_path: url,
-  })
+  if (!canTrack()) return
+  window.gtag?.('config', GA_ID!, { page_path: url })
 }
 
 export function event(
   action: string,
   params?: Record<string, string | number | boolean>
 ): void {
-  if (!GA_MEASUREMENT_ID || typeof window === 'undefined') return
+  if (!canTrack()) return
   window.gtag?.('event', action, params)
 }
 
@@ -34,3 +33,5 @@ export const AnalyticsEvents = {
   SHARE_PRODUCT: 'share_product',
   SCAN_ERROR: 'scan_error',
 } as const
+
+export type AnalyticsEvent = typeof AnalyticsEvents[keyof typeof AnalyticsEvents]

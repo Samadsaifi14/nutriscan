@@ -1,26 +1,30 @@
 "use client"
 import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
 interface FoodLog {
   id: string
   product_name: string
   calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
   meal_type: string
   logged_at: string
   quantity_g: number
 }
 
 interface RecentScansProps {
-  logs: FoodLog[]
-  onDelete: (id: string) => void
+  userId: string
 }
 
 const mealEmoji: Record<string, string> = {
   breakfast: '🌅',
   lunch: '☀️',
   dinner: '🌙',
-  snack: '🍎',
+  snack: '🍿',
 }
 
 const mealColors: Record<string, string> = {
@@ -30,8 +34,30 @@ const mealColors: Record<string, string> = {
   snack: 'bg-green-50 dark:bg-green-900/20',
 }
 
-export function RecentScans({ logs, onDelete }: RecentScansProps) {
+export default function RecentScans({ userId }: RecentScansProps) {
+  const queryClient = useQueryClient()
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const { data: meals, isLoading } = useQuery({
+    queryKey: ['recentMeals', userId],
+    queryFn: async () => {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const { data, error } = await supabase
+        .from('food_logs')
+        .select('id, product_name, calories, protein_g, carbs_g, fat_g, meal_type, logged_at, quantity_g')
+        .eq('user_id', userId)
+        .gte('logged_at', today.toISOString())
+        .order('logged_at', { ascending: false })
+        .limit(10)
+
+      if (error) throw error
+      return (data || []) as FoodLog[]
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2,
+  })
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Remove "${name}" from your meal history?`)) return
@@ -41,29 +67,43 @@ export function RecentScans({ logs, onDelete }: RecentScansProps) {
       const res = await fetch('/api/log/delete', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
+        body: JSON.stringify({ id }),
       })
       const json = await res.json()
       if (json.success) {
-        onDelete(id)
+        queryClient.setQueryData<FoodLog[]>(['recentMeals', userId], old =>
+          (old || []).filter(m => m.id !== id)
+        )
+        queryClient.invalidateQueries({ queryKey: ['weeklyChart', userId] })
         toast.success('Meal removed')
       } else {
         toast.error('Failed to delete. Try again.')
       }
     } catch {
       toast.error('Something went wrong.')
+    } finally {
+      setDeletingId(null)
     }
-    setDeletingId(null)
   }
 
-  if (logs.length === 0) {
+  if (isLoading) {
     return (
-      <div className="bg-[var(--card)] rounded-2xl p-8 border border-[var(--card-border)] text-center">
+      <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <div className="h-24 flex items-center justify-center">
+          <p className="text-xs text-gray-400 animate-pulse">Loading meals...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!meals || meals.length === 0) {
+    return (
+      <div className="rounded-2xl p-8 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-center">
         <div className="text-4xl mb-3">🍽️</div>
-        <p className="text-sm font-medium text-[var(--foreground)] mb-1">
-          No meals logged yet
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          No meals logged today
         </p>
-        <p className="text-xs text-[var(--muted)]">
+        <p className="text-xs text-gray-400">
           Scan a product and log it to see your meals here
         </p>
       </div>
@@ -71,63 +111,59 @@ export function RecentScans({ logs, onDelete }: RecentScansProps) {
   }
 
   return (
-    <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)] shadow-sm">
-
+    <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">
-          🕐 Recent Meals
-        </h3>
-        <span className="text-xs text-[var(--muted)]">
-          {logs.length} meal{logs.length !== 1 ? 's' : ''}
+        <p className="text-sm font-bold text-gray-700 dark:text-gray-300">
+          🕐 Today's Meals
+        </p>
+        <span className="text-xs text-gray-400">
+          {meals.length} meal{meals.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       <div className="flex flex-col gap-2">
-        {logs.map(log => (
+        {meals.map(meal => (
           <div
-            key={log.id}
+            key={meal.id}
             className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
-              deletingId === log.id
+              deletingId === meal.id
                 ? 'opacity-50 bg-red-50 dark:bg-red-900/20'
-                : 'bg-gray-50 dark:bg-slate-800/50'
+                : 'bg-gray-50 dark:bg-gray-800/50'
             }`}
           >
-            {/* Meal type icon */}
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
-              mealColors[log.meal_type] || 'bg-gray-100 dark:bg-slate-700'
+              mealColors[meal.meal_type] || 'bg-gray-100 dark:bg-gray-700'
             }`}>
-              {mealEmoji[log.meal_type] || '🍽️'}
+              {mealEmoji[meal.meal_type] || '🍽️'}
             </div>
 
-            {/* Product info */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[var(--foreground)] truncate">
-                {log.product_name}
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">
+                {meal.product_name}
               </p>
-              <p className="text-xs text-[var(--muted)] mt-0.5">
-                {log.quantity_g}g ·{' '}
-                <span className="capitalize">{log.meal_type}</span> ·{' '}
-                {new Date(log.logged_at).toLocaleDateString('en-IN', {
-                  day: 'numeric', month: 'short'
-                })}
+              <p className="text-xs text-gray-400 mt-0.5">
+                {meal.quantity_g}g · <span className="capitalize">{meal.meal_type}</span>
               </p>
+              <div className="flex gap-2 mt-1">
+                <span className="text-[10px] text-blue-500 font-medium">P {Math.round(meal.protein_g)}g</span>
+                <span className="text-[10px] text-yellow-500 font-medium">C {Math.round(meal.carbs_g)}g</span>
+                <span className="text-[10px] text-red-400 font-medium">F {Math.round(meal.fat_g)}g</span>
+              </div>
             </div>
 
-            {/* Calories */}
             <div className="text-right flex-shrink-0 mr-1">
-              <p className="text-sm font-bold text-green-600 dark:text-green-400">
-                {Math.round(log.calories)}
+              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                {Math.round(meal.calories)}
               </p>
-              <p className="text-xs text-[var(--muted)]">kcal</p>
+              <p className="text-[10px] text-gray-400">kcal</p>
             </div>
 
-            {/* Delete button */}
             <button
-              onClick={() => handleDelete(log.id, log.product_name)}
-              disabled={deletingId === log.id}
+              onClick={() => handleDelete(meal.id, meal.product_name)}
+              disabled={deletingId === meal.id}
               className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 dark:border-red-800 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {deletingId === log.id ? (
+              {deletingId === meal.id ? (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2" className="animate-spin">
                   <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3"/>

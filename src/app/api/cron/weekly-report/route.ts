@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { buildUnsubscribeUrls } from '@/lib/tokens'
 
 export async function GET(req: NextRequest) {
   // Security — only Vercel cron can call this
@@ -76,8 +77,9 @@ export async function GET(req: NextRequest) {
       const firstName = user.name?.split(' ')[0] || 'there'
 
       const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-      const unsubscribeWeeklyUrl = `${baseUrl}/api/unsubscribe?userId=${user.user_id}&type=weekly`
-      const unsubscribeAllUrl = `${baseUrl}/api/unsubscribe?userId=${user.user_id}&type=all`
+
+      // ✅ Token-based unsubscribe URLs (no plain userId in query string)
+      const { weeklyUrl: unsubscribeWeeklyUrl, allUrl: unsubscribeAllUrl } = buildUnsubscribeUrls(user.user_id, baseUrl)
 
       const html = buildWeeklyHTML({
         firstName,

@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { buildUnsubscribeUrls } from '@/lib/tokens'
 
 export async function POST(req: NextRequest) {
   try {
+    // ✅ Only allow internal calls (from our own server during sign-in)
+    const host = req.headers.get('host') || ''
+    const origin = req.headers.get('origin') || ''
+    const referer = req.headers.get('referer') || ''
+    const expectedHost = new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000').host
+
+    const internalSecret = req.headers.get('x-internal-secret')
+    if (internalSecret !== process.env.NEXTAUTH_SECRET) {
+      if (!host.includes(expectedHost) && !referer.includes(expectedHost) && !origin.includes(expectedHost)) {
+        return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+      }
+    }
+
     const { userId, email, name } = await req.json()
 
     if (!userId || !email) {
@@ -11,7 +25,6 @@ export async function POST(req: NextRequest) {
 
     console.log('Welcome email request for:', email)
 
-    // Double check — only send if not already sent
     const { data: profile } = await supabaseAdmin
       .from('user_profiles')
       .select('welcome_email_sent, email_unsubscribed')
@@ -30,8 +43,9 @@ export async function POST(req: NextRequest) {
 
     const firstName = name?.split(' ')[0] || 'there'
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const unsubscribeAllUrl = `${baseUrl}/api/unsubscribe?userId=${userId}&type=all`
-    const unsubscribeWeeklyUrl = `${baseUrl}/api/unsubscribe?userId=${userId}&type=weekly`
+
+    // ✅ Secure signed token URLs instead of raw userId
+    const { weeklyUrl: unsubscribeWeeklyUrl, allUrl: unsubscribeAllUrl } = buildUnsubscribeUrls(userId, baseUrl)
 
     const html = buildWelcomeHTML(firstName, baseUrl, unsubscribeAllUrl, unsubscribeWeeklyUrl)
 
@@ -63,7 +77,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: JSON.stringify(data) }, { status: 500 })
     }
 
-    // Mark as sent — never send again
     await supabaseAdmin
       .from('user_profiles')
       .update({ welcome_email_sent: true })
