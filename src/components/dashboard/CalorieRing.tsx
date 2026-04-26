@@ -3,10 +3,10 @@
 interface CalorieRingProps {
   consumed: number
   goal: number
-  label: string
+  label?: string
 }
 
-export function CalorieRing({ consumed, goal, label }: CalorieRingProps) {
+export function CalorieRing({ consumed, goal, label = "Daily Calories" }: CalorieRingProps) {
   const pct = Math.min((consumed / goal) * 100, 100)
   const r = 52
   const cx = 64
@@ -14,7 +14,6 @@ export function CalorieRing({ consumed, goal, label }: CalorieRingProps) {
   const circ = 2 * Math.PI * r
   const dashOffset = circ * (1 - pct / 100)
   const color = pct < 75 ? '#16a34a' : pct < 100 ? '#d97706' : '#dc2626'
-
   return (
     <div style={{
       background: 'white',
