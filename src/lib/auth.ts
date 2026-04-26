@@ -2,6 +2,12 @@ import { NextAuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
+declare module "next-auth" {
+  interface Session {
+    userId: string
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
