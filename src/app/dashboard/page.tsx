@@ -1,18 +1,27 @@
 "use client"
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Scan, Plus, Sparkles } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { CalorieRing } from '@/components/dashboard/CalorieRing'
 import { WeeklyChart } from '@/components/dashboard/WeeklyChart'
-import RecentScans from '@/components/dashboard/RecentScans'
+import { RecentScans } from '@/components/dashboard/RecentScans'
 import MealStreak from '@/components/dashboard/MealStreak'
 import NutrientAlerts from '@/components/dashboard/NutrientAlerts'
 import LastScanned from '@/components/dashboard/LastScanned'
 import { SkeletonDashboard } from '@/components/Skeleton'
 import { supabase } from '@/lib/supabase'
 import { event, AnalyticsEvents } from '@/lib/analytics'
+
+interface FoodLog {
+  id: string
+  product_name: string
+  calories: number
+  meal_type: string
+  logged_at: string
+  quantity_g: number
+}
 
 interface DashboardData {
   totalCalories: number
@@ -22,6 +31,7 @@ interface DashboardData {
   dailyCalorieGoal: number
   mealCount:     number
   profile:       any
+  logs:          FoodLog[]
 }
 
 export default function DashboardPage() {
@@ -45,9 +55,10 @@ export default function DashboardPage() {
 
       const { data: logs, error: logsError } = await supabase
         .from('food_logs')
-        .select('calories, protein_g, carbs_g, fat_g')
+        .select('id, product_name, calories, meal_type, logged_at, quantity_g, protein_g, carbs_g, fat_g')
         .eq('user_id', userId)
         .gte('logged_at', today.toISOString())
+        .order('logged_at', { ascending: false })
 
       if (logsError) {
         console.error('Failed to load food logs:', logsError)
@@ -71,11 +82,22 @@ export default function DashboardPage() {
         dailyCalorieGoal: profile?.daily_calorie_goal || 2000,
         mealCount:        (logs || []).length,
         profile,
+        logs:             (logs || []) as FoodLog[],
       }
     },
     enabled: !!userId,
     staleTime: 1000 * 60 * 2,
   })
+
+  const [logs, setLogs] = useState<FoodLog[]>([])
+
+  useEffect(() => {
+    if (data?.logs) setLogs(data.logs)
+  }, [data?.logs])
+
+  function handleDelete(id: string) {
+    setLogs(prev => prev.filter(l => l.id !== id))
+  }
 
   useEffect(() => {
     if (userId) {
@@ -156,7 +178,6 @@ export default function DashboardPage() {
                 goal={data?.dailyCalorieGoal ?? 2000}
                 label="Daily Calories"
               />
-              
               <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <MacroPill label="Protein" value={data?.totalProtein ?? 0} unit="g" color="text-blue-500" />
                 <MacroPill label="Carbs"   value={data?.totalCarbs   ?? 0} unit="g" color="text-amber-500" />
