@@ -1,4 +1,3 @@
-@"
 import { NextAuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
@@ -62,4 +61,3 @@ export const authOptions: NextAuthOptions = {
     error: '/auth/signin',
   },
 }
-"@ | Set-Content "src\lib\auth.ts"
