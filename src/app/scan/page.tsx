@@ -551,33 +551,19 @@ export default function ScanPage() {
             <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">❌ {error}</p>
             <div className="flex flex-wrap gap-2 mt-3">
               <button
-                onClick={() => {
-                  setError(null)
-                  setProduct(null)
-                  setAnalysis(null)
-                }}
+                onClick={() => { setError(null); setProduct(null); setAnalysis(null) }}
                 className="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
               >
                 Dismiss
               </button>
               <button
-                onClick={() => {
-                  setError(null)
-                  setProduct(null)
-                  setAnalysis(null)
-                  setShowScanner(true)
-                }}
+                onClick={() => { setError(null); setProduct(null); setAnalysis(null); setShowScanner(true) }}
                 className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white dark:bg-gray-800 text-[var(--foreground)] border border-[var(--card-border)] hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 🔄 Try Again
               </button>
               <button
-                onClick={() => {
-                  setError(null)
-                  setProduct(null)
-                  setAnalysis(null)
-                  setShowPhotoMode(true)
-                }}
+                onClick={() => { setError(null); setProduct(null); setAnalysis(null); setShowPhotoMode(true) }}
                 className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white dark:bg-gray-800 text-[var(--foreground)] border border-[var(--card-border)] hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 📷 Photo Mode
@@ -882,10 +868,8 @@ export default function ScanPage() {
               ))}
             </div>
 
-            {/* ─── OVERVIEW TAB ─── */}
             {activeTab === 'overview' && (
               <div className="p-5 space-y-4">
-
                 {(analysis.diabetic_suitability || analysis.bp_suitability || analysis.child_suitability || analysis.pregnancy_suitability) && (
                   <div>
                     <p className="text-xs font-bold text-[var(--foreground)] mb-2">👤 Suitability</p>
@@ -917,12 +901,8 @@ export default function ScanPage() {
                     style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)' }}>
                     <p className="text-xs font-bold text-[var(--foreground)] mb-3">✅ Safe Consumption</p>
                     <div className="space-y-1.5">
-                      <p className="text-xs text-[var(--foreground)]">
-                        <strong>Amount:</strong> {analysis.safe_consumption.amount}
-                      </p>
-                      <p className="text-xs text-[var(--foreground)]">
-                        <strong>Frequency:</strong> {analysis.safe_consumption.frequency}
-                      </p>
+                      <p className="text-xs text-[var(--foreground)]"><strong>Amount:</strong> {analysis.safe_consumption.amount}</p>
+                      <p className="text-xs text-[var(--foreground)]"><strong>Frequency:</strong> {analysis.safe_consumption.frequency}</p>
                       {analysis.safe_consumption.notes && (
                         <p className="text-xs text-[var(--muted)] pt-1 border-t border-[var(--card-border)]">
                           💡 {analysis.safe_consumption.notes}
@@ -943,7 +923,6 @@ export default function ScanPage() {
                   </div>
                 )}
 
-                {/* Positives */}
                 {analysis.positives?.length > 0 && (
                   <div>
                     <p className="text-xs font-bold text-[var(--foreground)] mb-2">👍 What is good</p>
@@ -959,17 +938,13 @@ export default function ScanPage() {
                   </div>
                 )}
 
-                {/* ─── LONG-TERM RISKS ─── */}
                 {analysis.long_term_risks?.length > 0 && (
                   <div>
                     <p className="text-xs font-bold text-[var(--foreground)] mb-2">⏳ Long-Term Risks</p>
                     <div className="space-y-1">
                       {analysis.long_term_risks.map((risk: string, i: number) => (
-                        <div
-                          key={i}
-                          className="text-xs text-[var(--foreground)] px-3 py-2 rounded-lg flex items-start gap-2"
-                          style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.1)' }}
-                        >
+                        <div key={i} className="text-xs text-[var(--foreground)] px-3 py-2 rounded-lg flex items-start gap-2"
+                          style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.1)' }}>
                           <span className="text-red-400 flex-shrink-0 mt-0.5">⚠</span>
                           {risk}
                         </div>
@@ -997,8 +972,7 @@ export default function ScanPage() {
                         return (
                           <div key={item.key} className="flex items-start gap-2 py-1.5 border-b border-[var(--card-border)] last:border-0">
                             <span className="text-xs flex-shrink-0 w-14 font-bold text-[var(--muted)]">{item.label}</span>
-                            <span className="text-xs"
-                              style={{ color: isGood ? '#059669' : isBad ? '#dc2626' : 'var(--foreground)' }}>
+                            <span className="text-xs" style={{ color: isGood ? '#059669' : isBad ? '#dc2626' : 'var(--foreground)' }}>
                               {val}
                             </span>
                           </div>
@@ -1015,20 +989,16 @@ export default function ScanPage() {
               </div>
             )}
 
-            {/* ─── INGREDIENTS TAB ─── */}
             {activeTab === 'ingredients' && (
               <div className="p-5 space-y-4">
-
                 {analysis.harmful_ingredients?.filter((h: any) => h.found_in_product)?.length > 0 ? (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <p className="text-xs font-bold text-[var(--foreground)]">🚨 Harmful Ingredients Found</p>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white"
-                        style={{ background: '#dc2626' }}>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: '#dc2626' }}>
                         {analysis.harmful_ingredients.filter((h: any) => h.found_in_product).length}
                       </span>
                     </div>
-
                     <div className="space-y-3">
                       {analysis.harmful_ingredients
                         .filter((h: any) => h.found_in_product)
@@ -1037,52 +1007,35 @@ export default function ScanPage() {
                           return (order[a.severity as keyof typeof order] || 3) - (order[b.severity as keyof typeof order] || 3)
                         })
                         .map((h: any, i: number) => (
-                          <div key={i}
-                            className="rounded-2xl overflow-hidden border"
-                            style={{
-                              borderColor: h.severity === 'high' ? 'rgba(220,38,38,0.3)' : h.severity === 'medium' ? 'rgba(217,119,6,0.3)' : 'rgba(156,163,175,0.3)',
-                            }}>
-
+                          <div key={i} className="rounded-2xl overflow-hidden border"
+                            style={{ borderColor: h.severity === 'high' ? 'rgba(220,38,38,0.3)' : h.severity === 'medium' ? 'rgba(217,119,6,0.3)' : 'rgba(156,163,175,0.3)' }}>
                             <div className="px-4 py-3 flex items-center justify-between"
-                              style={{
-                                background: h.severity === 'high' ? 'rgba(220,38,38,0.08)' : h.severity === 'medium' ? 'rgba(217,119,6,0.08)' : 'rgba(156,163,175,0.06)',
-                              }}>
+                              style={{ background: h.severity === 'high' ? 'rgba(220,38,38,0.08)' : h.severity === 'medium' ? 'rgba(217,119,6,0.08)' : 'rgba(156,163,175,0.06)' }}>
                               <div className="flex items-center gap-2">
-                                <span className="text-base">
-                                  {h.severity === 'high' ? '🔴' : h.severity === 'medium' ? '🟡' : '🟢'}
-                                </span>
+                                <span className="text-base">{h.severity === 'high' ? '🔴' : h.severity === 'medium' ? '🟡' : '🟢'}</span>
                                 <div>
                                   <p className="text-sm font-black text-[var(--foreground)]">{h.name}</p>
                                   {h.also_known_as?.length > 0 && (
-                                    <p className="text-xs text-[var(--muted)]">
-                                      Also known as: {h.also_known_as.slice(0, 2).join(', ')}
-                                    </p>
+                                    <p className="text-xs text-[var(--muted)]">Also known as: {h.also_known_as.slice(0, 2).join(', ')}</p>
                                   )}
                                 </div>
                               </div>
                               <span className="px-2 py-0.5 rounded-full text-xs font-bold capitalize text-white"
-                                style={{
-                                  background: h.severity === 'high' ? '#dc2626' : h.severity === 'medium' ? '#d97706' : '#6b7280'
-                                }}>
+                                style={{ background: h.severity === 'high' ? '#dc2626' : h.severity === 'medium' ? '#d97706' : '#6b7280' }}>
                                 {h.severity} risk
                               </span>
                             </div>
-
                             <div className="px-4 py-3 border-b border-[var(--card-border)]">
                               <p className="text-xs text-[var(--foreground)] leading-relaxed">{h.concern}</p>
                             </div>
-
                             {h.amount_in_this_product && (
                               <div className="px-4 py-2 border-b border-[var(--card-border)] bg-gray-50 dark:bg-slate-800/50">
                                 <p className="text-xs text-[var(--muted)]">
                                   📊 <span className="font-bold text-[var(--foreground)]">{h.amount_in_this_product}</span>
-                                  {h.percentage_of_daily_limit && (
-                                    <span className="ml-1">· {h.percentage_of_daily_limit}</span>
-                                  )}
+                                  {h.percentage_of_daily_limit && <span className="ml-1">· {h.percentage_of_daily_limit}</span>}
                                 </p>
                               </div>
                             )}
-
                             <div className="px-4 py-3 border-b border-[var(--card-border)]">
                               <div className="space-y-2">
                                 {h.global_safe_limit && (
@@ -1093,28 +1046,19 @@ export default function ScanPage() {
                                 )}
                                 {h.personalized_safe_limit && (
                                   <div className="pt-2 border-t border-[var(--card-border)]">
-                                    <p className="text-xs font-bold mb-0.5" style={{ color: '#059669' }}>
-                                      ✨ Your personalised limit
-                                    </p>
+                                    <p className="text-xs font-bold mb-0.5" style={{ color: '#059669' }}>✨ Your personalised limit</p>
                                     <p className="text-xs text-[var(--foreground)]">{h.personalized_safe_limit}</p>
                                   </div>
                                 )}
                               </div>
                             </div>
-
                             {h.scientific_source && (
-                              <div className="px-4 py-2.5"
-                                style={{ background: 'rgba(14,165,233,0.04)' }}>
+                              <div className="px-4 py-2.5" style={{ background: 'rgba(14,165,233,0.04)' }}>
                                 <p className="text-xs text-[var(--muted)] mb-1">📚 Scientific Source</p>
                                 <p className="text-xs font-bold text-[var(--foreground)] mb-1">{h.scientific_source}</p>
                                 {h.source_url && (
-                                  <a
-                                    href={h.source_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs underline break-all"
-                                    style={{ color: '#0ea5e9' }}
-                                  >
+                                  <a href={h.source_url} target="_blank" rel="noopener noreferrer"
+                                    className="text-xs underline break-all" style={{ color: '#0ea5e9' }}>
                                     {h.source_url}
                                   </a>
                                 )}
@@ -1127,12 +1071,8 @@ export default function ScanPage() {
                 ) : (
                   <div className="text-center py-8">
                     <div className="text-4xl mb-3">✅</div>
-                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">
-                      No harmful ingredients detected
-                    </p>
-                    <p className="text-xs text-[var(--muted)]">
-                      This product does not contain any of the 20+ harmful substances we screen for
-                    </p>
+                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">No harmful ingredients detected</p>
+                    <p className="text-xs text-[var(--muted)]">This product does not contain any of the 20+ harmful substances we screen for</p>
                   </div>
                 )}
 
@@ -1146,9 +1086,7 @@ export default function ScanPage() {
                             background: w.severity === 'high' ? 'rgba(220,38,38,0.05)' : w.severity === 'medium' ? 'rgba(217,119,6,0.05)' : 'rgba(0,0,0,0.03)',
                             borderColor: w.severity === 'high' ? '#dc2626' : w.severity === 'medium' ? '#d97706' : '#9ca3af',
                           }}>
-                          <span className="text-sm flex-shrink-0">
-                            {w.severity === 'high' ? '🔴' : w.severity === 'medium' ? '🟡' : '🟢'}
-                          </span>
+                          <span className="text-sm flex-shrink-0">{w.severity === 'high' ? '🔴' : w.severity === 'medium' ? '🟡' : '🟢'}</span>
                           <div>
                             <p className="text-xs font-bold text-[var(--foreground)]">{w.ingredient}</p>
                             <p className="text-xs text-[var(--muted)]">{w.concern}</p>
@@ -1166,15 +1104,11 @@ export default function ScanPage() {
               </div>
             )}
 
-            {/* ─── ALTERNATIVES TAB ─── */}
             {activeTab === 'alternatives' && (
               <div className="p-5 space-y-4">
                 <div>
                   <p className="text-xs font-bold text-[var(--foreground)] mb-1">🥗 Healthier Alternatives</p>
-                  <p className="text-xs text-[var(--muted)] mb-3">
-                    Specific Indian alternatives that are better for your health
-                  </p>
-
+                  <p className="text-xs text-[var(--muted)] mb-3">Specific Indian alternatives that are better for your health</p>
                   {Array.isArray(analysis.healthier_alternatives) && analysis.healthier_alternatives.length > 0 ? (
                     <div className="space-y-3">
                       {analysis.healthier_alternatives.map((alt: any, i: number) => {
@@ -1183,7 +1117,6 @@ export default function ScanPage() {
                         const reason = isObject ? alt.reason : null
                         const availability = isObject ? alt.availability : null
                         const type = isObject ? alt.type : null
-
                         const typeColors: Record<string, string> = {
                           branded: 'rgba(139,92,246,0.1)',
                           homemade: 'rgba(5,150,105,0.1)',
@@ -1194,10 +1127,8 @@ export default function ScanPage() {
                           homemade: '🏠 Homemade',
                           whole_food: '🌾 Whole food',
                         }
-
                         return (
-                          <div key={i}
-                            className="p-4 rounded-2xl border border-[var(--card-border)]"
+                          <div key={i} className="p-4 rounded-2xl border border-[var(--card-border)]"
                             style={{ background: 'rgba(5,150,105,0.03)' }}>
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <div className="flex items-center gap-2">
@@ -1209,17 +1140,12 @@ export default function ScanPage() {
                               </div>
                               {type && (
                                 <span className="px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0"
-                                  style={{
-                                    background: typeColors[type] || 'rgba(0,0,0,0.06)',
-                                    color: 'var(--foreground)',
-                                  }}>
+                                  style={{ background: typeColors[type] || 'rgba(0,0,0,0.06)', color: 'var(--foreground)' }}>
                                   {typeLabels[type] || type}
                                 </span>
                               )}
                             </div>
-                            {reason && (
-                              <p className="text-xs text-[var(--muted)] leading-relaxed ml-10">{reason}</p>
-                            )}
+                            {reason && <p className="text-xs text-[var(--muted)] leading-relaxed ml-10">{reason}</p>}
                             {availability && (
                               <p className="text-xs ml-10 mt-1" style={{ color: '#059669' }}>
                                 📍 {availability.replace(/_/g, ' ')}
@@ -1239,9 +1165,7 @@ export default function ScanPage() {
                 {analysis.health_rating !== 'healthy' && (
                   <div className="p-4 rounded-2xl"
                     style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)' }}>
-                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-2">
-                      💚 Why switch?
-                    </p>
+                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-2">💚 Why switch?</p>
                     <p className="text-xs text-[var(--muted)] leading-relaxed">
                       Switching to healthier alternatives even 2-3 times a week can significantly reduce your
                       intake of harmful additives and improve your overall nutrition. Small changes add up over time.
@@ -1254,21 +1178,21 @@ export default function ScanPage() {
           </div>
         )}
 
+        {/* ── DEBUG PANEL ── */}
+        {debugLog.length > 0 && (
+          <details className="mt-6 p-3 rounded-xl bg-gray-900 text-green-400 text-xs font-mono">
+            <summary className="cursor-pointer font-bold text-green-300 mb-2 select-none">
+              🔧 Debug Log ({debugLog.length} entries)
+            </summary>
+            <div className="space-y-0.5">
+              {debugLog.map((line, i) => (
+                <div key={i} className="break-all">{line}</div>
+              ))}
+            </div>
+          </details>
+        )}
+
       </div>
-
-      {showScanner && (
-        <BarcodeScanner
-          onDetected={handleBarcode}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
-
-      {showPhotoMode && (
-        <ProductPhotoCapture
-          onCapture={handleProductPhoto}
-          onClose={() => setShowPhotoMode(false)}
-        />
-      )}
     </div>
   )
 }
@@ -1405,9 +1329,7 @@ function ProductPhotoCapture({
         {!cameraStarted ? (
           <div className="p-6">
             <div className="space-y-2 mb-5">
-              <p className="text-sm font-bold text-[var(--foreground)] mb-3">
-                Gemini AI will read and extract:
-              </p>
+              <p className="text-sm font-bold text-[var(--foreground)] mb-3">Gemini AI will read and extract:</p>
               {[
                 '📦 Product name and brand',
                 '🔢 Barcode number',
@@ -1424,20 +1346,13 @@ function ProductPhotoCapture({
                 </div>
               ))}
             </div>
-
             <div className="p-3 rounded-xl mb-5 text-xs leading-relaxed"
               style={{ background: 'rgba(5,150,105,0.06)', color: '#059669', border: '1px solid rgba(5,150,105,0.15)' }}>
               💡 <strong>Tip:</strong> Photograph the back or side where the nutrition table and ingredients are printed. Good lighting is important!
             </div>
-
-            <button
-              onClick={startCamera}
+            <button onClick={startCamera}
               className="w-full py-4 rounded-2xl text-white text-sm font-bold"
-              style={{
-                background: 'linear-gradient(135deg, #059669, #0ea5e9)',
-                boxShadow: '0 8px 24px rgba(5,150,105,0.3)',
-              }}
-            >
+              style={{ background: 'linear-gradient(135deg, #059669, #0ea5e9)', boxShadow: '0 8px 24px rgba(5,150,105,0.3)' }}>
               📷 Open Camera
             </button>
           </div>
@@ -1445,13 +1360,7 @@ function ProductPhotoCapture({
           <div>
             <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
               <video
-                ref={el => {
-                  if (el && stream) {
-                    el.srcObject = stream
-                    el.play()
-                    setVideoEl(el)
-                  }
-                }}
+                ref={el => { if (el && stream) { el.srcObject = stream; el.play(); setVideoEl(el) } }}
                 className="w-full h-full object-cover"
                 muted playsInline
               />
@@ -1467,18 +1376,14 @@ function ProductPhotoCapture({
                 </span>
               </div>
             </div>
-
             <div className="p-4">
-              <button
-                onClick={handleCapture}
-                disabled={capturing}
+              <button onClick={handleCapture} disabled={capturing}
                 className="w-full py-4 rounded-2xl text-white text-base font-bold transition-all"
                 style={{
                   background: capturing ? '#9ca3af' : 'linear-gradient(135deg, #059669, #0ea5e9)',
                   boxShadow: capturing ? 'none' : '0 0 0 4px rgba(5,150,105,0.2), 0 8px 24px rgba(5,150,105,0.4)',
                   cursor: capturing ? 'not-allowed' : 'pointer',
-                }}
-              >
+                }}>
                 {capturing ? '⏳ Processing...' : '📸 Capture Product'}
               </button>
               <p className="text-xs text-center text-[var(--muted)] mt-2">
@@ -1486,20 +1391,6 @@ function ProductPhotoCapture({
               </p>
             </div>
           </div>
-        )}
-
-        {/* ── DEBUG PANEL (shows scan/analysis flow in real-time) ── */}
-        {debugLog.length > 0 && (
-          <details className="mt-6 p-3 rounded-xl bg-gray-900 text-green-400 text-xs font-mono">
-            <summary className="cursor-pointer font-bold text-green-300 mb-2 select-none">
-              🔧 Debug Log ({debugLog.length} entries)
-            </summary>
-            <div className="space-y-0.5">
-              {debugLog.map((line, i) => (
-                <div key={i} className="break-all">{line}</div>
-              ))}
-            </div>
-          </details>
         )}
       </div>
     </div>
