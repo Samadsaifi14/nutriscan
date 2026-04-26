@@ -1,6 +1,18 @@
 "use client"
-import { useState } from 'react'
-import toast from 'react-hot-toast'
+import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { Scan, Plus, Sparkles } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { CalorieRing } from '@/components/dashboard/CalorieRing'
+import { WeeklyChart } from '@/components/dashboard/WeeklyChart'
+import { RecentScans } from '@/components/dashboard/RecentScans'
+import MealStreak from '@/components/dashboard/MealStreak'
+import NutrientAlerts from '@/components/dashboard/NutrientAlerts'
+import LastScanned from '@/components/dashboard/LastScanned'
+import { SkeletonDashboard } from '@/components/Skeleton'
+import { supabase } from '@/lib/supabase'
+import { event, AnalyticsEvents } from '@/lib/analytics'
 
 interface FoodLog {
   id: string
@@ -11,140 +23,253 @@ interface FoodLog {
   quantity_g: number
 }
 
-interface RecentScansProps {
-  logs: FoodLog[]
-  onDelete: (id: string) => void
+interface DashboardData {
+  totalCalories: number
+  totalProtein:  number
+  totalCarbs:    number
+  totalFat:      number
+  dailyCalorieGoal: number
+  mealCount:     number
+  profile:       any
+  logs:          FoodLog[]
 }
 
-const mealEmoji: Record<string, string> = {
-  breakfast: '🌅',
-  lunch: '☀️',
-  dinner: '🌙',
-  snack: '🍎',
-}
+export default function DashboardPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
 
-const mealColors: Record<string, string> = {
-  breakfast: 'bg-orange-50 dark:bg-orange-900/20',
-  lunch: 'bg-yellow-50 dark:bg-yellow-900/20',
-  dinner: 'bg-blue-50 dark:bg-blue-900/20',
-  snack: 'bg-green-50 dark:bg-green-900/20',
-}
+  useEffect(() => {
+    if (status === 'unauthenticated') router.push('/auth/signin')
+  }, [status, router])
 
-export function RecentScans({ logs, onDelete }: RecentScansProps) {
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const userId = (session as any)?.userId
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Remove "${name}" from your meal history?`)) return
+  const { data, isLoading, refetch } = useQuery<DashboardData>({
+    queryKey: ['dashboard', userId],
+    queryFn: async () => {
+      const profileRes = await fetch('/api/profile')
+      const profile = profileRes.ok ? (await profileRes.json()).data : null
 
-    setDeletingId(id)
-    try {
-      const res = await fetch('/api/log/delete', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      })
-      const json = await res.json()
-      if (json.success) {
-        onDelete(id)
-        toast.success('Meal removed')
-      } else {
-        toast.error('Failed to delete. Try again.')
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const { data: logs, error: logsError } = await supabase
+        .from('food_logs')
+        .select('id, product_name, calories, meal_type, logged_at, quantity_g, protein_g, carbs_g, fat_g')
+        .eq('user_id', userId)
+        .gte('logged_at', today.toISOString())
+        .order('logged_at', { ascending: false })
+
+      if (logsError) {
+        console.error('Failed to load food logs:', logsError)
       }
-    } catch {
-      toast.error('Something went wrong.')
-    }
-    setDeletingId(null)
+
+      const totals = (logs || []).reduce(
+        (acc: any, l: any) => ({
+          calories: acc.calories + (l.calories   || 0),
+          protein:  acc.protein  + (l.protein_g  || 0),
+          carbs:    acc.carbs    + (l.carbs_g    || 0),
+          fat:      acc.fat      + (l.fat_g      || 0),
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      )
+
+      return {
+        totalCalories:    Math.round(totals.calories),
+        totalProtein:     Math.round(totals.protein),
+        totalCarbs:       Math.round(totals.carbs),
+        totalFat:         Math.round(totals.fat),
+        dailyCalorieGoal: profile?.daily_calorie_goal || 2000,
+        mealCount:        (logs || []).length,
+        profile,
+        logs:             (logs || []) as FoodLog[],
+      }
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2,
+  })
+
+  const [logs, setLogs] = useState<FoodLog[]>([])
+
+  useEffect(() => {
+    if (data?.logs) setLogs(data.logs)
+  }, [data?.logs])
+
+  function handleDelete(id: string) {
+    setLogs(prev => prev.filter(l => l.id !== id))
   }
 
-  if (logs.length === 0) {
-    return (
-      <div className="bg-[var(--card)] rounded-2xl p-8 border border-[var(--card-border)] text-center">
-        <div className="text-4xl mb-3">🍽️</div>
-        <p className="text-sm font-medium text-[var(--foreground)] mb-1">
-          No meals logged yet
-        </p>
-        <p className="text-xs text-[var(--muted)]">
-          Scan a product and log it to see your meals here
-        </p>
-      </div>
-    )
-  }
+  useEffect(() => {
+    if (userId) {
+      event(AnalyticsEvents.VIEW_ANALYSIS, {
+        page: 'dashboard',
+        user_id: userId,
+      })
+    }
+  }, [userId])
+
+  if (status === 'loading' || isLoading) return <SkeletonDashboard />
+
+  const isNewUser = !data?.profile?.profile_completed
+  const hasNoLogs = (data?.mealCount ?? 0) === 0
+  const userName  = session?.user?.name?.split(' ')[0] || 'there'
 
   return (
-    <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)] shadow-sm">
+    <div className="min-h-screen bg-[var(--background)]">
 
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">
-          🕐 Recent Meals
-        </h3>
-        <span className="text-xs text-[var(--muted)]">
-          {logs.length} meal{logs.length !== 1 ? 's' : ''}
-        </span>
+      {/* ── Gradient Header ──────────────────────────────────── */}
+      <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 px-4 pt-14 pb-20 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 0%, transparent 50%), radial-gradient(circle at 20% 80%, white 0%, transparent 50%)' }} />
+        <div className="relative flex items-start justify-between">
+          <div>
+            <p className="text-emerald-100 text-sm font-medium">
+              {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+            <h1 className="text-2xl font-black text-white mt-0.5">
+              {isNewUser ? `Welcome, ${userName}! 👋` : `Hello, ${userName} 👋`}
+            </h1>
+            {isNewUser && (
+              <p className="text-emerald-100 text-sm mt-1">Let's set up your health profile</p>
+            )}
+          </div>
+          <button
+            onClick={() => refetch()}
+            title="Refresh data"
+            className="mt-1 p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
+            aria-label="Refresh dashboard"
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        {logs.map(log => (
-          <div
-            key={log.id}
-            className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
-              deletingId === log.id
-                ? 'opacity-50 bg-red-50 dark:bg-red-900/20'
-                : 'bg-gray-50 dark:bg-slate-800/50'
-            }`}
-          >
-            {/* Meal type icon */}
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
-              mealColors[log.meal_type] || 'bg-gray-100 dark:bg-slate-700'
-            }`}>
-              {mealEmoji[log.meal_type] || '🍽️'}
-            </div>
+      <div className="px-4 -mt-12 pb-8 space-y-4">
 
-            {/* Product info */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[var(--foreground)] truncate">
-                {log.product_name}
-              </p>
-              <p className="text-xs text-[var(--muted)] mt-0.5">
-                {log.quantity_g}g ·{' '}
-                <span className="capitalize">{log.meal_type}</span> ·{' '}
-                {new Date(log.logged_at).toLocaleDateString('en-IN', {
-                  day: 'numeric', month: 'short'
-                })}
+        {/* ── Profile Setup CTA ────────────────────────────────── */}
+        {isNewUser && (
+          <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800 shadow-lg
+            flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-6 h-6 text-emerald-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Complete your profile</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                Get personalised health scores and calorie goals
               </p>
             </div>
-
-            {/* Calories */}
-            <div className="text-right flex-shrink-0 mr-1">
-              <p className="text-sm font-bold text-green-600 dark:text-green-400">
-                {Math.round(log.calories)}
-              </p>
-              <p className="text-xs text-[var(--muted)]">kcal</p>
-            </div>
-
-            {/* Delete button */}
             <button
-              onClick={() => handleDelete(log.id, log.product_name)}
-              disabled={deletingId === log.id}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 dark:border-red-800 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {deletingId === log.id ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2" className="animate-spin">
-                  <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3"/>
-                  <path d="M21 12a9 9 0 00-9-9"/>
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <polyline points="3 6 5 6 21 6"/>
-                  <path d="M19 6l-1 14H6L5 6"/>
-                  <path d="M10 11v6M14 11v6"/>
-                  <path d="M9 6V4h6v2"/>
-                </svg>
-              )}
+              onClick={() => router.push('/profile-setup')}
+              className="flex-shrink-0 px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors">
+              Set Up
             </button>
           </div>
+        )}
+
+        {/* ── Calorie Ring ─────────────────────────────────────── */}
+        <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+          {hasNoLogs ? (
+            <EmptyCalorieState onScan={() => router.push('/scan')} />
+          ) : (
+            <>
+              <CalorieRing
+                consumed={data?.totalCalories ?? 0}
+                goal={data?.dailyCalorieGoal ?? 2000}
+                label="Daily Calories"
+              />
+              <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <MacroPill label="Protein" value={data?.totalProtein ?? 0} unit="g" color="text-blue-500" />
+                <MacroPill label="Carbs"   value={data?.totalCarbs   ?? 0} unit="g" color="text-amber-500" />
+                <MacroPill label="Fat"     value={data?.totalFat     ?? 0} unit="g" color="text-rose-500" />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Meal Streak ──────────────────────────────────────── */}
+        <MealStreak />
+
+        {/* ── Last Scanned Shortcut ────────────────────────────── */}
+        <LastScanned />
+
+        {/* ── Nutrient Alerts (only if user has logs) ──────────── */}
+        {!hasNoLogs && <NutrientAlerts />}
+
+        {/* ── Weekly Chart ─────────────────────────────────────── */}
+        {hasNoLogs ? (
+          <EmptyWeeklyState />
+        ) : (
+          <WeeklyChart userId={userId} />
+        )}
+
+        {/* ── Recent Meals ─────────────────────────────────────── */}
+        {hasNoLogs ? (
+          <EmptyMealsState onScan={() => router.push('/scan')} />
+        ) : (
+          <RecentScans logs={logs} onDelete={handleDelete} />
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+function MacroPill({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
+  return (
+    <div className="text-center">
+      <p className={`text-lg font-black tabular-nums ${color}`}>
+        {value}<span className="text-xs font-medium">{unit}</span>
+      </p>
+      <p className="text-xs text-gray-400 dark:text-gray-500">{label}</p>
+    </div>
+  )
+}
+
+function EmptyCalorieState({ onScan }: { onScan: () => void }) {
+  return (
+    <div className="flex flex-col items-center py-6 text-center">
+      <div className="w-20 h-20 rounded-full border-4 border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center mb-4">
+        <Plus className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+      </div>
+      <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">No meals logged today</p>
+      <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Scan a product to start tracking</p>
+      <button
+        onClick={onScan}
+        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-colors">
+        <Scan className="w-4 h-4" /> Scan a Product
+      </button>
+    </div>
+  )
+}
+
+function EmptyWeeklyState() {
+  return (
+    <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+      <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Weekly Overview</p>
+      <div className="flex items-end justify-between gap-1 h-24 opacity-30">
+        {[42, 28, 55, 35, 62, 20, 48].map((h, i) => (
+          <div key={i} className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-t-md" style={{ height: `${h}%` }} />
         ))}
+      </div>
+      <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-3">Log meals to see your weekly trend</p>
+    </div>
+  )
+}
+
+function EmptyMealsState({ onScan }: { onScan: () => void }) {
+  return (
+    <div className="rounded-2xl p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+      <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Today's Meals</p>
+      <div className="flex flex-col items-center py-8 text-center">
+        <p className="text-2xl mb-3">🥗</p>
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Your plate is empty</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Scan a product and log it to see it here</p>
+        <button
+          onClick={onScan}
+          className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+          <Scan className="w-4 h-4" /> Start scanning
+        </button>
       </div>
     </div>
   )
