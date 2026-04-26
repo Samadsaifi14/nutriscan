@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { callGemini, GeminiError } from '@/lib/gemini'
@@ -491,3 +491,4 @@ CRITICAL RULES — VIOLATING THESE IS NOT ACCEPTABLE:
 10. healthier_alternatives MUST be specific Indian foods or brands, never generic
 11. personalized_safe_limit MUST account for the user's actual age and BMI if provided`
 }
+

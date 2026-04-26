@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { callGemini, GeminiError } from '@/lib/gemini'
 
 const RequestSchema = z.object({
@@ -188,3 +188,4 @@ Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
     )
   }
 }
+

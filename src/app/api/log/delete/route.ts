@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function DELETE(req: NextRequest) {
@@ -41,3 +41,4 @@ export async function DELETE(req: NextRequest) {
   console.log('Log deleted:', id)
   return NextResponse.json({ success: true })
 }
+

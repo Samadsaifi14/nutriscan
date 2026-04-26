@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { callGemini, GeminiError } from '@/lib/gemini'
 
 export async function POST(req: NextRequest) {
@@ -147,3 +147,4 @@ IMPORTANT: Extract whatever is visible. Even if only partial information is avai
     )
   }
 }
+
