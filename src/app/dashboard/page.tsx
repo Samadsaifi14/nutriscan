@@ -186,7 +186,7 @@ export default function DashboardPage() {
         {hasNoLogs ? (
           <EmptyMealsState onScan={() => router.push('/scan')} />
         ) : (
-          <RecentScans userId={userId} />
+          <RecentScans logs={logs} onDelete={handleDelete} />
         )}
 
       </div>
