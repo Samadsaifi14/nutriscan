@@ -58,6 +58,7 @@ export default function HistoryPage() {
   }, {})
 
   const totalCalories = (logs || []).reduce((s: number, l: any) => s + (l.calories || 0), 0)
+const totalMeals = (logs || []).length
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
