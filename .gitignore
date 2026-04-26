@@ -36,3 +36,6 @@ yarn-error.log*
 next-env.d.ts
 *.csv.gz
 en.openfoodfacts.org.products.csv.gz
+off_full.csv
+
+off_full.csv
