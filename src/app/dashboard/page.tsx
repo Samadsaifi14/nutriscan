@@ -251,3 +251,4 @@ function EmptyMealsState({ onScan }: { onScan: () => void }) {
     </div>
   )
 }
+
