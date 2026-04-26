@@ -152,9 +152,10 @@ export default function DashboardPage() {
           ) : (
             <>
               <CalorieRing
-                consumed={data?.totalCalories ?? 0}
-                goal={data?.dailyCalorieGoal ?? 2000}
+            consumed={data?.totalCalories ?? 0}
+            goal={data?.dailyCalorieGoal ?? 2000}
               />
+              
               <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <MacroPill label="Protein" value={data?.totalProtein ?? 0} unit="g" color="text-blue-500" />
                 <MacroPill label="Carbs"   value={data?.totalCarbs   ?? 0} unit="g" color="text-amber-500" />
