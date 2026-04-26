@@ -1,0 +1,256 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "source": "ICMR-NIN Nutrient Requirements for Indians 2020 (Recommended Dietary Allowances and Estimated Average Requirements)",
+    "publication": "ICMR-NIN Expert Group Report 2020, National Institute of Nutrition, Hyderabad",
+    "last_updated": "2024-01",
+    "note": "Use these values instead of generic WHO/US RDA for Indian users. Segment by user profile: age + gender + activity_level. Default to 'sedentary' if activity unknown."
+  },
+
+  "activity_levels": {
+    "sedentary": "Mostly sitting, light walking only. Office work, homemaker (minimal physical work).",
+    "moderate": "Walking 3-5km/day, light manual work, most urban Indians who exercise 3x/week.",
+    "heavy": "Manual labour, construction, farming, intense daily exercise (athletes)."
+  },
+
+  "adults": {
+    "male": {
+      "19_to_29": {
+        "sedentary":  { "calories": 2110, "protein_g": 54, "fat_g": 70, "carbs_g": 325, "fiber_g": 40 },
+        "moderate":   { "calories": 2470, "protein_g": 54, "fat_g": 82, "carbs_g": 380, "fiber_g": 40 },
+        "heavy":      { "calories": 2980, "protein_g": 54, "fat_g": 99, "carbs_g": 460, "fiber_g": 40 }
+      },
+      "30_to_59": {
+        "sedentary":  { "calories": 2080, "protein_g": 54, "fat_g": 69, "carbs_g": 320, "fiber_g": 40 },
+        "moderate":   { "calories": 2430, "protein_g": 54, "fat_g": 81, "carbs_g": 375, "fiber_g": 40 },
+        "heavy":      { "calories": 2940, "protein_g": 54, "fat_g": 98, "carbs_g": 453, "fiber_g": 40 }
+      },
+      "60_to_69": {
+        "sedentary":  { "calories": 1900, "protein_g": 54, "fat_g": 63, "carbs_g": 293, "fiber_g": 35 },
+        "moderate":   { "calories": 2150, "protein_g": 54, "fat_g": 72, "carbs_g": 331, "fiber_g": 35 }
+      },
+      "70_plus": {
+        "sedentary":  { "calories": 1750, "protein_g": 54, "fat_g": 58, "carbs_g": 270, "fiber_g": 30 }
+      }
+    },
+    "female": {
+      "19_to_29": {
+        "sedentary":  { "calories": 1660, "protein_g": 46, "fat_g": 55, "carbs_g": 256, "fiber_g": 35 },
+        "moderate":   { "calories": 1970, "protein_g": 46, "fat_g": 66, "carbs_g": 303, "fiber_g": 35 },
+        "heavy":      { "calories": 2340, "protein_g": 46, "fat_g": 78, "carbs_g": 361, "fiber_g": 35 }
+      },
+      "30_to_59": {
+        "sedentary":  { "calories": 1640, "protein_g": 46, "fat_g": 55, "carbs_g": 253, "fiber_g": 35 },
+        "moderate":   { "calories": 1950, "protein_g": 46, "fat_g": 65, "carbs_g": 300, "fiber_g": 35 },
+        "heavy":      { "calories": 2310, "protein_g": 46, "fat_g": 77, "carbs_g": 356, "fiber_g": 35 }
+      },
+      "60_to_69": {
+        "sedentary":  { "calories": 1490, "protein_g": 46, "fat_g": 50, "carbs_g": 230, "fiber_g": 30 },
+        "moderate":   { "calories": 1700, "protein_g": 46, "fat_g": 57, "carbs_g": 262, "fiber_g": 30 }
+      },
+      "70_plus": {
+        "sedentary":  { "calories": 1380, "protein_g": 46, "fat_g": 46, "carbs_g": 213, "fiber_g": 25 }
+      }
+    }
+  },
+
+  "special_states": {
+    "pregnancy": {
+      "trimester_1": {
+        "extra_calories": 350,
+        "protein_g": 65,
+        "calcium_mg": 1200,
+        "iron_mg": 35,
+        "folate_mcg": 500,
+        "iodine_mcg": 200,
+        "note": "Add extra_calories to base female RDA. Folate critical in T1."
+      },
+      "trimester_2": {
+        "extra_calories": 350,
+        "protein_g": 65,
+        "calcium_mg": 1200,
+        "iron_mg": 35,
+        "folate_mcg": 500,
+        "iodine_mcg": 200
+      },
+      "trimester_3": {
+        "extra_calories": 350,
+        "protein_g": 65,
+        "calcium_mg": 1200,
+        "iron_mg": 35,
+        "folate_mcg": 500,
+        "iodine_mcg": 200
+      }
+    },
+    "lactation": {
+      "0_to_6_months": {
+        "extra_calories": 600,
+        "protein_g": 75,
+        "calcium_mg": 1200,
+        "iron_mg": 21,
+        "iodine_mcg": 250,
+        "note": "Highest caloric demand. Add to base female RDA."
+      },
+      "6_to_12_months": {
+        "extra_calories": 520,
+        "protein_g": 68,
+        "calcium_mg": 1200,
+        "iron_mg": 21
+      }
+    }
+  },
+
+  "micronutrients": {
+    "adult_male_19_to_59": {
+      "calcium_mg": 1000,
+      "iron_mg": 17,
+      "zinc_mg": 12,
+      "magnesium_mg": 340,
+      "phosphorus_mg": 700,
+      "iodine_mcg": 150,
+      "selenium_mcg": 40,
+      "vitamin_a_mcg_rae": 750,
+      "vitamin_c_mg": 80,
+      "vitamin_d_iu": 600,
+      "vitamin_d_mcg": 15,
+      "vitamin_e_mg": 10,
+      "vitamin_b12_mcg": 1.0,
+      "folate_mcg": 220,
+      "thiamine_mg": 1.3,
+      "riboflavin_mg": 1.7,
+      "niacin_mg": 18,
+      "vitamin_b6_mg": 2.0,
+      "note": "Vitamin D 600 IU is ICMR recommendation. Despite sunny climate, deficiency is widespread due to indoor work and skin coverage."
+    },
+    "adult_female_19_to_59": {
+      "calcium_mg": 1000,
+      "iron_mg": 21,
+      "iron_note": "21mg for menstruating women — higher than US (18mg) and WHO (20mg) due to higher prevalence of anaemia in Indian women",
+      "zinc_mg": 10,
+      "magnesium_mg": 310,
+      "phosphorus_mg": 700,
+      "iodine_mcg": 150,
+      "selenium_mcg": 40,
+      "vitamin_a_mcg_rae": 750,
+      "vitamin_c_mg": 80,
+      "vitamin_d_iu": 600,
+      "vitamin_d_mcg": 15,
+      "vitamin_e_mg": 10,
+      "vitamin_b12_mcg": 1.0,
+      "folate_mcg": 220,
+      "thiamine_mg": 1.1,
+      "riboflavin_mg": 1.4,
+      "niacin_mg": 14,
+      "vitamin_b6_mg": 2.0
+    },
+    "adult_60_plus": {
+      "calcium_mg": 1200,
+      "calcium_note": "Higher calcium needed to prevent osteoporosis, especially in Indian elderly",
+      "iron_mg": 8,
+      "zinc_mg": 10,
+      "vitamin_d_iu": 800,
+      "vitamin_d_note": "Higher Vitamin D for elderly — bone loss and deficiency risk higher",
+      "vitamin_b12_mcg": 1.5,
+      "vitamin_b12_note": "B12 absorption decreases with age; higher intake recommended"
+    }
+  },
+
+  "children": {
+    "1_to_3": {
+      "calories": 1060, "protein_g": 16, "fat_g": 35,
+      "calcium_mg": 600, "iron_mg": 9, "vitamin_d_iu": 400, "fiber_g": 14
+    },
+    "4_to_6": {
+      "calories": 1350, "protein_g": 20, "fat_g": 45,
+      "calcium_mg": 600, "iron_mg": 13, "vitamin_d_iu": 400, "fiber_g": 20
+    },
+    "7_to_9": {
+      "calories": 1690, "protein_g": 29, "fat_g": 56,
+      "calcium_mg": 800, "iron_mg": 16, "vitamin_d_iu": 400, "fiber_g": 25
+    },
+    "boys_10_to_12": {
+      "calories": 2190, "protein_g": 39, "fat_g": 73,
+      "calcium_mg": 1200, "iron_mg": 21, "vitamin_d_iu": 600, "fiber_g": 30
+    },
+    "girls_10_to_12": {
+      "calories": 2010, "protein_g": 40, "fat_g": 67,
+      "calcium_mg": 1200, "iron_mg": 27,
+      "iron_note": "Higher iron at onset of menstruation",
+      "vitamin_d_iu": 600, "fiber_g": 30
+    },
+    "boys_13_to_15": {
+      "calories": 2750, "protein_g": 54, "fat_g": 92,
+      "calcium_mg": 1200, "iron_mg": 32, "vitamin_d_iu": 600
+    },
+    "girls_13_to_15": {
+      "calories": 2330, "protein_g": 59, "fat_g": 78,
+      "calcium_mg": 1200, "iron_mg": 27, "vitamin_d_iu": 600
+    },
+    "boys_16_to_18": {
+      "calories": 3020, "protein_g": 61, "fat_g": 101,
+      "calcium_mg": 1200, "iron_mg": 28, "vitamin_d_iu": 600
+    },
+    "girls_16_to_18": {
+      "calories": 2440, "protein_g": 55, "fat_g": 81,
+      "calcium_mg": 1200, "iron_mg": 26, "vitamin_d_iu": 600
+    }
+  },
+
+  "key_differences_from_global_standards": {
+    "note": "Use this section for prompting Gemini or explaining differences to users",
+    "differences": [
+      {
+        "nutrient": "Iron (menstruating women)",
+        "icmr_2020": "21 mg/day",
+        "who_global": "~20 mg/day",
+        "us_rda": "18 mg/day",
+        "reason": "High prevalence of anaemia in Indian women (>50% in some states). ICMR sets higher target."
+      },
+      {
+        "nutrient": "Calories (sedentary adult female)",
+        "icmr_2020": "1660 kcal/day (19-29 yrs)",
+        "common_default": "2000 kcal/day",
+        "reason": "Lower average body weight and BMR in Indian population vs Western reference populations."
+      },
+      {
+        "nutrient": "Protein",
+        "icmr_2020": "0.83 g/kg body weight — population average ~54g for males",
+        "note": "Indian diets are predominantly cereal-based with lower bioavailability protein. ICMR accounts for mixed vegetarian diet."
+      },
+      {
+        "nutrient": "Vitamin D",
+        "icmr_2020": "600 IU (15 mcg)",
+        "us_rda": "600 IU",
+        "note": "Despite India's sun exposure, Vitamin D deficiency is paradoxically high due to indoor lifestyle, traditional clothing, melanin levels."
+      },
+      {
+        "nutrient": "Calcium (elderly 60+)",
+        "icmr_2020": "1200 mg/day",
+        "who_global": "1000 mg/day",
+        "reason": "Higher osteoporosis risk in Indian elderly, partly due to historically lower calcium intake."
+      },
+      {
+        "nutrient": "Sodium",
+        "icmr_2020": "2000 mg/day max",
+        "who_global": "2000 mg/day",
+        "note": "Indian diets routinely exceed 3000-4000mg/day. Extra caution warranted when flagging sodium in Indian context."
+      }
+    ]
+  },
+
+  "lookup_helper": {
+    "usage": "Given user profile {age, gender, activity_level}, look up the correct RDA object. Fall back to 'sedentary' if activity unknown. Fall back to male/female 30-59 if age unknown for adult.",
+    "age_bracket_mapping": {
+      "1-3":   "children.1_to_3",
+      "4-6":   "children.4_to_6",
+      "7-9":   "children.7_to_9",
+      "10-12": "children.boys_10_to_12 or girls_10_to_12",
+      "13-15": "children.boys_13_to_15 or girls_13_to_15",
+      "16-18": "children.boys_16_to_18 or girls_16_to_18",
+      "19-29": "adults.male/female.19_to_29",
+      "30-59": "adults.male/female.30_to_59",
+      "60-69": "adults.male/female.60_to_69",
+      "70+":   "adults.male/female.70_plus"
+    }
+  }
+}

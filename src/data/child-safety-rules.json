@@ -1,0 +1,62 @@
+{
+  "_comment": "Child safety thresholds for HealthOX AI analysis. All nutrient limits are per 100g unless noted.",
+  "version": 1,
+
+  "age_groups": {
+    "toddler":      { "min_age": 1,  "max_age": 3  },
+    "preschool":    { "min_age": 4,  "max_age": 6  },
+    "school":       { "min_age": 7,  "max_age": 12 },
+    "adolescent":   { "min_age": 13, "max_age": 17 }
+  },
+
+  "base_limits_per_day": {
+    "toddler": {
+      "sugar_g":        12,
+      "sodium_mg":      800,
+      "saturated_fat_g": 10,
+      "calories":       1000,
+      "additives_to_avoid": ["aspartame", "acesulfame k", "saccharin", "monosodium glutamate", "tartrazine", "sunset yellow", "brilliant blue", "carmoisine"]
+    },
+    "preschool": {
+      "sugar_g":        16,
+      "sodium_mg":      1000,
+      "saturated_fat_g": 14,
+      "calories":       1200,
+      "additives_to_avoid": ["aspartame", "acesulfame k", "saccharin", "monosodium glutamate", "tartrazine", "sunset yellow", "brilliant blue", "carmoisine"]
+    },
+    "school": {
+      "sugar_g":        24,
+      "sodium_mg":      1500,
+      "saturated_fat_g": 18,
+      "calories":       1600,
+      "additives_to_avoid": ["aspartame", "acesulfame k", "saccharin", "monosodium glutamate"]
+    },
+    "adolescent": {
+      "sugar_g":        30,
+      "sodium_mg":      2000,
+      "saturated_fat_g": 22,
+      "calories":       2000,
+      "additives_to_avoid": ["aspartame", "acesulfame k", "saccharin"]
+    }
+  },
+
+  "bmi_multipliers": {
+    "underweight": { "min": 0,    "max": 16.0, "sugar_multiplier": 1.1, "calorie_multiplier": 1.15, "sodium_multiplier": 1.0  },
+    "normal":      { "min": 16.0, "max": 22.9, "sugar_multiplier": 1.0, "calorie_multiplier": 1.0,  "sodium_multiplier": 1.0  },
+    "overweight":  { "min": 23.0, "max": 27.4, "sugar_multiplier": 0.8, "calorie_multiplier": 0.9,  "sodium_multiplier": 0.9  },
+    "obese":       { "min": 27.5, "max": 999,  "sugar_multiplier": 0.6, "calorie_multiplier": 0.8,  "sodium_multiplier": 0.85 }
+  },
+
+  "suitability_override_rules": {
+    "force_avoid_if": {
+      "sugar_per_100g_gt":   30,
+      "sodium_per_100g_gt":  600,
+      "contains_additives":  ["aspartame", "saccharin", "acesulfame k", "tartrazine", "monosodium glutamate"]
+    },
+    "force_caution_if": {
+      "sugar_per_100g_gt":   15,
+      "sodium_per_100g_gt":  300,
+      "processing_level":    ["ultra_processed"]
+    }
+  }
+}

@@ -1,0 +1,330 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "source": "FSSAI Food Safety and Standards Act 2006 + FSS (Food Products Standards and Food Additives) Regulations 2011 + Amendments up to 2023",
+    "last_updated": "2024-01",
+    "note": "Use for server-side cross-referencing against AI-extracted ingredient lists. Always cite regulation when flagging."
+  },
+
+  "banned_additives": [
+    {
+      "code": "E128",
+      "name": "Red 2G",
+      "also_known_as": ["Food Red 10", "Carmoisine Red"],
+      "category": "Synthetic colour",
+      "status": "banned",
+      "regulation": "FSSAI FSS (Food Products Standards) Regulations 2011, Schedule II",
+      "reason": "Suspected carcinogen; metabolises to aniline in the body. Banned across India.",
+      "severity": "high"
+    },
+    {
+      "code": "E123",
+      "name": "Amaranth",
+      "also_known_as": ["FD&C Red No. 2", "Food Red 9"],
+      "category": "Synthetic colour",
+      "status": "banned",
+      "regulation": "FSSAI Schedule II; also banned in USA by FDA",
+      "reason": "Linked to tumours in animal studies. Prohibited in all food products in India.",
+      "severity": "high"
+    },
+    {
+      "code": "E924",
+      "name": "Potassium Bromate",
+      "also_known_as": ["Bromate", "KBrO3"],
+      "category": "Flour treatment agent",
+      "status": "banned",
+      "regulation": "FSSAI FSS Act 2006; Prevention of Food Adulteration Rules",
+      "reason": "Classified as possible carcinogen (IARC Group 2B). Banned in India, EU, Canada, China.",
+      "severity": "high"
+    },
+    {
+      "code": "E239",
+      "name": "Hexamethylene Tetramine",
+      "also_known_as": ["Hexamine", "Urotropine"],
+      "category": "Preservative",
+      "status": "banned",
+      "regulation": "FSSAI FSS (Food Products Standards) Regulations 2011",
+      "reason": "Releases formaldehyde in acidic conditions. Banned in India for all food use.",
+      "severity": "high"
+    },
+    {
+      "code": "E121",
+      "name": "Citrus Red 2",
+      "also_known_as": ["Citrus Red No. 2"],
+      "category": "Synthetic colour",
+      "status": "banned",
+      "regulation": "FSSAI Schedule II",
+      "reason": "Carcinogenic in animal studies. Not permitted in India.",
+      "severity": "high"
+    },
+    {
+      "code": "E976",
+      "name": "Dimethyl Polysiloxane",
+      "also_known_as": ["DMPS", "Polydimethylsiloxane"],
+      "category": "Anti-foaming agent",
+      "status": "banned_in_oils",
+      "regulation": "FSSAI; banned specifically in edible oils and fats",
+      "reason": "Banned for use in edible oils under Indian regulations.",
+      "severity": "medium"
+    }
+  ],
+
+  "restricted_additives": [
+    {
+      "code": "E102",
+      "name": "Tartrazine",
+      "also_known_as": ["FD&C Yellow 5", "Yellow 5", "Acid Yellow 23"],
+      "category": "Synthetic colour",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 100,
+      "permitted_in": ["non-alcoholic beverages", "confectionery", "ice cream", "processed cheese"],
+      "not_permitted_in": ["baby food", "infant formula", "products marketed to children under 3"],
+      "regulation": "FSSAI FSS (Food Products Standards) Regulations 2011, Part II",
+      "concern": "Linked to hyperactivity in children. EU requires warning label 'may have an adverse effect on activity and attention in children'.",
+      "severity": "medium"
+    },
+    {
+      "code": "E110",
+      "name": "Sunset Yellow FCF",
+      "also_known_as": ["FD&C Yellow 6", "Orange Yellow S", "Food Yellow 3"],
+      "category": "Synthetic colour",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 100,
+      "permitted_in": ["beverages", "confectionery", "bakery products", "flavoured milk"],
+      "not_permitted_in": ["baby food", "infant formula"],
+      "regulation": "FSSAI FSS Regulations 2011, Schedule II",
+      "concern": "Part of the Southampton Six colours linked to hyperactivity in children. Requires declaration on label.",
+      "severity": "medium"
+    },
+    {
+      "code": "E129",
+      "name": "Allura Red AC",
+      "also_known_as": ["FD&C Red 40", "Food Red 17"],
+      "category": "Synthetic colour",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 70,
+      "regulation": "FSSAI Schedule II",
+      "concern": "Southampton Six colour. Linked to hyperactivity in children. Lower limit applies in India vs EU.",
+      "severity": "medium"
+    },
+    {
+      "code": "E211",
+      "name": "Sodium Benzoate",
+      "also_known_as": ["Benzoate of Soda", "Benzoic Acid Sodium Salt"],
+      "category": "Preservative",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 250,
+      "max_limit_note": "250mg/kg in most beverages; 1000mg/kg in jams and pickles",
+      "regulation": "FSSAI FSS (Food Products Standards) Regulations 2011",
+      "concern": "Reacts with Vitamin C (ascorbic acid) to form benzene, a known carcinogen. Presence of both E211 + Vitamin C in same product is a specific red flag.",
+      "red_flag_combination": ["E300", "ascorbic acid", "vitamin c"],
+      "severity": "medium"
+    },
+    {
+      "code": "E202",
+      "name": "Potassium Sorbate",
+      "also_known_as": ["Sorbic Acid Potassium Salt"],
+      "category": "Preservative",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 1500,
+      "regulation": "FSSAI FSS Regulations 2011",
+      "concern": "Generally recognised as safe at permitted levels. Concerns arise at higher concentrations.",
+      "severity": "low"
+    },
+    {
+      "code": "E621",
+      "name": "Monosodium Glutamate",
+      "also_known_as": ["MSG", "Ajinomoto", "Glutamic Acid Sodium Salt", "Hydrolyzed Vegetable Protein"],
+      "category": "Flavour enhancer",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 10000,
+      "not_permitted_in": ["baby food", "infant formula", "food for young children"],
+      "regulation": "FSSAI FSS (Labelling and Display) Regulations 2020 — must be declared",
+      "concern": "Must be declared on label as 'contains added flavour enhancer (INS 621)'. High doses may cause headaches, flushing in sensitive individuals. Prohibited in baby/infant food.",
+      "severity": "low"
+    },
+    {
+      "code": "E319",
+      "name": "TBHQ",
+      "also_known_as": ["Tertiary Butylhydroquinone", "tert-Butylhydroquinone"],
+      "category": "Antioxidant / preservative",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 200,
+      "regulation": "FSSAI; used in edible oils and fats",
+      "concern": "At high doses, animal studies show precancerous stomach tumours. Banned in Japan. Restricted to 200mg/kg in India.",
+      "severity": "medium"
+    },
+    {
+      "code": "E320",
+      "name": "Butylated Hydroxyanisole",
+      "also_known_as": ["BHA"],
+      "category": "Antioxidant / preservative",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 200,
+      "regulation": "FSSAI; IARC Group 2B possible carcinogen",
+      "concern": "Possible carcinogen (IARC 2B). Accumulates in body fat. Restricted to 200mg/kg in fats and oils.",
+      "severity": "medium"
+    },
+    {
+      "code": "E321",
+      "name": "Butylated Hydroxytoluene",
+      "also_known_as": ["BHT", "Dibutylhydroxytoluene"],
+      "category": "Antioxidant / preservative",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 200,
+      "regulation": "FSSAI; similar restrictions as BHA",
+      "concern": "Endocrine disruptor concerns. Restricted use; may affect thyroid function at high doses.",
+      "severity": "medium"
+    },
+    {
+      "code": "E951",
+      "name": "Aspartame",
+      "also_known_as": ["NutraSweet", "Equal", "APM"],
+      "category": "Artificial sweetener",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 600,
+      "not_permitted_in": ["baby food", "products for phenylketonuria patients without PKU warning"],
+      "regulation": "FSSAI FSS (Food Products Standards) Regulations 2011; IARC classified as possibly carcinogenic (Group 2B) in 2023",
+      "concern": "Must carry warning: 'Contains phenylalanine' for PKU patients. IARC 2023 classified as possibly carcinogenic at very high doses.",
+      "severity": "medium"
+    },
+    {
+      "code": "E954",
+      "name": "Saccharin",
+      "also_known_as": ["Sodium Saccharin", "Sweet'N Low"],
+      "category": "Artificial sweetener",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 300,
+      "not_permitted_in": ["baby food", "infant formula"],
+      "regulation": "FSSAI FSS Regulations 2011",
+      "concern": "Must be declared on label. Historically linked to bladder cancer in animal studies (since refuted for humans at normal doses).",
+      "severity": "low"
+    },
+    {
+      "code": "E150d",
+      "name": "Sulphite Ammonia Caramel",
+      "also_known_as": ["Caramel Colour Class IV", "Ammonia Sulphite Caramel"],
+      "category": "Colour",
+      "status": "restricted",
+      "regulation": "FSSAI; Centre for Science in Public Interest flagged 4-MEI content",
+      "concern": "Class IV caramel (used in cola drinks) contains 4-methylimidazole (4-MEI), a possible carcinogen. FSSAI has been reviewing limits.",
+      "severity": "medium"
+    },
+    {
+      "code": "E250",
+      "name": "Sodium Nitrite",
+      "also_known_as": ["Nitrite", "Sodium Nitrous Acid Salt"],
+      "category": "Preservative / colour fixative",
+      "status": "restricted",
+      "max_limit_mg_per_kg": 150,
+      "permitted_in": ["cured meats", "processed meat products"],
+      "regulation": "FSSAI FSS (Food Products Standards) Regulations 2011",
+      "concern": "Can form nitrosamines (carcinogens) when heated or combined with amines. WHO classifies processed meats containing nitrites as Group 1 carcinogen.",
+      "severity": "high"
+    },
+    {
+      "code": "E407",
+      "name": "Carrageenan",
+      "also_known_as": ["Irish Moss Extract"],
+      "category": "Thickener / stabiliser",
+      "status": "restricted",
+      "not_permitted_in": ["baby food", "infant formula"],
+      "regulation": "FSSAI; Codex Alimentarius",
+      "concern": "Prohibited in infant formula and baby food. Some animal studies suggest gut inflammation. Generally safe in adults at permitted levels.",
+      "severity": "low"
+    }
+  ],
+
+  "trans_fat_rules": {
+    "regulation": "FSSAI FSS (Food Products Standards and Food Additives) 5th Amendment Regulations 2021",
+    "effective_date": "2022-01-01",
+    "limit": {
+      "max_percent_of_total_fat": 2,
+      "description": "Trans fatty acids must not exceed 2% of total fat content in oils, fats, and food products from 1 Jan 2022."
+    },
+    "declaration_required": true,
+    "note": "Products with partially hydrogenated oils (PHO/PHVO/Vanaspati) are highest risk.",
+    "high_risk_ingredients": [
+      "partially hydrogenated vegetable oil",
+      "partially hydrogenated oil",
+      "vanaspati",
+      "dalda",
+      "PHVO",
+      "PHO",
+      "hydrogenated fat",
+      "shortening"
+    ]
+  },
+
+  "sugar_rules": {
+    "regulation": "FSSAI FSS (Labelling and Display) Regulations 2020",
+    "high_sugar_threshold_per_100g": 22.5,
+    "high_sugar_threshold_per_100ml": 11.25,
+    "declaration_note": "Products with >22.5g sugar per 100g must prominently display sugar content. 'No added sugar' claim requires <0.5g sugar per 100g.",
+    "misleading_claims_to_flag": [
+      "no added sugar",
+      "sugar free",
+      "unsweetened",
+      "naturally sweet"
+    ]
+  },
+
+  "salt_sodium_rules": {
+    "regulation": "FSSAI FSS (Labelling and Display) Regulations 2020",
+    "high_salt_threshold_per_100g": 1.5,
+    "high_sodium_threshold_mg_per_100g": 600,
+    "icmr_daily_limit_mg": 2000,
+    "who_daily_limit_mg": 2000,
+    "note": "Indian diets are already high in sodium. Flag if a single product contributes >30% of daily sodium limit."
+  },
+
+  "mandatory_declarations": {
+    "regulation": "FSSAI FSS (Labelling and Display) Regulations 2020",
+    "required_on_label": [
+      "FSSAI license number",
+      "Vegetarian/Non-vegetarian symbol (green dot / brown dot)",
+      "Best before / Use by date",
+      "Net weight",
+      "Nutritional information per 100g or per 100ml",
+      "Ingredient list in descending order of weight",
+      "Allergen declaration (bold/highlight in ingredient list)",
+      "Country of origin",
+      "Manufacturer name and address",
+      "Customer care details"
+    ],
+    "allergens_requiring_declaration": [
+      "gluten (wheat, rye, barley, oats)",
+      "crustaceans",
+      "eggs",
+      "fish",
+      "peanuts",
+      "soybeans",
+      "milk (lactose)",
+      "tree nuts",
+      "celery",
+      "mustard",
+      "sesame seeds",
+      "sulphur dioxide / sulphites (>10mg/kg)"
+    ]
+  },
+
+  "baby_food_prohibited_additives": {
+    "regulation": "FSSAI FSS (Food for Infant Nutrition) Regulations 2020",
+    "prohibited": [
+      "E102 (Tartrazine)",
+      "E110 (Sunset Yellow)",
+      "E129 (Allura Red)",
+      "E407 (Carrageenan)",
+      "E621 (MSG)",
+      "E951 (Aspartame)",
+      "E954 (Saccharin)",
+      "All artificial sweeteners",
+      "All synthetic colours"
+    ],
+    "note": "Any product marketed for children under 3 years must not contain these additives."
+  },
+
+  "helper_functions_note": {
+    "cross_reference_logic": "Extract ingredient list from product (via Gemini or label scan). Match each ingredient against banned_additives[].also_known_as and restricted_additives[].also_known_as arrays. Check E-codes and common names. For trans fat: check ingredients_text for high_risk_ingredients strings. For sugar: compare nutrition.sugar against thresholds. Return array of violations with regulation citation."
+  }
+}
