@@ -152,8 +152,9 @@ export default function DashboardPage() {
           ) : (
             <>
               <CalorieRing
-            consumed={data?.totalCalories ?? 0}
-            goal={data?.dailyCalorieGoal ?? 2000}
+                consumed={data?.totalCalories ?? 0}
+                goal={data?.dailyCalorieGoal ?? 2000}
+                label="Daily Calories"
               />
               
               <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
@@ -252,4 +253,3 @@ function EmptyMealsState({ onScan }: { onScan: () => void }) {
     </div>
   )
 }
-
