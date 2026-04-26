@@ -27,7 +27,7 @@ export interface RDAProfile {
   iron_mg?:      number
   calcium_mg?:   number
   vitamin_d_iu?: number
-  source_bracket: string  // e.g. "adult female 19-29 moderate"
+  source_bracket: string
 }
 
 export interface DailyPercentages {
@@ -71,8 +71,8 @@ export function getDailyPct(
   quantityG: number = 100
 ): DailyPercentages {
   const scale     = quantityG / 100
-  const sodiumRDA = 2000   // ICMR/WHO daily sodium limit in mg
-  const sugarRDA  = 50     // ICMR free sugar limit in g
+  const sodiumRDA = 2000
+  const sugarRDA  = 50
 
   function pct(val: number | null | undefined, rdaVal: number | undefined): number | null {
     if (val == null || !rdaVal) return null
@@ -113,23 +113,24 @@ function getAdultProfile(
   gender:   'male' | 'female',
   activity: 'sedentary' | 'moderate' | 'heavy'
 ): RDAProfile {
-  const genderData = rdaData.adults[gender] as GenderData
-  const bracket    = getAdultBracket(age)
+  const genderData  = rdaData.adults[gender] as GenderData
+  const bracket     = getAdultBracket(age)
   const bracketData = genderData[bracket]
 
-  // 'heavy' not available for 60+ brackets — fall back to moderate, then sedentary
   const activityData: MacroRow =
     bracketData[activity] ??
     bracketData['moderate'] ??
     bracketData['sedentary']
 
-  // Micronutrients
   const microKey =
-    age >= 60        ? 'adult_60_plus'
+    age >= 60             ? 'adult_60_plus'
     : gender === 'female' ? 'adult_female_19_to_59'
     : 'adult_male_19_to_59'
 
-  const micro = rdaData.micronutrients[microKey as keyof typeof rdaData.micronutrients] as Record<string, number>
+  // Cast through unknown to avoid TypeScript overlap error —
+  // the JSON contains string note fields alongside numbers,
+  // but we only access the numeric keys we need.
+  const micro = rdaData.micronutrients[microKey as keyof typeof rdaData.micronutrients] as unknown as Record<string, number>
 
   return {
     ...activityData,
@@ -153,19 +154,19 @@ function getChildProfile(age: number, gender: 'male' | 'female'): RDAProfile {
   let data: Record<string, number>
   let bracket: string
 
-  if      (age <= 3)  { data = c['1_to_3']          as Record<string, number>; bracket = '1–3'   }
-  else if (age <= 6)  { data = c['4_to_6']          as Record<string, number>; bracket = '4–6'   }
-  else if (age <= 9)  { data = c['7_to_9']          as Record<string, number>; bracket = '7–9'   }
+  if      (age <= 3)  { data = c['1_to_3']          as unknown as Record<string, number>; bracket = '1–3'   }
+  else if (age <= 6)  { data = c['4_to_6']          as unknown as Record<string, number>; bracket = '4–6'   }
+  else if (age <= 9)  { data = c['7_to_9']          as unknown as Record<string, number>; bracket = '7–9'   }
   else if (age <= 12) {
-    data    = (gender === 'female' ? c['girls_10_to_12'] : c['boys_10_to_12']) as Record<string, number>
+    data    = (gender === 'female' ? c['girls_10_to_12'] : c['boys_10_to_12']) as unknown as Record<string, number>
     bracket = '10–12'
   }
   else if (age <= 15) {
-    data    = (gender === 'female' ? c['girls_13_to_15'] : c['boys_13_to_15']) as Record<string, number>
+    data    = (gender === 'female' ? c['girls_13_to_15'] : c['boys_13_to_15']) as unknown as Record<string, number>
     bracket = '13–15'
   }
   else {
-    data    = (gender === 'female' ? c['girls_16_to_18'] : c['boys_16_to_18']) as Record<string, number>
+    data    = (gender === 'female' ? c['girls_16_to_18'] : c['boys_16_to_18']) as unknown as Record<string, number>
     bracket = '16–18'
   }
 
