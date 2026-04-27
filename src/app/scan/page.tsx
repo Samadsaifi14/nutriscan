@@ -1,12 +1,13 @@
+export const dynamicMode = 'force-dynamic'
 "use client"
 import { useState } from 'react'
-import dynamic from 'next/dynamic'
+import dynamicImport from 'next/dynamic'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
 import { event, AnalyticsEvents } from '@/lib/analytics'
 
-const BarcodeScanner = dynamic(
+const BarcodeScanner = dynamicImport(
   () => import('@/components/scanner/BarcodeScanner'),
   { ssr: false }
 )
@@ -1396,3 +1397,4 @@ function ProductPhotoCapture({
     </div>
   )
 }
+
