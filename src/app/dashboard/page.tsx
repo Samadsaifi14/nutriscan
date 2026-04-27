@@ -11,7 +11,7 @@ import MealStreak from '@/components/dashboard/MealStreak'
 import NutrientAlerts from '@/components/dashboard/NutrientAlerts'
 import LastScanned from '@/components/dashboard/LastScanned'
 import { SkeletonDashboard } from '@/components/Skeleton'
-import { supabase } from '@/lib/supabase'
+
 import { event, AnalyticsEvents } from '@/lib/analytics'
 
 interface FoodLog {
@@ -274,3 +274,6 @@ function EmptyMealsState({ onScan }: { onScan: () => void }) {
     </div>
   )
 }
+
+
+
