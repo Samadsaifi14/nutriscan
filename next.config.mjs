@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig = {experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
   typescript: {
     ignoreBuildErrors: false,
   },
