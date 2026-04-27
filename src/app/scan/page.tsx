@@ -1,5 +1,5 @@
-export const dynamicMode = 'force-dynamic'
 "use client"
+export const dynamic = 'force-dynamic'
 import { useState } from 'react'
 import dynamicImport from 'next/dynamic'
 import Image from 'next/image'
@@ -1397,4 +1397,5 @@ function ProductPhotoCapture({
     </div>
   )
 }
+
 
