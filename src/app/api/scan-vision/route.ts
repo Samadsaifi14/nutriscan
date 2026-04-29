@@ -49,11 +49,7 @@ export async function POST(req: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid image data',
-          tip: 'Please try capturing the image again.',
-        },
+        { success: false, error: 'Invalid image data', tip: 'Please try capturing the image again.' },
         { status: 400 }
       )
     }
@@ -61,23 +57,19 @@ export async function POST(req: NextRequest) {
     const { imageBase64, mode } = parsed.data
 
     const prompt = mode === 'barcode_only'
-      ? `Look at this image carefully. Find the barcode — the parallel black vertical lines with numbers printed below them.
-
-Your task: Extract the exact barcode number printed below the barcode lines.
-
-Also assess image quality and return this JSON only, no markdown:
+      ? `Find the barcode in this image. Extract the exact number printed below the barcode lines.
+Return ONLY this JSON, no markdown:
 {
-  "barcode": "<exact number below barcode lines, or null if not clearly visible>",
-  "confidence": "high" or "medium" or "low",
-  "image_issues": null or "blurry" or "dark" or "no_barcode" or "no_label",
-  "visible_elements": ["describe what you can see in the image"]
+  "barcode": "<exact number or null if not clearly visible>",
+  "confidence": "high"|"medium"|"low",
+  "image_issues": null|"blurry"|"dark"|"no_barcode"|"no_label",
+  "visible_elements": ["<what you can see>"]
 }`
       : `You are a food label reader for Indian packaged food products.
-Examine this image carefully and extract ALL visible information from the packaging.
-
-Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
+Extract ALL visible information from this packaging image.
+Return ONLY valid JSON, no markdown:
 {
-  "barcode": "<barcode number if visible, or null>",
+  "barcode": "<barcode number or null>",
   "name": "<product name>",
   "brand": "<brand name>",
   "serving_size_g": <number or null>,
@@ -95,22 +87,18 @@ Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
   "allergens": ["<allergen>"],
   "fssai_number": "<14-digit FSSAI number or null>",
   "mrp": <price in rupees or null>,
-  "confidence": "high" or "medium" or "low",
-  "image_issues": null or "blurry" or "dark" or "no_barcode" or "no_label"
+  "confidence": "high"|"medium"|"low",
+  "image_issues": null|"blurry"|"dark"|"no_barcode"|"no_label"
 }`
 
     const { text } = await callGemini(prompt, imageBase64, {
       temperature: 0.1,
-      maxTokens: 8192,
+      maxTokens: 1024,  // was 8192 — vision JSON response is always small
     })
 
     if (!text) {
       return NextResponse.json(
-        {
-          success: false,
-          error: FAILURE_REASONS.generic.message,
-          tip: FAILURE_REASONS.generic.tip,
-        },
+        { success: false, error: FAILURE_REASONS.generic.message, tip: FAILURE_REASONS.generic.tip },
         { status: 500 }
       )
     }
@@ -122,20 +110,13 @@ Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
       extracted = JSON.parse(cleaned)
     } catch {
       return NextResponse.json(
-        {
-          success: false,
-          error: FAILURE_REASONS.generic.message,
-          tip: FAILURE_REASONS.generic.tip,
-        },
+        { success: false, error: FAILURE_REASONS.generic.message, tip: FAILURE_REASONS.generic.tip },
         { status: 500 }
       )
     }
 
-    // Give specific failure reason based on image issues
-    if (extracted.image_issues && (!extracted.barcode && !extracted.name)) {
-      const reason = FAILURE_REASONS[extracted.image_issues as keyof typeof FAILURE_REASONS]
-        || FAILURE_REASONS.generic
-
+    if (extracted.image_issues && !extracted.barcode && !extracted.name) {
+      const reason = FAILURE_REASONS[extracted.image_issues as keyof typeof FAILURE_REASONS] || FAILURE_REASONS.generic
       return NextResponse.json({
         success: false,
         error: reason.message,
@@ -144,48 +125,44 @@ Also assess image quality. Return ONLY valid JSON, no markdown, no code fences:
       })
     }
 
-    // Low confidence warning
     if (extracted.confidence === 'low') {
       extracted._warning = 'Low confidence — some values may be inaccurate. Please verify before logging.'
     }
 
-    console.log('Vision extracted barcode:', extracted.barcode)
-    console.log('Vision extracted name:', extracted.name)
-    console.log('Vision confidence:', extracted.confidence)
-
+    console.log('Vision barcode:', extracted.barcode, '| name:', extracted.name, '| confidence:', extracted.confidence)
     return NextResponse.json({ success: true, data: extracted })
 
   } catch (err: any) {
     if (err instanceof GeminiError) {
       console.error(`Gemini Vision Error [${err.type}]:`, err.message)
+      const isQuota = err.message.toLowerCase().includes('quota')
       if (err.type === 'unavailable') {
         return NextResponse.json(
-          { success: false, error: 'Gemini AI is temporarily overloaded. Please wait 30 seconds and try again.', tip: 'This is a temporary issue — just retry in a moment.' },
+          { success: false, error: 'Gemini AI is busy. Please wait 30 seconds and try again.', tip: 'Retry in a moment.' },
           { status: 503 }
-        )
-      }
-      if (err.type === 'timeout') {
-        return NextResponse.json(
-          { success: false, error: 'AI timed out. Try a clearer photo.', tip: 'Make sure the label is clearly visible and well-lit.' },
-          { status: 504 }
         )
       }
       if (err.type === 'rate_limit') {
         return NextResponse.json(
-          { success: false, error: 'AI rate limit reached. Please wait a moment.', tip: 'Too many requests right now.' },
+          {
+            success: false,
+            error: isQuota ? 'Daily AI quota reached. Try again tomorrow.' : 'Too many requests. Wait a minute.',
+            tip: isQuota ? 'Upgrade your Gemini API plan at aistudio.google.com' : 'Too many scans right now.',
+          },
           { status: 429 }
+        )
+      }
+      if (err.type === 'timeout') {
+        return NextResponse.json(
+          { success: false, error: 'AI timed out. Try a clearer photo.', tip: 'Ensure label is clearly visible and well-lit.' },
+          { status: 504 }
         )
       }
     }
     console.error('Vision error:', err.message)
     return NextResponse.json(
-      {
-        success: false,
-        error: FAILURE_REASONS.generic.message,
-        tip: FAILURE_REASONS.generic.tip,
-      },
+      { success: false, error: FAILURE_REASONS.generic.message, tip: FAILURE_REASONS.generic.tip },
       { status: 500 }
     )
   }
 }
-

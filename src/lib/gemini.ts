@@ -19,12 +19,12 @@ interface GeminiConfig {
 
 const DEFAULTS: Required<Omit<GeminiConfig, 'model'>> = {
   temperature: 0.15,
-  maxTokens: 10000,
-  timeoutMs: 20000,
-  maxRetries: 3,
+  maxTokens: 3000,        // was 10000 — reduced to stay within free tier TPM
+  timeoutMs: 35000,       // was 20000 — 2.5 flash needs more time
+  maxRetries: 1,          // was 3 — retrying burns quota 3x per failure
 }
 
-const MODEL = 'gemini-2.5-flash'
+const MODEL = 'gemini-2.5-flash-preview-04-17'  // correct model string for 2.5 flash
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 function getApiKey(): string {
@@ -55,9 +55,14 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries: number): Pr
     } catch (err: any) {
       lastError = err
       if (err instanceof GeminiError) {
-        const retryable = ['rate_limit', 'network', 'unavailable'].includes(err.type)
+        // 429 = quota exhausted — retrying won't help, fail immediately
+        if (err.type === 'rate_limit') {
+          console.warn('Gemini quota/rate limit hit — not retrying')
+          throw err
+        }
+        const retryable = ['network', 'unavailable'].includes(err.type)
         if (retryable && attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 1000
+          const delay = Math.pow(2, attempt) * 2000  // 2s, 4s
           console.log(`Gemini ${err.type} — retry ${attempt + 1}/${maxRetries} in ${delay}ms`)
           await new Promise(r => setTimeout(r, delay))
           continue
@@ -69,12 +74,20 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries: number): Pr
   throw lastError
 }
 
-function handleGeminiResponse(res: Response, body?: string): string {
-  if (res.status === 429) throw new GeminiError('rate_limit', 'Gemini rate limit exceeded', 429)
-  if (res.status === 503) throw new GeminiError('unavailable', 'Gemini is temporarily overloaded. Please try again.', 503)
-  if (res.status === 504) throw new GeminiError('timeout', 'Gemini request timed out', 504)
-  if (!res.ok) throw new GeminiError('api_error', `Gemini API error ${res.status}: ${body || ''}`, res.status)
-  return body || ''
+function handleGeminiResponse(res: Response, body?: string): void {
+  if (res.status === 429) {
+    const isQuota = (body || '').toLowerCase().includes('quota') || (body || '').toLowerCase().includes('resource_exhausted')
+    throw new GeminiError(
+      'rate_limit',
+      isQuota
+        ? 'Gemini daily quota exhausted. Try again tomorrow or upgrade your plan at aistudio.google.com'
+        : 'Gemini rate limit hit (too many requests per minute)',
+      429
+    )
+  }
+  if (res.status === 503) throw new GeminiError('unavailable', 'Gemini is temporarily overloaded', 503)
+  if (res.status === 504) throw new GeminiError('timeout', 'Gemini gateway timed out', 504)
+  if (!res.ok) throw new GeminiError('api_error', `Gemini API error ${res.status}: ${(body || '').slice(0, 200)}`, res.status)
 }
 
 export async function callGemini(
@@ -99,7 +112,11 @@ export async function callGemini(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts }],
-        generationConfig: { temperature, maxOutputTokens: maxTokens },
+        generationConfig: {
+          temperature,
+          maxOutputTokens: maxTokens,
+          responseMimeType: 'application/json',  // forces JSON output, cuts token waste
+        },
       }),
     }, timeoutMs)
 
@@ -110,18 +127,30 @@ export async function callGemini(
     try {
       data = JSON.parse(body)
     } catch {
-      throw new GeminiError('invalid_response', 'Gemini returned invalid JSON')
+      throw new GeminiError('invalid_response', 'Gemini returned invalid JSON wrapper')
+    }
+
+    // Handle safety/recitation blocks
+    const finishReason = data.candidates?.[0]?.finishReason
+    if (finishReason && !['STOP', 'MAX_TOKENS'].includes(finishReason)) {
+      console.warn(`Gemini finish reason: ${finishReason}`)
+      if (['SAFETY', 'RECITATION', 'PROHIBITED_CONTENT'].includes(finishReason)) {
+        throw new GeminiError('invalid_response', `Gemini blocked the response: ${finishReason}`)
+      }
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-    if (!text) throw new GeminiError('invalid_response', 'Gemini returned empty response')
+    if (!text) {
+      console.error('Gemini empty text. Response:', JSON.stringify(data).slice(0, 800))
+      throw new GeminiError('invalid_response', 'Gemini returned empty content')
+    }
 
     const usage = {
       inputTokens: data.usageMetadata?.promptTokenCount || 0,
       outputTokens: data.usageMetadata?.candidatesTokenCount || 0,
     }
 
-    console.log(`Gemini [${model}] tokens — in: ${usage.inputTokens}, out: ${usage.outputTokens}`)
+    console.log(`Gemini [${model}] tokens — in:${usage.inputTokens} out:${usage.outputTokens} total:${usage.inputTokens + usage.outputTokens}`)
     return { text, usage }
   }, maxRetries)
 }
@@ -156,7 +185,7 @@ export async function streamGemini(
     const body = await res.text()
     handleGeminiResponse(res, body)
 
-    if (!res.body) throw new GeminiError('api_error', 'No response body from Gemini')
+    if (!res.body) throw new GeminiError('api_error', 'No response body from Gemini stream')
 
     const reader = res.body.getReader()
     const decoder = new TextDecoder()
@@ -174,28 +203,23 @@ export async function streamGemini(
       for (const line of lines) {
         const trimmed = line.trim()
         if (!trimmed || !trimmed.startsWith('data: ')) continue
-
         const dataStr = trimmed.slice(6)
         if (dataStr === '[DONE]') continue
-
         try {
           const json = JSON.parse(dataStr)
           const text = json.candidates?.[0]?.content?.parts?.[0]?.text
           if (text) onChunk(text)
-
           if (json.usageMetadata) {
             usage = {
               inputTokens: json.usageMetadata.promptTokenCount || 0,
               outputTokens: json.usageMetadata.candidatesTokenCount || 0,
             }
           }
-        } catch {
-          // skip malformed SSE chunks
-        }
+        } catch { /* skip malformed SSE chunks */ }
       }
     }
 
-    console.log(`Gemini stream [${model}] tokens — in: ${usage.inputTokens}, out: ${usage.outputTokens}`)
+    console.log(`Gemini stream [${model}] tokens — in:${usage.inputTokens} out:${usage.outputTokens}`)
     return { usage }
   }, maxRetries)
 }
