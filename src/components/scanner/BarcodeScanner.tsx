@@ -97,7 +97,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
     setStatus('📸 Capturing...')
 
     // Compress image to ~80KB before sending
-    const imageBase64 = compressCanvas(videoRef.current, isFrontCamera, 800, 0.82)
+    const imageBase64 = compressCanvas(videoRef.current, isFrontCamera, 1200, 0.95)
 
     setStatus('🤖 Reading barcode...')
 
