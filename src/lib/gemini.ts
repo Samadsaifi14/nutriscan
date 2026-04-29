@@ -19,12 +19,12 @@ interface GeminiConfig {
 
 const DEFAULTS: Required<Omit<GeminiConfig, 'model'>> = {
   temperature: 0.15,
-  maxTokens: 3000,        // was 10000 — reduced to stay within free tier TPM
-  timeoutMs: 35000,       // was 20000 — 2.5 flash needs more time
-  maxRetries: 1,          // was 3 — retrying burns quota 3x per failure
+  maxTokens: 3000,
+  timeoutMs: 35000,
+  maxRetries: 1,
 }
 
-const MODEL = 'gemini-2.5-flash-preview-04-17'  // correct model string for 2.5 flash
+const MODEL = 'gemini-2.5-flash-preview-04-17'
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 function getApiKey(): string {
@@ -55,14 +55,13 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries: number): Pr
     } catch (err: any) {
       lastError = err
       if (err instanceof GeminiError) {
-        // 429 = quota exhausted — retrying won't help, fail immediately
         if (err.type === 'rate_limit') {
           console.warn('Gemini quota/rate limit hit — not retrying')
           throw err
         }
         const retryable = ['network', 'unavailable'].includes(err.type)
         if (retryable && attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 2000  // 2s, 4s
+          const delay = Math.pow(2, attempt) * 2000
           console.log(`Gemini ${err.type} — retry ${attempt + 1}/${maxRetries} in ${delay}ms`)
           await new Promise(r => setTimeout(r, delay))
           continue
@@ -107,16 +106,23 @@ export async function callGemini(
       parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } })
     }
 
+    // ✅ CRITICAL FIX: responseMimeType CANNOT be used with image/vision calls
+    // It causes Gemini to return empty content when an image is attached
+    // Only use it for pure text→JSON calls (no image)
+    const generationConfig: any = {
+      temperature,
+      maxOutputTokens: maxTokens,
+    }
+    if (!imageBase64) {
+      generationConfig.responseMimeType = 'application/json'
+    }
+
     const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts }],
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens,
-          responseMimeType: 'application/json',  // forces JSON output, cuts token waste
-        },
+        generationConfig,
       }),
     }, timeoutMs)
 
@@ -130,7 +136,6 @@ export async function callGemini(
       throw new GeminiError('invalid_response', 'Gemini returned invalid JSON wrapper')
     }
 
-    // Handle safety/recitation blocks
     const finishReason = data.candidates?.[0]?.finishReason
     if (finishReason && !['STOP', 'MAX_TOKENS'].includes(finishReason)) {
       console.warn(`Gemini finish reason: ${finishReason}`)
@@ -141,7 +146,7 @@ export async function callGemini(
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text
     if (!text) {
-      console.error('Gemini empty text. Response:', JSON.stringify(data).slice(0, 800))
+      console.error('Gemini empty text. Full response:', JSON.stringify(data).slice(0, 800))
       throw new GeminiError('invalid_response', 'Gemini returned empty content')
     }
 
