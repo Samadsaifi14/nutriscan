@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { callGeminiVision, GeminiError } from '@/lib/gemini'
+import { callGeminiVision, callGeminiVisionWithUserToken, GeminiError } from '@/lib/gemini'
+import { checkRateLimit } from '@/lib/rateLimit'
 
 const RequestSchema = z.object({
   imageBase64: z.string().min(100, 'Image data too small'),
@@ -12,30 +13,31 @@ const RequestSchema = z.object({
 const FAILURE_REASONS = {
   no_barcode: {
     message: 'No barcode visible in the photo',
-    tip: 'Make sure the barcode lines and number below are clearly visible. Try moving closer.',
+    tip:     'Make sure the barcode lines and number below are clearly visible. Try moving closer.',
   },
   blurry: {
     message: 'The image appears blurry',
-    tip: 'Hold your phone steady and tap to focus before capturing.',
+    tip:     'Hold your phone steady and tap to focus before capturing.',
   },
   dark: {
     message: 'The image is too dark',
-    tip: 'Move to a brighter area or turn on your flashlight.',
+    tip:     'Move to a brighter area or turn on your flashlight.',
   },
   no_label: {
     message: 'No nutrition label found',
-    tip: 'Point the camera at the back or side of the packet where the nutrition table is printed.',
+    tip:     'Point the camera at the back or side of the packet where the nutrition table is printed.',
   },
   generic: {
     message: 'Could not read the label',
-    tip: 'Try a different angle, better lighting, or point at the nutrition label directly.',
+    tip:     'Try a different angle, better lighting, or point at the nutrition label directly.',
   },
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    const userId  = (session as any)?.userId
+    const session         = await getServerSession(authOptions)
+    const userId          = (session as any)?.userId
+    const userAccessToken = (session as any)?.googleAccessToken as string | undefined
 
     if (!userId) {
       return NextResponse.json(
@@ -92,11 +94,62 @@ Return ONLY valid JSON, no markdown, no code fences:
   "image_issues": null
 }`
 
-    // Use callGeminiVision — uses gemini-1.5-flash, no responseMimeType
-    const { text } = await callGeminiVision(prompt, imageBase64, {
-      temperature: 0.1,
-      maxTokens:   2048,
-    })
+    let text: string
+
+    // ── Try user's OAuth token first (burns their quota, not yours) ────────────
+    if (userAccessToken) {
+      try {
+        const result = await callGeminiVisionWithUserToken(
+          prompt, imageBase64, userAccessToken,
+          { temperature: 0.1, maxTokens: 2048 }
+        )
+        text = result.text
+        console.log('scan-vision: used user OAuth token')
+      } catch (userTokenErr: any) {
+        // Token expired or Gemini API not enabled on their Google account
+        // Fall through to your API key with a 25/day rate limit
+        console.warn('User token failed, falling back to API key:', userTokenErr.message)
+
+        const limit = await checkRateLimit(userId, 'scan')
+        if (!limit.allowed) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:   'Daily scan limit reached.',
+              tip:     'You have used your 25 free scans today. Try again tomorrow.',
+            },
+            { status: 429 }
+          )
+        }
+
+        const result = await callGeminiVision(
+          prompt, imageBase64,
+          { temperature: 0.1, maxTokens: 2048 }
+        )
+        text = result.text
+        console.log('scan-vision: used fallback API key')
+      }
+    } else {
+      // No OAuth token — use API key with 25/day rate limit
+      const limit = await checkRateLimit(userId, 'scan')
+      if (!limit.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:   'Daily scan limit reached.',
+            tip:     'You have used your 25 free scans today. Try again tomorrow.',
+          },
+          { status: 429 }
+        )
+      }
+
+      const result = await callGeminiVision(
+        prompt, imageBase64,
+        { temperature: 0.1, maxTokens: 2048 }
+      )
+      text = result.text
+      console.log('scan-vision: used API key (no user token)')
+    }
 
     const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
@@ -115,7 +168,7 @@ Return ONLY valid JSON, no markdown, no code fences:
       const reason = FAILURE_REASONS[extracted.image_issues as keyof typeof FAILURE_REASONS]
         || FAILURE_REASONS.generic
       return NextResponse.json({
-        success: false,
+        success:      false,
         error:        reason.message,
         tip:          reason.tip,
         image_issues: extracted.image_issues,

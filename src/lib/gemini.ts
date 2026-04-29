@@ -19,14 +19,11 @@ interface GeminiConfig {
 
 const DEFAULTS: Required<Omit<GeminiConfig, 'model'>> = {
   temperature: 0.15,
-  maxTokens: 3000,
-  timeoutMs: 35000,
-  maxRetries: 1,
+  maxTokens:   3000,
+  timeoutMs:   35000,
+  maxRetries:  1,
 }
 
-// Two separate models:
-// - TEXT_MODEL  : for pure text→JSON analysis (gemini 2.5 flash, better reasoning)
-// - VISION_MODEL: for image reading (gemini 1.5 flash, proven stable vision support)
 const TEXT_MODEL   = 'gemini-2.5-flash'
 const VISION_MODEL = 'gemini-2.0-flash'
 const BASE_URL     = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -112,13 +109,12 @@ function extractText(data: any): string {
 
 function extractUsage(data: any) {
   return {
-    inputTokens:  data.usageMetadata?.promptTokenCount    || 0,
+    inputTokens:  data.usageMetadata?.promptTokenCount     || 0,
     outputTokens: data.usageMetadata?.candidatesTokenCount || 0,
   }
 }
 
-// ─── TEXT-ONLY CALL (for /api/analyze) ────────────────────────────────────────
-// Uses gemini-2.5-flash with responseMimeType=json for best analysis quality
+// ─── TEXT-ONLY CALL ───────────────────────────────────────────────────────────
 export async function callGemini(
   prompt: string,
   imageBase64?: string,
@@ -126,28 +122,24 @@ export async function callGemini(
 ): Promise<{ text: string; usage: { inputTokens: number; outputTokens: number } }> {
   const { temperature, maxTokens, timeoutMs, maxRetries } = { ...DEFAULTS, ...config }
   const apiKey = getApiKey()
-
-  // If an image is passed to callGemini, route it through vision model
-  const model = imageBase64 ? VISION_MODEL : (config?.model || TEXT_MODEL)
+  const model  = imageBase64 ? VISION_MODEL : (config?.model || TEXT_MODEL)
 
   return retryWithBackoff(async () => {
-    const url = `${BASE_URL}/${model}:generateContent?key=${apiKey}`
-
+    const url   = `${BASE_URL}/${model}:generateContent?key=${apiKey}`
     const parts: any[] = [{ text: prompt }]
     if (imageBase64) {
-      parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } })
+      parts.push({ inlineData: { mimeType: 'image/png', data: imageBase64 } })
     }
 
-    // responseMimeType ONLY for text-only calls — breaks vision calls
     const generationConfig: any = { temperature, maxOutputTokens: maxTokens }
     if (!imageBase64) {
       generationConfig.responseMimeType = 'application/json'
     }
 
-    const res = await fetchWithTimeout(url, {
-      method: 'POST',
+    const res  = await fetchWithTimeout(url, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts }], generationConfig }),
+      body:    JSON.stringify({ contents: [{ parts }], generationConfig }),
     }, timeoutMs)
 
     const body = await res.text()
@@ -164,8 +156,7 @@ export async function callGemini(
   }, maxRetries)
 }
 
-// ─── VISION CALL (for /api/scan-vision and /api/scan-product-photo) ───────────
-// Uses gemini-1.5-flash — stable vision model, no responseMimeType
+// ─── VISION CALL with API key (fallback) ─────────────────────────────────────
 export async function callGeminiVision(
   prompt: string,
   imageBase64: string,
@@ -173,26 +164,21 @@ export async function callGeminiVision(
 ): Promise<{ text: string; usage: { inputTokens: number; outputTokens: number } }> {
   const { temperature, maxTokens, timeoutMs, maxRetries } = { ...DEFAULTS, ...config }
   const apiKey = getApiKey()
-  const model  = VISION_MODEL  // always 1.5-flash for vision
+  const model  = VISION_MODEL
 
   return retryWithBackoff(async () => {
-    const url = `${BASE_URL}/${model}:generateContent?key=${apiKey}`
-
+    const url   = `${BASE_URL}/${model}:generateContent?key=${apiKey}`
     const parts: any[] = [
       { text: prompt },
       { inlineData: { mimeType: 'image/png', data: imageBase64 } },
     ]
 
-    const res = await fetchWithTimeout(url, {
-      method: 'POST',
+    const res  = await fetchWithTimeout(url, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens,
-          // NO responseMimeType — vision calls must not have it
-        },
+      body:    JSON.stringify({
+        contents:         [{ parts }],
+        generationConfig: { temperature, maxOutputTokens: maxTokens },
       }),
     }, timeoutMs)
 
@@ -210,7 +196,57 @@ export async function callGeminiVision(
   }, maxRetries)
 }
 
-// ─── STREAM (unchanged) ───────────────────────────────────────────────────────
+// ─── VISION CALL with user's OAuth token (primary) ───────────────────────────
+export async function callGeminiVisionWithUserToken(
+  prompt: string,
+  imageBase64: string,
+  userAccessToken: string,
+  config?: GeminiConfig
+): Promise<{ text: string; usage: { inputTokens: number; outputTokens: number } }> {
+  const { temperature, maxTokens, timeoutMs, maxRetries } = { ...DEFAULTS, ...config }
+  const model = VISION_MODEL
+
+  return retryWithBackoff(async () => {
+    // OAuth calls use Authorization header, NOT ?key= query param
+    const url   = `${BASE_URL}/${model}:generateContent`
+    const parts: any[] = [
+      { text: prompt },
+      { inlineData: { mimeType: 'image/png', data: imageBase64 } },
+    ]
+
+    const res  = await fetchWithTimeout(url, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${userAccessToken}`,
+      },
+      body: JSON.stringify({
+        contents:         [{ parts }],
+        generationConfig: { temperature, maxOutputTokens: maxTokens },
+      }),
+    }, timeoutMs)
+
+    const body = await res.text()
+
+    // 401/403 = token expired or Gemini API not enabled on their Google account
+    if (res.status === 401 || res.status === 403) {
+      throw new GeminiError('api_error', `User token invalid or Gemini API not enabled: ${res.status}`, res.status)
+    }
+
+    handleGeminiResponse(res, body)
+
+    let data: any
+    try { data = JSON.parse(body) }
+    catch { throw new GeminiError('invalid_response', 'Gemini returned invalid JSON wrapper') }
+
+    const text  = extractText(data)
+    const usage = extractUsage(data)
+    console.log(`Gemini Vision [user-token][${model}] in:${usage.inputTokens} out:${usage.outputTokens}`)
+    return { text, usage }
+  }, maxRetries)
+}
+
+// ─── STREAM ───────────────────────────────────────────────────────────────────
 export async function streamGemini(
   prompt: string,
   onChunk: (text: string) => void,
@@ -222,18 +258,17 @@ export async function streamGemini(
   const model  = imageBase64 ? VISION_MODEL : TEXT_MODEL
 
   return retryWithBackoff(async () => {
-    const url = `${BASE_URL}/${model}:streamGenerateContent?alt=sse&key=${apiKey}`
-
+    const url   = `${BASE_URL}/${model}:streamGenerateContent?alt=sse&key=${apiKey}`
     const parts: any[] = [{ text: prompt }]
     if (imageBase64) {
       parts.push({ inlineData: { mimeType: 'image/png', data: imageBase64 } })
     }
 
-    const res = await fetchWithTimeout(url, {
-      method: 'POST',
+    const res  = await fetchWithTimeout(url, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts }],
+      body:    JSON.stringify({
+        contents:         [{ parts }],
         generationConfig: { temperature, maxOutputTokens: maxTokens },
       }),
     }, timeoutMs)
@@ -264,7 +299,7 @@ export async function streamGemini(
           if (text) onChunk(text)
           if (json.usageMetadata) {
             usage = {
-              inputTokens:  json.usageMetadata.promptTokenCount    || 0,
+              inputTokens:  json.usageMetadata.promptTokenCount     || 0,
               outputTokens: json.usageMetadata.candidatesTokenCount || 0,
             }
           }

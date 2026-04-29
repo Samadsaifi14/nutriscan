@@ -5,6 +5,14 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 declare module "next-auth" {
   interface Session {
     userId: string
+    googleAccessToken?: string
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    googleAccessToken?: string
+    googleTokenExpiry?: number
   }
 }
 
@@ -12,8 +20,18 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+      clientId:     process.env.GOOGLE_CLIENT_ID ?? "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      authorization: {
+        params: {
+          scope: [
+            'openid',
+            'email',
+            'profile',
+            'https://www.googleapis.com/auth/generative-language',
+          ].join(' '),
+        },
+      },
     }),
   ],
   callbacks: {
@@ -29,9 +47,9 @@ export const authOptions: NextAuthOptions = {
         const { error } = await supabaseAdmin
           .from('user_profiles')
           .upsert({
-            user_id: user.id,
-            email: user.email,
-            name: user.name,
+            user_id:    user.id,
+            email:      user.email,
+            name:       user.name,
             avatar_url: user.image,
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' })
@@ -42,9 +60,9 @@ export const authOptions: NextAuthOptions = {
         if (isNewUser) {
           const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
           fetch(`${baseUrl}/api/welcome-email`, {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.id, email: user.email, name: user.name })
+            body:    JSON.stringify({ userId: user.id, email: user.email, name: user.name })
           }).catch(err => console.log('Welcome email error:', err.message))
         }
         return true
@@ -53,17 +71,26 @@ export const authOptions: NextAuthOptions = {
         return false
       }
     },
+
     async jwt({ token, account }) {
-      if (account) token.provider = account.provider
+      if (account) {
+        token.provider          = account.provider
+        token.googleAccessToken = account.access_token
+        token.googleTokenExpiry = account.expires_at
+      }
       return token
     },
+
     async session({ session, token }) {
-      if (session.user) session.userId = token.sub ?? ""
+      if (session.user) {
+        session.userId            = token.sub ?? ""
+        session.googleAccessToken = token.googleAccessToken
+      }
       return session
     },
   },
   pages: {
     signIn: '/auth/signin',
-    error: '/auth/signin',
+    error:  '/auth/signin',
   },
 }
