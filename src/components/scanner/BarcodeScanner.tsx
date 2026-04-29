@@ -8,30 +8,21 @@ interface BarcodeScannerProps {
 }
 
 export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const mountedRef = useRef(true)
+  const videoRef    = useRef<HTMLVideoElement>(null)
+  const streamRef   = useRef<MediaStream | null>(null)
+  const mountedRef  = useRef(true)
 
-  const [status, setStatus] = useState('Starting camera...')
-  const [failureTip, setFailureTip] = useState<string | null>(null)
+  const [status,        setStatus]        = useState('Starting camera...')
+  const [failureTip,    setFailureTip]    = useState<string | null>(null)
   const [isFrontCamera, setIsFrontCamera] = useState(false)
-  const [isCapturing, setIsCapturing] = useState(false)
-  const [manualBarcode, setManualBarcode] = useState('')
-  const [tab, setTab] = useState<'photo' | 'manual'>('photo')
-  const [pulse, setPulse] = useState(false)
+  const [isCapturing,   setIsCapturing]   = useState(false)
 
   useEffect(() => {
     mountedRef.current = true
     startCamera()
-
-    const pulseTimer = setTimeout(() => {
-      if (mountedRef.current) setPulse(true)
-    }, 2000)
-
     return () => {
       mountedRef.current = false
       stopCamera()
-      clearTimeout(pulseTimer)
     }
   }, [])
 
@@ -47,15 +38,12 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         s = await navigator.mediaDevices.getUserMedia({ video: true })
         front = true
       } catch {
-        if (mountedRef.current) setStatus('Camera denied. Use manual entry.')
+        if (mountedRef.current) setStatus('❌ Camera access denied.')
         return
       }
     }
 
-    if (!mountedRef.current) {
-      s?.getTracks().forEach(t => t.stop())
-      return
-    }
+    if (!mountedRef.current) { s?.getTracks().forEach(t => t.stop()); return }
 
     streamRef.current = s
     setIsFrontCamera(front)
@@ -73,69 +61,64 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
     streamRef.current = null
   }
 
-  // ✅ UPDATED HANDLE CAPTURE
   async function handleCapture() {
     if (!videoRef.current || isCapturing) return
     setIsCapturing(true)
-    setPulse(false)
     setFailureTip(null)
     setStatus('📸 Capturing...')
 
     const canvas = document.createElement('canvas')
-    canvas.width = videoRef.current.videoWidth
+    canvas.width  = videoRef.current.videoWidth
     canvas.height = videoRef.current.videoHeight
     const ctx = canvas.getContext('2d')
     if (!ctx) { setIsCapturing(false); return }
 
-    if (isFrontCamera) {
-      ctx.translate(canvas.width, 0)
-      ctx.scale(-1, 1)
-    }
-
+    if (isFrontCamera) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1) }
     ctx.drawImage(videoRef.current, 0, 0)
     const imageBase64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1]
 
     setStatus('🤖 Gemini is reading the barcode...')
 
     try {
-      const res = await fetch('/api/scan-vision', {
+      // Pass 1 — barcode only
+      const res  = await fetch('/api/scan-vision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64, mode: 'barcode_only' })
+        body: JSON.stringify({ imageBase64, mode: 'barcode_only' }),
       })
       const json = await res.json()
 
       if (json.success && json.data?.barcode) {
-        setStatus(`✅ Found barcode: ${json.data.barcode}`)
+        setStatus(`✅ Barcode found!`)
         stopCamera()
         onDetected(json.data.barcode)
         return
       }
 
-      setStatus('🔍 Trying full label extraction...')
-      const res2 = await fetch('/api/scan-vision', {
+      // Pass 2 — full label
+      setStatus('🔍 Reading full label...')
+      const res2  = await fetch('/api/scan-vision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64, mode: 'full_label' })
+        body: JSON.stringify({ imageBase64, mode: 'full_label' }),
       })
       const json2 = await res2.json()
 
       if (json2.success && json2.data?.barcode) {
-        setStatus(`✅ Found barcode: ${json2.data.barcode}`)
+        setStatus(`✅ Barcode found!`)
         stopCamera()
         onDetected(json2.data.barcode)
         return
       }
 
       if (json2.success && json2.data?.name) {
-        setStatus('💾 Saving from label data...')
-        const submitRes = await fetch('/api/products/submit', {
+        setStatus('💾 Saving from label...')
+        const submitRes  = await fetch('/api/products/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(json2.data)
+          body: JSON.stringify(json2.data),
         })
         const submitJson = await submitRes.json()
-
         if (submitJson.success) {
           stopCamera()
           onDetected(submitJson.data.barcode)
@@ -143,81 +126,81 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         }
       }
 
-      const failureMessage = json2.error || json.error || 'Could not read the label'
-      const tipMessage = json2.tip || json.tip || 'Try manual entry below'
-
-      setStatus(`❌ ${failureMessage}`)
-      setFailureTip(tipMessage)
-      setPulse(true)
-      toast.error(failureMessage)
+      // Both passes failed — show helpful tip, no manual entry
+      const tip = json2.tip || json.tip || 'Try better lighting or move closer to the label.'
+      setStatus('❌ Could not read the label')
+      setFailureTip(tip)
+      toast.error('Could not read label — see tip below')
 
     } catch {
-      setStatus('❌ Something went wrong. Try again.')
-      setFailureTip('Check your internet connection and try again.')
-      setPulse(true)
+      setStatus('❌ Something went wrong.')
+      setFailureTip('Check your internet connection, then try again.')
     }
 
     setIsCapturing(false)
   }
 
-  function handleManualSubmit() {
-    const code = manualBarcode.trim()
-    if (code.length < 8) {
-      toast.error('Please enter at least 8 digits')
-      return
-    }
-    stopCamera()
-    onDetected(code)
-  }
-
   return (
     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--card)] rounded-2xl overflow-hidden w-full max-w-md">
+      <div className="bg-[#161a20] rounded-2xl overflow-hidden w-full max-w-md border border-[#2a3545]">
 
         {/* Header */}
-        <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--card-border)]">
-          <h2 className="text-base font-bold">📷 Scan Food Product</h2>
-          <button onClick={() => { stopCamera(); onClose() }}>✕</button>
+        <div className="flex justify-between items-center px-4 py-3 border-b border-[#2a3545]">
+          <h2 className="text-base font-bold text-white">📷 Scan Food Product</h2>
+          <button
+            onClick={() => { stopCamera(); onClose() }}
+            className="text-[#7a8fa6] hover:text-white text-lg transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#2a3545]"
+          >
+            ✕
+          </button>
         </div>
 
-        {tab === 'photo' && (
-          <>
-            <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
-              <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+        {/* Camera viewfinder */}
+        <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
+          <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
 
-              <div className="absolute bottom-3 left-0 right-0 flex justify-center">
-                <span className="bg-black/70 text-white text-xs px-3 py-1.5 rounded-full">
-                  {status}
-                </span>
-              </div>
+          {/* Barcode targeting overlay */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-56 h-32 relative">
+              {/* Corner brackets */}
+              <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-emerald-400 rounded-tl" />
+              <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-emerald-400 rounded-tr" />
+              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-emerald-400 rounded-bl" />
+              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-emerald-400 rounded-br" />
+              {/* Scan line */}
+              {!isCapturing && (
+                <div className="absolute left-1 right-1 top-1/2 h-px bg-emerald-400/60" />
+              )}
             </div>
+          </div>
 
-            {/* ✅ FAILURE TIP UI */}
-            {failureTip && !isCapturing && (
-              <div className="px-4 py-2 bg-amber-50 border-b">
-                <p className="text-xs text-center">💡 {failureTip}</p>
-              </div>
-            )}
+          {/* Status pill */}
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+            <span className="bg-black/80 text-white text-xs px-3 py-1.5 rounded-full border border-white/10">
+              {status}
+            </span>
+          </div>
+        </div>
 
-            <div className="p-4">
-              <button onClick={handleCapture} className="w-full py-4 bg-green-600 text-white rounded-xl">
-                📸 Capture & Read
-              </button>
-            </div>
-          </>
-        )}
-
-        {tab === 'manual' && (
-          <div className="p-5">
-            <input
-              value={manualBarcode}
-              onChange={e => setManualBarcode(e.target.value)}
-              placeholder="Enter barcode"
-              className="w-full p-3 border"
-            />
-            <button onClick={handleManualSubmit}>Submit</button>
+        {/* Failure tip — dark background, readable */}
+        {failureTip && !isCapturing && (
+          <div className="px-4 py-3 bg-[#1a1f2a] border-b border-amber-500/30">
+            <p className="text-xs text-amber-300 text-center">
+              💡 {failureTip}
+            </p>
           </div>
         )}
+
+        {/* Capture button */}
+        <div className="p-4 bg-[#161a20]">
+          <button
+            onClick={handleCapture}
+            disabled={isCapturing}
+            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors text-sm"
+          >
+            {isCapturing ? '⏳ Reading...' : '📸 Capture & Read'}
+          </button>
+        </div>
 
       </div>
     </div>
