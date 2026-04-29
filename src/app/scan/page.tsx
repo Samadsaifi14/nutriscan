@@ -492,6 +492,12 @@ export default function ScanPage() {
         <BarcodeScanner onDetected={handleBarcode} onClose={() => setShowScanner(false)} />
       )}
       {showPhotoMode && (
+  <ProductPhotoCapture
+    onCapture={handleProductPhoto}
+    onClose={() => setShowPhotoMode(false)}
+  />
+)}
+      {showPhotoMode && (
         <ProductPhotoCaptureModal onCapture={handleProductPhoto} onClose={() => setShowPhotoMode(false)} />
       )}
     </div>
