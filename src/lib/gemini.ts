@@ -28,7 +28,7 @@ const DEFAULTS: Required<Omit<GeminiConfig, 'model'>> = {
 // - TEXT_MODEL  : for pure text→JSON analysis (gemini 2.5 flash, better reasoning)
 // - VISION_MODEL: for image reading (gemini 1.5 flash, proven stable vision support)
 const TEXT_MODEL   = 'gemini-2.5-flash-preview-04-17'
-const VISION_MODEL = 'gemini-1.5-flash'
+const VISION_MODEL = 'gemini-1.5-flash-latest'
 const BASE_URL     = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 function getApiKey(): string {
