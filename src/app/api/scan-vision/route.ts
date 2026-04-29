@@ -95,7 +95,7 @@ Return ONLY valid JSON, no markdown, no code fences:
     // Use callGeminiVision — uses gemini-1.5-flash, no responseMimeType
     const { text } = await callGeminiVision(prompt, imageBase64, {
       temperature: 0.1,
-      maxTokens:   1024,
+      maxTokens:   2048,
     })
 
     const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()

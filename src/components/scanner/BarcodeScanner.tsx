@@ -7,10 +7,39 @@ interface BarcodeScannerProps {
   onClose: () => void
 }
 
+// Compress canvas image before sending to API — reduces payload from ~800KB to ~80KB
+function compressCanvas(
+  video: HTMLVideoElement,
+  isFrontCamera: boolean,
+  maxDim = 800,
+  quality = 0.82
+): string {
+  const srcW = video.videoWidth
+  const srcH = video.videoHeight
+
+  // Scale down to maxDim on the longest side
+  const scale = Math.min(1, maxDim / Math.max(srcW, srcH))
+  const w = Math.round(srcW * scale)
+  const h = Math.round(srcH * scale)
+
+  const canvas = document.createElement('canvas')
+  canvas.width  = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')!
+
+  if (isFrontCamera) {
+    ctx.translate(w, 0)
+    ctx.scale(-1, 1)
+  }
+
+  ctx.drawImage(video, 0, 0, w, h)
+  return canvas.toDataURL('image/jpeg', quality).split(',')[1]
+}
+
 export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerProps) {
-  const videoRef    = useRef<HTMLVideoElement>(null)
-  const streamRef   = useRef<MediaStream | null>(null)
-  const mountedRef  = useRef(true)
+  const videoRef   = useRef<HTMLVideoElement>(null)
+  const streamRef  = useRef<MediaStream | null>(null)
+  const mountedRef = useRef(true)
 
   const [status,        setStatus]        = useState('Starting camera...')
   const [failureTip,    setFailureTip]    = useState<string | null>(null)
@@ -53,7 +82,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
       try { await videoRef.current.play() } catch {}
     }
 
-    setStatus('Point camera at barcode or label, then tap Capture')
+    setStatus('Point camera at barcode, then tap Capture')
   }
 
   function stopCamera() {
@@ -67,56 +96,54 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
     setFailureTip(null)
     setStatus('📸 Capturing...')
 
-    const canvas = document.createElement('canvas')
-    canvas.width  = videoRef.current.videoWidth
-    canvas.height = videoRef.current.videoHeight
-    const ctx = canvas.getContext('2d')
-    if (!ctx) { setIsCapturing(false); return }
+    // Compress image to ~80KB before sending
+    const imageBase64 = compressCanvas(videoRef.current, isFrontCamera, 800, 0.82)
 
-    if (isFrontCamera) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1) }
-    ctx.drawImage(videoRef.current, 0, 0)
-    const imageBase64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1]
-
-    setStatus('🤖 Gemini is reading the barcode...')
+    setStatus('🤖 Reading barcode...')
 
     try {
-      // Pass 1 — barcode only
-      const res  = await fetch('/api/scan-vision', {
-        method: 'POST',
+      // ── Pass 1: barcode_only (fast, cheap) ──────────────────────────────
+      const res1  = await fetch('/api/scan-vision', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64, mode: 'barcode_only' }),
+        body:    JSON.stringify({ imageBase64, mode: 'barcode_only' }),
       })
-      const json = await res.json()
+      const json1 = await res1.json()
 
-      if (json.success && json.data?.barcode) {
-        setStatus(`✅ Barcode found!`)
+      if (json1.success && json1.data?.barcode) {
+        setStatus('✅ Barcode found!')
         stopCamera()
-        onDetected(json.data.barcode)
+        onDetected(json1.data.barcode)
         return
       }
 
-      // Pass 2 — full label
+      // Log what went wrong in pass 1
+      console.log('Pass 1 result:', JSON.stringify(json1).slice(0, 200))
+
+      // ── Pass 2: full_label (slower, extracts all info) ──────────────────
       setStatus('🔍 Reading full label...')
       const res2  = await fetch('/api/scan-vision', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64, mode: 'full_label' }),
+        body:    JSON.stringify({ imageBase64, mode: 'full_label' }),
       })
       const json2 = await res2.json()
 
+      console.log('Pass 2 result:', JSON.stringify(json2).slice(0, 200))
+
       if (json2.success && json2.data?.barcode) {
-        setStatus(`✅ Barcode found!`)
+        setStatus('✅ Barcode found!')
         stopCamera()
         onDetected(json2.data.barcode)
         return
       }
 
       if (json2.success && json2.data?.name) {
-        setStatus('💾 Saving from label...')
+        setStatus('💾 Saving product...')
         const submitRes  = await fetch('/api/products/submit', {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(json2.data),
+          body:    JSON.stringify(json2.data),
         })
         const submitJson = await submitRes.json()
         if (submitJson.success) {
@@ -126,13 +153,14 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         }
       }
 
-      // Both passes failed — show helpful tip, no manual entry
-      const tip = json2.tip || json.tip || 'Try better lighting or move closer to the label.'
+      // Both passes failed
+      const tip = json2.tip || json1.tip || 'Try better lighting or move closer.'
       setStatus('❌ Could not read the label')
       setFailureTip(tip)
-      toast.error('Could not read label — see tip below')
+      toast.error('Could not read — see tip below')
 
-    } catch {
+    } catch (e) {
+      console.error('Capture error:', e)
       setStatus('❌ Something went wrong.')
       setFailureTip('Check your internet connection, then try again.')
     }
@@ -159,15 +187,13 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
           <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
 
-          {/* Barcode targeting overlay */}
+          {/* Targeting overlay */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-56 h-32 relative">
-              {/* Corner brackets */}
               <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-emerald-400 rounded-tl" />
               <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-emerald-400 rounded-tr" />
               <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-emerald-400 rounded-bl" />
               <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-emerald-400 rounded-br" />
-              {/* Scan line */}
               {!isCapturing && (
                 <div className="absolute left-1 right-1 top-1/2 h-px bg-emerald-400/60" />
               )}
@@ -182,12 +208,10 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
           </div>
         </div>
 
-        {/* Failure tip — dark background, readable */}
+        {/* Failure tip */}
         {failureTip && !isCapturing && (
           <div className="px-4 py-3 bg-[#1a1f2a] border-b border-amber-500/30">
-            <p className="text-xs text-amber-300 text-center">
-              💡 {failureTip}
-            </p>
+            <p className="text-xs text-amber-300 text-center">💡 {failureTip}</p>
           </div>
         )}
 
