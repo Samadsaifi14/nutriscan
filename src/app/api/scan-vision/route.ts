@@ -2,21 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { callGemini, GeminiError } from '@/lib/gemini'
+import { callGeminiVision, GeminiError } from '@/lib/gemini'
 
 const RequestSchema = z.object({
-  imageBase64: z.string().min(100, 'Image data is too small — please try again'),
+  imageBase64: z.string().min(100, 'Image data too small'),
   mode: z.enum(['barcode_only', 'full_label']).optional().default('full_label'),
 })
 
 const FAILURE_REASONS = {
   no_barcode: {
     message: 'No barcode visible in the photo',
-    tip: 'Make sure the barcode lines and the number below them are clearly visible. Try moving closer.',
+    tip: 'Make sure the barcode lines and number below are clearly visible. Try moving closer.',
   },
   blurry: {
     message: 'The image appears blurry',
-    tip: 'Hold your phone steady and tap the screen to focus before capturing.',
+    tip: 'Hold your phone steady and tap to focus before capturing.',
   },
   dark: {
     message: 'The image is too dark',
@@ -28,28 +28,28 @@ const FAILURE_REASONS = {
   },
   generic: {
     message: 'Could not read the label',
-    tip: 'Try a different angle, better lighting, or use manual barcode entry instead.',
+    tip: 'Try a different angle, better lighting, or point at the nutrition label directly.',
   },
 }
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    const userId = (session as any)?.userId
+    const userId  = (session as any)?.userId
 
     if (!userId) {
       return NextResponse.json(
-        { success: false, error: 'Authentication required', tip: 'Please sign in to scan product labels.' },
+        { success: false, error: 'Authentication required', tip: 'Please sign in to scan.' },
         { status: 401 }
       )
     }
 
-    const body = await req.json()
+    const body   = await req.json()
     const parsed = RequestSchema.safeParse(body)
 
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: 'Invalid image data', tip: 'Please try capturing the image again.' },
+        { success: false, error: 'Invalid image data', tip: 'Please try capturing again.' },
         { status: 400 }
       )
     }
@@ -57,23 +57,24 @@ export async function POST(req: NextRequest) {
     const { imageBase64, mode } = parsed.data
 
     const prompt = mode === 'barcode_only'
-      ? `Find the barcode in this image. Extract the exact number printed below the barcode lines.
-Return ONLY this JSON, no markdown:
+      ? `Look at this image. Find the barcode — the parallel black vertical lines with a number printed below them.
+Extract the exact number printed below the barcode lines. Do not guess — only return numbers you can clearly read.
+Return ONLY this JSON, no markdown, no code fences:
 {
-  "barcode": "<exact number or null if not clearly visible>",
-  "confidence": "high"|"medium"|"low",
-  "image_issues": null|"blurry"|"dark"|"no_barcode"|"no_label",
-  "visible_elements": ["<what you can see>"]
+  "barcode": "<exact digits printed below barcode, or null if not clearly visible>",
+  "confidence": "high",
+  "image_issues": null,
+  "visible_elements": ["list what you can see in the image"]
 }`
       : `You are a food label reader for Indian packaged food products.
-Extract ALL visible information from this packaging image.
-Return ONLY valid JSON, no markdown:
+Look at this image carefully and extract ALL visible text and numbers from the packaging.
+Return ONLY valid JSON, no markdown, no code fences:
 {
-  "barcode": "<barcode number or null>",
+  "barcode": "<barcode number if visible, or null>",
   "name": "<product name>",
-  "brand": "<brand name>",
+  "brand": "<brand name or null>",
   "serving_size_g": <number or null>,
-  "ingredients_text": "<full ingredients list or null>",
+  "ingredients_text": "<full ingredients list as text, or null>",
   "nutrition_per_100g": {
     "calories": <number or null>,
     "protein": <number or null>,
@@ -86,22 +87,16 @@ Return ONLY valid JSON, no markdown:
   "additives": ["<additive name>"],
   "allergens": ["<allergen>"],
   "fssai_number": "<14-digit FSSAI number or null>",
-  "mrp": <price in rupees or null>,
-  "confidence": "high"|"medium"|"low",
-  "image_issues": null|"blurry"|"dark"|"no_barcode"|"no_label"
+  "mrp": <price in rupees as number or null>,
+  "confidence": "high",
+  "image_issues": null
 }`
 
-    const { text } = await callGemini(prompt, imageBase64, {
+    // Use callGeminiVision — uses gemini-1.5-flash, no responseMimeType
+    const { text } = await callGeminiVision(prompt, imageBase64, {
       temperature: 0.1,
-      maxTokens: 1024,  // was 8192 — vision JSON response is always small
+      maxTokens:   1024,
     })
-
-    if (!text) {
-      return NextResponse.json(
-        { success: false, error: FAILURE_REASONS.generic.message, tip: FAILURE_REASONS.generic.tip },
-        { status: 500 }
-      )
-    }
 
     const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
@@ -109,6 +104,7 @@ Return ONLY valid JSON, no markdown:
     try {
       extracted = JSON.parse(cleaned)
     } catch {
+      console.error('Vision JSON parse failed. Raw:', cleaned.slice(0, 400))
       return NextResponse.json(
         { success: false, error: FAILURE_REASONS.generic.message, tip: FAILURE_REASONS.generic.tip },
         { status: 500 }
@@ -116,17 +112,18 @@ Return ONLY valid JSON, no markdown:
     }
 
     if (extracted.image_issues && !extracted.barcode && !extracted.name) {
-      const reason = FAILURE_REASONS[extracted.image_issues as keyof typeof FAILURE_REASONS] || FAILURE_REASONS.generic
+      const reason = FAILURE_REASONS[extracted.image_issues as keyof typeof FAILURE_REASONS]
+        || FAILURE_REASONS.generic
       return NextResponse.json({
         success: false,
-        error: reason.message,
-        tip: reason.tip,
+        error:        reason.message,
+        tip:          reason.tip,
         image_issues: extracted.image_issues,
       })
     }
 
     if (extracted.confidence === 'low') {
-      extracted._warning = 'Low confidence — some values may be inaccurate. Please verify before logging.'
+      extracted._warning = 'Low confidence — some values may be inaccurate.'
     }
 
     console.log('Vision barcode:', extracted.barcode, '| name:', extracted.name, '| confidence:', extracted.confidence)
@@ -138,7 +135,7 @@ Return ONLY valid JSON, no markdown:
       const isQuota = err.message.toLowerCase().includes('quota')
       if (err.type === 'unavailable') {
         return NextResponse.json(
-          { success: false, error: 'Gemini AI is busy. Please wait 30 seconds and try again.', tip: 'Retry in a moment.' },
+          { success: false, error: 'AI is busy. Please wait 30 seconds and try again.', tip: 'Retry in a moment.' },
           { status: 503 }
         )
       }
@@ -147,14 +144,14 @@ Return ONLY valid JSON, no markdown:
           {
             success: false,
             error: isQuota ? 'Daily AI quota reached. Try again tomorrow.' : 'Too many requests. Wait a minute.',
-            tip: isQuota ? 'Upgrade your Gemini API plan at aistudio.google.com' : 'Too many scans right now.',
+            tip:   isQuota ? 'Check aistudio.google.com for quota details.' : 'Too many scans right now.',
           },
           { status: 429 }
         )
       }
       if (err.type === 'timeout') {
         return NextResponse.json(
-          { success: false, error: 'AI timed out. Try a clearer photo.', tip: 'Ensure label is clearly visible and well-lit.' },
+          { success: false, error: 'AI timed out. Try a clearer photo.', tip: 'Ensure the label is well-lit and in focus.' },
           { status: 504 }
         )
       }
