@@ -51,7 +51,7 @@ function VisionCapture({ onCapture }: { onCapture: (b64: string) => void }) {
     const canvas = document.createElement('canvas')
     canvas.width = videoEl.videoWidth; canvas.height = videoEl.videoHeight
     canvas.getContext('2d')?.drawImage(videoEl, 0, 0)
-    const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
+    const b64 = canvas.toDataURL('image/png').split(',')[1]
     stop(); onCapture(b64)
   }
 

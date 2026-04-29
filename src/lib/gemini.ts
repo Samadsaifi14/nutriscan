@@ -180,7 +180,7 @@ export async function callGeminiVision(
 
     const parts: any[] = [
       { text: prompt },
-      { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+      { inlineData: { mimeType: 'image/png', data: imageBase64 } },
     ]
 
     const res = await fetchWithTimeout(url, {
@@ -226,7 +226,7 @@ export async function streamGemini(
 
     const parts: any[] = [{ text: prompt }]
     if (imageBase64) {
-      parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } })
+      parts.push({ inlineData: { mimeType: 'image/png', data: imageBase64 } })
     }
 
     const res = await fetchWithTimeout(url, {
