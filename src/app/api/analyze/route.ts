@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { callGemini, GeminiError } from '@/lib/gemini'
+import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
 
 const ProductSchema = z.object({
   barcode: z.string().optional(),
@@ -76,6 +77,44 @@ export async function POST(req: NextRequest) {
 
     const { product, userProfile } = parsed.data
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 1: Local deterministic scoring (primary)
+    // ─────────────────────────────────────────────────────────────────────────
+    const localNutrition: NutritionPer100g = {
+      calories: product.nutrition.calories || 0,
+      protein: product.nutrition.protein || 0,
+      carbohydrates: product.nutrition.carbs || 0,
+      total_fat: product.nutrition.fat || 0,
+      sugar: product.nutrition.sugar,
+      sodium: product.nutrition.sodium,
+      fiber: product.nutrition.fiber,
+      saturated_fat: undefined, // not available in current schema
+    }
+
+    const localResult = scoreProduct(localNutrition, product.ingredients_text || '')
+    console.log(`📊 Local scoring: ${product.name} → ${localResult.grade} (${localResult.score}/10)`)
+    console.log(`   Additives found: ${localResult.detected_additives.length}`)
+    console.log(`   NOVA: ${localResult.nova_group} (${localResult.nova_label})`)
+
+    // Map local result to expected format
+    const localHealthScore = localResult.score
+    const localHealthRating = localResult.grade === 'A' ? 'healthy' : 
+                               localResult.grade === 'B' ? 'healthy' :
+                               localResult.grade === 'C' ? 'moderate' : 'unhealthy'
+    const localDetectedAdditives = localResult.detected_additives.map(a => ({
+      name: a.name,
+      also_known_as: a.aliases,
+      found_in_product: true,
+      concern: a.concern || a.description,
+      severity: a.risk === 'critical' ? 'high' : a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low',
+      scientific_source: 'WHO/FSSAI/EFSA',
+      source_url: '',
+      global_safe_limit: '',
+      amount_in_this_product: '',
+      personalized_safe_limit: '',
+      percentage_of_daily_limit: ''
+    }))
+
     // Fetch user profile from DB if not passed
     let profile = userProfile
     if (userId && !profile) {
@@ -104,6 +143,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Cache check — only for barcode scans without personalization
+    // Note: We don't use cache for local scoring anymore (always fresh), but keep for AI enhancement
     if (product.barcode && !profile) {
       const { data: cached } = await supabaseAdmin
         .from('products')
@@ -114,48 +154,126 @@ export async function POST(req: NextRequest) {
       if (cached?.ai_analysis_json && cached?.ai_analyzed_at) {
         const ageMs = Date.now() - new Date(cached.ai_analyzed_at).getTime()
         if (ageMs < 7 * 24 * 60 * 60 * 1000) {
-          console.log('Returning cached AI analysis for', product.name)
-          return NextResponse.json({ success: true, data: cached.ai_analysis_json, cached: true })
+          // Merge cached AI enhancement with fresh local scoring
+          const cachedAnalysis = cached.ai_analysis_json
+          const mergedResult = {
+            ...cachedAnalysis,
+            health_score: localHealthScore,
+            health_rating: localHealthRating,
+            health_score_breakdown: {
+              nutrition_score: localResult.nutrition_score,
+              ingredient_safety_score: localResult.additive_score,
+              processing_score: localResult.nova_score,
+              overall: localResult.score,
+            },
+            harmful_ingredients: localDetectedAdditives.length > 0 ? localDetectedAdditives : cachedAnalysis.harmful_ingredients || [],
+            ingredient_warnings: localResult.detected_additives.map(a => ({
+              ingredient: a.name,
+              concern: a.concern || a.description,
+              severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
+            })),
+            summary: cachedAnalysis.summary || localResult.summary,
+            detailed_breakdown: cachedAnalysis.detailed_breakdown || {
+              processing_level: localResult.nova_label,
+              overall_nutrient_density: localResult.score >= 7 ? 'high' : localResult.score >= 5 ? 'medium' : 'low'
+            },
+            analyzed_at: new Date().toISOString(),
+            personalized: false,
+            scoring_method: 'hybrid_local_cache',
+          }
+          console.log(`📊 Returning cached AI + fresh local score: ${localResult.score}/10`)
+          return NextResponse.json({ success: true, data: mergedResult, cached: true })
         }
       }
     }
 
-    const prompt = buildPrompt(product, profile)
-    console.log(`Calling Gemini for: ${product.name} | prompt: ${prompt.length} chars`)
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 2: AI Enhancement (summary + alternatives) - optional fallback
+    // ─────────────────────────────────────────────────────────────────────────
+    let aiEnhancement: any = null
+    let aiFailed = false
 
-    const { text, usage } = await callGemini(prompt)
-    console.log('Gemini raw (first 300):', text.slice(0, 300))
-
-    const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
-
-    let analysis: any
     try {
-      analysis = JSON.parse(cleaned)
-    } catch {
-      console.error('JSON parse failed. Raw:', cleaned.slice(0, 400))
-      return NextResponse.json(
-        { success: false, error: 'AI returned invalid format. Please try again.' },
-        { status: 500 }
-      )
+      const enhancementPrompt = buildEnhancementPrompt(product, profile, localResult)
+      console.log(`🤖 Calling Gemini for AI enhancement...`)
+      
+      const { text, usage } = await callGemini(enhancementPrompt)
+      const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
+      aiEnhancement = JSON.parse(cleaned)
+      console.log(`✅ AI enhancement success | tokens: ${usage.inputTokens}in/${usage.outputTokens}out`)
+    } catch (aiErr: any) {
+      console.warn('AI enhancement failed, using local-only result:', aiErr.message)
+      aiFailed = true
     }
 
-    analysis.analyzed_at = new Date().toISOString()
-    analysis.personalized = !!profile
-    console.log(`✅ ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10) | tokens: ${usage.inputTokens}in/${usage.outputTokens}out`)
+    // Build final response from local scoring + optional AI enhancement
+    const analysis: any = {
+      health_rating: localHealthRating,
+      health_score: localHealthScore,
+      health_score_breakdown: {
+        nutrition_score: localResult.nutrition_score,
+        ingredient_safety_score: localResult.additive_score,
+        processing_score: localResult.nova_score,
+        overall: localResult.score,
+      },
+      summary: aiEnhancement?.summary || localResult.summary,
+      detailed_breakdown: {
+        calories: aiEnhancement?.detailed_breakdown?.calories || `(${localResult.breakdown.find(b => b.factor === 'calories')?.detail || 'see score'})`,
+        protein: aiEnhancement?.detailed_breakdown?.protein || `(${localResult.breakdown.find(b => b.factor === 'protein')?.detail || 'see score'})`,
+        sugar: aiEnhancement?.detailed_breakdown?.sugar || `(${localResult.breakdown.find(b => b.factor === 'sugar')?.detail || 'see score'})`,
+        sodium: aiEnhancement?.detailed_breakdown?.sodium || `(${localResult.breakdown.find(b => b.factor === 'sodium')?.detail || 'see score'})`,
+        fat: aiEnhancement?.detailed_breakdown?.fat || `(${localResult.breakdown.find(b => b.factor === 'sat_fat')?.detail || 'see score'})`,
+        fiber: aiEnhancement?.detailed_breakdown?.fiber || `(${localResult.breakdown.find(b => b.factor === 'fiber')?.detail || 'see score'})`,
+        processing_level: localResult.nova_label,
+        overall_nutrient_density: localResult.score >= 7 ? 'high' : localResult.score >= 5 ? 'medium' : 'low',
+      },
+      safe_consumption: aiEnhancement?.safe_consumption || {
+        amount: null,
+        frequency: localResult.grade === 'A' ? 'Unlimited' : localResult.grade === 'B' ? 'Daily' : localResult.grade === 'C' ? 'Occasional' : 'Limit',
+        notes: localResult.label,
+        personalized_for_user: profile ? `Based on your profile` : null,
+      },
+      harmful_ingredients: localDetectedAdditives,
+      ingredient_warnings: localResult.detected_additives.map(a => ({
+        ingredient: a.name,
+        concern: a.concern || a.description,
+        severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
+      })),
+      positives: aiEnhancement?.positives || [`Local scoring: ${localResult.score}/10 (${localResult.grade})`],
+      long_term_risks: aiEnhancement?.long_term_risks || (localDetectedAdditives.length > 0 ? 
+        [`Contains ${localDetectedAdditives.length} potentially harmful additive(s)`] : 
+        ['See score breakdown for details']),
+      healthier_alternatives: aiEnhancement?.healthier_alternatives || [],
+      fssai_compliance: aiEnhancement?.fssai_compliance || (localResult.score >= 7 ? 'compliant' : localResult.score >= 5 ? 'concern' : 'unknown'),
+      diabetic_suitability: aiEnhancement?.diabetic_suitability || 
+        (localResult.breakdown.some(b => b.factor === 'sugar' && b.impact === 'critical') ? 'avoid' : 
+         localResult.breakdown.some(b => b.factor === 'sugar' && b.impact === 'negative') ? 'consume_with_caution' : 'suitable'),
+      bp_suitability: aiEnhancement?.bp_suitability || 
+        (localResult.breakdown.some(b => b.factor === 'sodium' && b.impact === 'critical') ? 'avoid' : 
+         localResult.breakdown.some(b => b.factor === 'sodium' && b.impact === 'negative') ? 'consume_with_caution' : 'suitable'),
+      child_suitability: aiEnhancement?.child_suitability || 
+        (localDetectedAdditives.some(a => a.severity === 'high') ? 'avoid' : 'consume_with_caution'),
+      pregnancy_suitability: aiEnhancement?.pregnancy_suitability || 'suitable',
+      analyzed_at: new Date().toISOString(),
+      personalized: !!profile,
+      scoring_method: aiFailed ? 'local_only' : 'hybrid',
+    }
 
-    // Cache result for non-personalized barcode scans
-    if (product.barcode && !profile) {
+    console.log(`✅ ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10) | method: ${analysis.scoring_method}`)
+
+    // Cache result for non-personalized barcode scans (store AI enhancement only)
+    if (product.barcode && !profile && !aiFailed && aiEnhancement) {
       await supabaseAdmin
         .from('products')
         .update({
           ai_health_rating: analysis.health_rating,
-          ai_analysis_json: analysis,
+          ai_analysis_json: aiEnhancement,
           ai_analyzed_at: analysis.analyzed_at,
         })
         .eq('barcode', product.barcode)
     }
 
-    return NextResponse.json({ success: true, data: analysis, cached: false })
+    return NextResponse.json({ success: true, data: analysis, cached: false, ai_failed: aiFailed })
 
   } catch (err: any) {
     if (err instanceof GeminiError) {
@@ -325,5 +443,48 @@ RETURN ONLY this JSON (no markdown, no code fences):
   "bp_suitability": "suitable"|"consume_with_caution"|"avoid",
   "child_suitability": "suitable"|"consume_with_caution"|"avoid",
   "pregnancy_suitability": "suitable"|"consume_with_caution"|"avoid"
+}`
+}
+
+// ─── ENHANCEMENT PROMPT ─────────────────────────────────────────────────────
+// Lightweight AI prompt for summary + alternatives only (uses local score)
+function buildEnhancementPrompt(product: any, userProfile: any, localResult: any): string {
+  const userSection = userProfile
+    ? `User profile: ${userProfile.age ? `age ${userProfile.age}, ` : ''}${userProfile.bmi ? `BMI ${userProfile.bmi}, ` : ''}${userProfile.is_diabetic ? 'diabetic, ' : ''}${userProfile.has_bp ? 'high BP, ' : ''}`
+    : `General adult profile`
+
+  const additivesList = localResult.detected_additives
+    .map((a: any) => `${a.name} (${a.risk} risk)`)
+    .join(', ') || 'None detected'
+
+  return `Enhance analysis for "${product.name}".
+
+LOCAL SCORE ALREADY COMPUTED: ${localResult.score}/10 (Grade: ${localResult.grade})
+NOVA Classification: ${localResult.nova_group} (${localResult.nova_label})
+Detected Additives: ${additivesList}
+
+${userSection}
+
+Generate ONLY these fields (JSON only, no markdown):
+{
+  "summary": "2-3 sentence consumer-friendly summary",
+  "positives": ["1-3 specific positives about this product"],
+  "long_term_risks": ["2-4 evidence-based risks"],
+  "healthier_alternatives": [
+    { "name": "Indian food/brand", "reason": "nutritional reason", "availability": "widely_available|supermarket|homemade", "type": "branded|homemade|whole_food" }
+  ],
+  "detailed_breakdown": {
+    "calories": "<1 sentence>",
+    "protein": "<1 sentence>",
+    "sugar": "<1 sentence>",
+    "sodium": "<1 sentence>",
+    "fat": "<1 sentence>",
+    "fiber": "<1 sentence>"
+  },
+  "safe_consumption": {
+    "amount": "<specific amount>",
+    "frequency": "<e.g. Max twice a week>",
+    "notes": "<additional notes>"
+  }
 }`
 }
