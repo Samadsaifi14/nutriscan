@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { callGemini, GeminiError } from '@/lib/gemini'
+import { generateSimpleSummary } from '@/lib/groq'
 import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
 import { findHealthierAlternatives } from '@/lib/alternatives'
 
@@ -189,21 +190,36 @@ export async function POST(req: NextRequest) {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // PHASE 2: AI Enhancement (summary + alternatives) - optional fallback
+    // PHASE 4: Simple AI Summary Only (Groq - cheap/fast)
+    // Replace expensive Gemini with lightweight Groq for simple summaries
     // ─────────────────────────────────────────────────────────────────────────
     let aiEnhancement: any = null
     let aiFailed = false
 
     try {
-      const enhancementPrompt = buildEnhancementPrompt(product, profile, localResult)
-      console.log(`🤖 Calling Gemini for AI enhancement...`)
+      console.log(`🤖 Generating simple summary with Groq...`)
       
-      const { text, usage } = await callGemini(enhancementPrompt)
-      const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
-      aiEnhancement = JSON.parse(cleaned)
-      console.log(`✅ AI enhancement success | tokens: ${usage.inputTokens}in/${usage.outputTokens}out`)
+      const groqResult = await generateSimpleSummary({
+        product_name: product.name,
+        score: localResult.score,
+        grade: localResult.grade,
+        nutrition: {
+          calories: product.nutrition.calories,
+          protein: product.nutrition.protein,
+          sugar: product.nutrition.sugar,
+          sodium: product.nutrition.sodium,
+        },
+        additives_found: localResult.detected_additives.map(a => a.name),
+        nova_group: localResult.nova_group,
+      })
+
+      aiEnhancement = {
+        summary: groqResult.summary,
+        recommendation: groqResult.recommendation,
+      }
+      console.log(`✅ Groq summary generated`)
     } catch (aiErr: any) {
-      console.warn('AI enhancement failed, using local-only result:', aiErr.message)
+      console.warn('Groq failed, using template summary:', aiErr.message)
       aiFailed = true
     }
 
