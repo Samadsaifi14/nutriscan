@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { callGemini, GeminiError } from '@/lib/gemini'
-import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
+import { scoreProduct, findHealthierAlternatives, type NutritionPer100g } from '@/lib/health-engine'
 
 const ProductSchema = z.object({
   barcode: z.string().optional(),
@@ -243,7 +243,13 @@ export async function POST(req: NextRequest) {
       long_term_risks: aiEnhancement?.long_term_risks || (localDetectedAdditives.length > 0 ? 
         [`Contains ${localDetectedAdditives.length} potentially harmful additive(s)`] : 
         ['See score breakdown for details']),
-      healthier_alternatives: aiEnhancement?.healthier_alternatives || [],
+      healthier_alternatives: aiEnhancement?.healthier_alternatives || 
+        (aiFailed ? findHealthierAlternatives(product.name, product.category, localResult.score).map(alt => ({
+          name: alt.name,
+          reason: alt.reason,
+          availability: alt.availability,
+          type: alt.type
+        })) : []),
       fssai_compliance: aiEnhancement?.fssai_compliance || (localResult.score >= 7 ? 'compliant' : localResult.score >= 5 ? 'concern' : 'unknown'),
       diabetic_suitability: aiEnhancement?.diabetic_suitability || 
         (localResult.breakdown.some(b => b.factor === 'sugar' && b.impact === 'critical') ? 'avoid' : 
