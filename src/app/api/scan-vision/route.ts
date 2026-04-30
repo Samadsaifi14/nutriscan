@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { callGeminiVision, callGeminiVisionWithUserToken, GeminiError } from '@/lib/gemini'
 import { checkRateLimit } from '@/lib/rateLimit'
+import { performLocalOCR } from '@/lib/ocr'
 
 const RequestSchema = z.object({
   imageBase64: z.string().min(100, 'Image data too small'),
@@ -57,6 +58,55 @@ export async function POST(req: NextRequest) {
     }
 
     const { imageBase64, mode } = parsed.data
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 2: Use Local OCR as Primary (offline-capable)
+    // ─────────────────────────────────────────────────────────────────────────
+    let ocrResult: any = null
+    let ocrFailed = false
+
+    try {
+      console.log('Attempting local OCR...')
+      ocrResult = await performLocalOCR(imageBase64)
+      console.log('Local OCR success:', {
+        barcode: ocrResult.barcode,
+        name: ocrResult.parsed.name,
+        confidence: ocrResult.confidence,
+      })
+    } catch (ocrErr: any) {
+      console.warn('Local OCR failed, falling back to AI:', ocrErr.message)
+      ocrFailed = true
+    }
+
+    // If local OCR succeeded, return it
+    if (ocrResult && !ocrFailed) {
+      const response: Record<string, any> = {
+        barcode: ocrResult.barcode,
+        name: ocrResult.parsed.name || null,
+        brand: ocrResult.parsed.brand || null,
+        serving_size_g: ocrResult.parsed.serving_size_g || null,
+        ingredients_text: ocrResult.parsed.ingredients_text || null,
+        nutrition_per_100g: ocrResult.parsed.nutrition_per_100g || null,
+        additives: ocrResult.parsed.additives || [],
+        allergens: ocrResult.parsed.allergens || [],
+        fssai_number: null,
+        mrp: null,
+        confidence: ocrResult.confidence > 60 ? 'high' : ocrResult.confidence > 40 ? 'medium' : 'low',
+        image_issues: ocrResult.warnings.length > 0 ? ocrResult.warnings.join('; ') : null,
+        _local_ocr: true,
+        _raw_text: ocrResult.rawText.substring(0, 500),
+      }
+
+      if (ocrResult.warnings.length > 0) {
+        response._warning = `Local OCR warnings: ${ocrResult.warnings.join('; ')}`
+      }
+
+      return NextResponse.json({ success: true, data: response })
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // AI Fallback (when local OCR fails or for enhanced results)
+    // ─────────────────────────────────────────────────────────────────────────
 
     const prompt = mode === 'barcode_only'
       ? `Look at this image. Find the barcode — the parallel black vertical lines with a number printed below them.
@@ -115,8 +165,8 @@ Return ONLY valid JSON, no markdown, no code fences:
           return NextResponse.json(
             {
               success: false,
-              error:   'Daily scan limit reached.',
-              tip:     'You have used your 25 free scans today. Try again tomorrow.',
+              error: 'Daily scan limit reached.',
+              tip: 'You have used your 25 free scans today. Try again tomorrow.',
             },
             { status: 429 }
           )
@@ -136,8 +186,8 @@ Return ONLY valid JSON, no markdown, no code fences:
         return NextResponse.json(
           {
             success: false,
-            error:   'Daily scan limit reached.',
-            tip:     'You have used your 25 free scans today. Try again tomorrow.',
+            error: 'Daily scan limit reached.',
+            tip: 'You have used your 25 free scans today. Try again tomorrow.',
           },
           { status: 429 }
         )
@@ -168,9 +218,9 @@ Return ONLY valid JSON, no markdown, no code fences:
       const reason = FAILURE_REASONS[extracted.image_issues as keyof typeof FAILURE_REASONS]
         || FAILURE_REASONS.generic
       return NextResponse.json({
-        success:      false,
-        error:        reason.message,
-        tip:          reason.tip,
+        success: false,
+        error: reason.message,
+        tip: reason.tip,
         image_issues: extracted.image_issues,
       })
     }
@@ -178,6 +228,9 @@ Return ONLY valid JSON, no markdown, no code fences:
     if (extracted.confidence === 'low') {
       extracted._warning = 'Low confidence — some values may be inaccurate.'
     }
+
+    // Mark as AI-generated
+    extracted._ai_fallback = true
 
     console.log('Vision barcode:', extracted.barcode, '| name:', extracted.name, '| confidence:', extracted.confidence)
     return NextResponse.json({ success: true, data: extracted })
