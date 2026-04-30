@@ -2,62 +2,22 @@
 -- Run this SQL in Supabase SQL Editor
 
 -- ============================================
--- PRODUCTS TABLE - Store scanned products
+-- ADD NEW COLUMNS TO EXISTING PRODUCTS TABLE
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS products (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  barcode VARCHAR(50) UNIQUE NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  brand VARCHAR(255),
-  category VARCHAR(100),
-  country_of_origin VARCHAR(100),
-  image_url TEXT,
-  
-  -- Nutrition per 100g
-  nutrition JSONB DEFAULT '{}'::jsonb,
-  /* Contains:
-    {
-      calories: number,
-      protein: number,
-      carbs: number,
-      fat: number,
-      sugar: number,
-      sodium: number,
-      fiber: number,
-      saturated_fat: number
-    }
-  */
-  
-  ingredients_text TEXT,
-  additives JSONB DEFAULT '[]'::jsonb, -- Array of additive names
-  allergens JSONB DEFAULT '[]'::jsonb, -- Array of allergens
-  
-  -- Health Score (calculated locally)
-  health_score DECIMAL(3,1),
-  health_grade VARCHAR(1),
-  nutrition_score DECIMAL(3,1),
-  additive_score DECIMAL(3,1),
-  nova_group INTEGER,
-  
-  -- Metadata
-  scan_count INTEGER DEFAULT 1,
-  last_scanned TIMESTAMPTZ DEFAULT NOW(),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  -- Index for faster lookups
-  CONSTRAINT unique_barcode UNIQUE (barcode)
-);
-
--- Create indexes
-CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
-CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-CREATE INDEX IF NOT EXISTS idx_products_health_score ON products(health_score DESC);
-CREATE INDEX IF NOT EXISTS idx_products_last_scanned ON products(last_scanned DESC);
+-- Add missing columns to products table (if they don't exist)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS health_score DECIMAL(3,1);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS health_grade VARCHAR(1);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS nutrition_score DECIMAL(3,1);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS additive_score DECIMAL(3,1);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS nova_group INTEGER;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS nutrition JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS ingredients_text TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS additives JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS allergens JSONB DEFAULT '[]'::jsonb;
 
 -- ============================================
--- ADDITIVES TABLE - Store harmful additives
+-- CREATE ADDITIVES TABLE (if not exists)
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS additives (
@@ -65,30 +25,21 @@ CREATE TABLE IF NOT EXISTS additives (
   name VARCHAR(255) NOT NULL UNIQUE,
   ins_code VARCHAR(20),
   e_code VARCHAR(20),
-  
-  -- Risk classification
   risk_level VARCHAR(20) NOT NULL CHECK (risk_level IN ('safe', 'low', 'medium', 'high', 'critical')),
-  
-  -- Category
   category VARCHAR(50) NOT NULL CHECK (category IN (
     'preservative', 'color', 'sweetener', 'emulsifier', 
     'flavor', 'thickener', 'antioxidant', 'acidity', 'other'
   )),
-  
   description TEXT,
   concern TEXT,
-  
-  -- Scientific sources
-  source_org VARCHAR(50), -- WHO, FSSAI, EFSA, IARC
+  source_org VARCHAR(50),
   source_url TEXT,
   global_safe_limit VARCHAR(100),
-  
-  -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create indexes
+-- Create indexes for additives
 CREATE INDEX IF NOT EXISTS idx_additives_name ON additives(name);
 CREATE INDEX IF NOT EXISTS idx_additives_risk ON additives(risk_level);
 CREATE INDEX IF NOT EXISTS idx_additives_category ON additives(category);
@@ -100,7 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_additives_ins_code ON additives(ins_code);
 
 INSERT INTO additives (name, ins_code, e_code, risk_level, category, description, concern) VALUES
 -- Preservatives
-('Sodium Benzoate', 'INS 211', 'E211', 'high', 'preservative', 'Common preservative in soft drinks', 'Linked to hyperactivity in children; forms benzene with Vitamin C'),
+('Sodium Benzoate', 'INS 211', 'E211', 'high', 'preservative', 'Common preservative in soft drinks', 'Linked to hyperactivity in children'),
 ('Potassium Sorbate', 'INS 202', 'E202', 'low', 'preservative', 'Widely used mold inhibitor', 'Generally recognized as safe'),
 ('Sodium Nitrite', 'INS 250', 'E250', 'critical', 'preservative', 'Used in cured meats', 'Forms nitrosamines - probable carcinogen'),
 ('BHA', 'INS 320', 'E320', 'high', 'antioxidant', 'Antioxidant preservative in fats', 'Possible carcinogen'),
@@ -134,17 +85,11 @@ INSERT INTO additives (name, ins_code, e_code, risk_level, category, description
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================
--- ENABLE RLS (Row Level Security)
+-- ENABLE RLS ON ADDITIVES
 -- ============================================
 
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE additives ENABLE ROW LEVEL SECURITY;
 
--- Products: Anyone can read, only service role can write
-CREATE POLICY "Products are viewable by everyone" ON products FOR SELECT USING (true);
-CREATE POLICY "Service role can manage products" ON products FOR ALL USING (auth.role() = 'service_role');
-
--- Additives: Anyone can read, only service role can write
 CREATE POLICY "Additives are viewable by everyone" ON additives FOR SELECT USING (true);
 CREATE POLICY "Service role can manage additives" ON additives FOR ALL USING (auth.role() = 'service_role');
 
@@ -152,6 +97,6 @@ CREATE POLICY "Service role can manage additives" ON additives FOR ALL USING (au
 -- DONE!
 -- ============================================
 
-SELECT 'Database setup complete!' as status;
-SELECT COUNT(*) as products_count FROM products;
+SELECT 'Database update complete!' as status;
 SELECT COUNT(*) as additives_count FROM additives;
+SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'products' ORDER BY ordinal_position;
