@@ -5,7 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { callGemini, GeminiError } from '@/lib/gemini'
-import { scoreProduct, findHealthierAlternatives, type NutritionPer100g } from '@/lib/health-engine'
+import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
+import { findHealthierAlternatives } from '@/lib/alternatives'
 
 const ProductSchema = z.object({
   barcode: z.string().optional(),
@@ -243,13 +244,7 @@ export async function POST(req: NextRequest) {
       long_term_risks: aiEnhancement?.long_term_risks || (localDetectedAdditives.length > 0 ? 
         [`Contains ${localDetectedAdditives.length} potentially harmful additive(s)`] : 
         ['See score breakdown for details']),
-      healthier_alternatives: aiEnhancement?.healthier_alternatives || 
-        (aiFailed ? findHealthierAlternatives(product.name, product.category, localResult.score).map(alt => ({
-          name: alt.name,
-          reason: alt.reason,
-          availability: alt.availability,
-          type: alt.type
-        })) : []),
+      healthier_alternatives: aiEnhancement?.healthier_alternatives || [],
       fssai_compliance: aiEnhancement?.fssai_compliance || (localResult.score >= 7 ? 'compliant' : localResult.score >= 5 ? 'concern' : 'unknown'),
       diabetic_suitability: aiEnhancement?.diabetic_suitability || 
         (localResult.breakdown.some(b => b.factor === 'sugar' && b.impact === 'critical') ? 'avoid' : 
@@ -263,6 +258,46 @@ export async function POST(req: NextRequest) {
       analyzed_at: new Date().toISOString(),
       personalized: !!profile,
       scoring_method: aiFailed ? 'local_only' : 'hybrid',
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 3: Find dynamic healthier alternatives from Open Food Facts
+    // ─────────────────────────────────────────────────────────────────────────
+    let dynamicAlternatives: any = null
+    try {
+      const altResult = await findHealthierAlternatives({
+        name: product.name,
+        brand: product.brand || null,
+        category: product.category || null,
+        barcode: product.barcode || null,
+        nutrition_per_100g: product.nutrition,
+        ingredients_text: product.ingredients_text || null,
+      })
+      
+      if (altResult.alternatives.length > 0) {
+        dynamicAlternatives = {
+          products: altResult.alternatives.map(p => ({
+            barcode: p.barcode,
+            name: p.name,
+            brand: p.brand,
+            image_url: p.image_url,
+            score: p.score,
+            grade: p.grade,
+            nutrition: p.nutrition_per_100g,
+          })),
+          why_better: altResult.why_better,
+          current_score: altResult.current_score,
+          current_grade: altResult.current_grade,
+        }
+        console.log(`🔄 Found ${altResult.alternatives.length} dynamic alternatives`)
+      }
+    } catch (altErr: any) {
+      console.warn('Dynamic alternatives failed:', altErr.message)
+    }
+
+    // Add dynamic alternatives to analysis
+    if (dynamicAlternatives) {
+      analysis.dynamic_alternatives = dynamicAlternatives
     }
 
     console.log(`✅ ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10) | method: ${analysis.scoring_method}`)
