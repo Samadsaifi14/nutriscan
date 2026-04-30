@@ -15,6 +15,7 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS nutrition JSONB DEFAULT '{}'::json
 ALTER TABLE products ADD COLUMN IF NOT EXISTS ingredients_text TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS additives JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS allergens JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS last_scanned TIMESTAMPTZ DEFAULT NOW();
 
 -- ============================================
 -- CREATE ADDITIVES TABLE (if not exists)
