@@ -5,6 +5,36 @@ import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 
+// GET handler - retrieve meal history
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    const userId = (session as any)?.userId
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('food_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('logged_at', { ascending: false })
+      .limit(50)
+
+    if (error) {
+      console.error('Get logs error:', error.message)
+      return NextResponse.json({ success: false, data: [] })
+    }
+
+    return NextResponse.json({ success: true, data: data || [] })
+  } catch (err: any) {
+    console.error('Get logs route error:', err.message)
+    return NextResponse.json({ success: false, data: [], error: err.message })
+  }
+}
+
+// POST handler - log a meal
 const LogSchema = z.object({
   product_name: z.string().min(1, 'Product name is required'),
   barcode: z.string().optional(),

@@ -3,7 +3,6 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 const mealEmoji: Record<string, string> = {
   breakfast: '🌅',
@@ -29,23 +28,24 @@ export default function HistoryPage() {
     if (status === 'unauthenticated') router.push('/auth/signin')
   }, [status])
 
-const { data: logs, isLoading, refetch } = useQuery({
+  const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ['meal-history', userId],
     queryFn: async () => {
       if (!userId) return []
-      const { data } = await supabaseAdmin
-        .from('food_logs')
-        .select('*')
-        .eq('user_id', userId)
-        .order('logged_at', { ascending: false })
-        .limit(50)
-      return data || []
+      try {
+        const res = await fetch('/api/log?userId=' + userId)
+        const json = await res.json()
+        return json.data || []
+      } catch (err) {
+        console.error('History fetch error:', err)
+        return []
+      }
     },
     enabled: !!userId,
     refetchInterval: 5000,
   })
 
-  const filtered = filter === 'all' ? logs || [] : (logs || []).filter((l: any) => l.meal_type === filter)
+  const filtered = filter === 'all' ? (logs || []) : (logs || []).filter((l: any) => l.meal_type === filter)
 
   const grouped = filtered.reduce((acc: any, log: any) => {
     const logDate = new Date(log.logged_at)
@@ -59,7 +59,7 @@ const { data: logs, isLoading, refetch } = useQuery({
   }, {})
 
   const totalCalories = (logs || []).reduce((s: number, l: any) => s + (l.calories || 0), 0)
-const totalMeals = (logs || []).length
+  const totalMeals = (logs || []).length
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
