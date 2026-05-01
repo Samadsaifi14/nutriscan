@@ -1,7 +1,7 @@
 // src/app/scan/page.tsx
 "use client"
 import { useState, useEffect }            from 'react'
-import { useRouter }                       from 'next/navigation'
+import { useRouter, useSearchParams }     from 'next/navigation'
 import dynamic                             from 'next/dynamic'
 import toast                               from 'react-hot-toast'
 import { useSession }                      from 'next-auth/react'
@@ -27,8 +27,12 @@ const BarcodeScanner = dynamic(
 
 export default function ScanPage() {
   const router              = useRouter()
+  const searchParams        = useSearchParams()
   const { status }          = useSession()
   const isGuest             = status === 'unauthenticated'
+
+  // Auto-open scanner if barcode param passed from floating button
+  const barcodeParam        = searchParams?.get('barcode')
 
   const [showScanner,     setShowScanner]     = useState(false)
   const [showPhotoMode,   setShowPhotoMode]   = useState(false)
@@ -50,7 +54,7 @@ export default function ScanPage() {
 
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null)
 
-  // Background scan state
+// Background scan state
   const [showCaptureLater, setShowCaptureLater] = useState(false)
   const [captureLaterSuccess, setCaptureLaterSuccess] = useState(false)
 
