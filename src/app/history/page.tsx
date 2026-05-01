@@ -29,7 +29,7 @@ export default function HistoryPage() {
     if (status === 'unauthenticated') router.push('/auth/signin')
   }, [status])
 
-  const { data: logs, isLoading } = useQuery({
+  const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ['meal-history', userId],
     queryFn: async () => {
       if (!userId) return []
@@ -42,6 +42,7 @@ export default function HistoryPage() {
       return data || []
     },
     enabled: !!userId,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds to see new logs
   })
 
   const filtered = filter === 'all' ? logs || [] : (logs || []).filter((l: any) => l.meal_type === filter)
