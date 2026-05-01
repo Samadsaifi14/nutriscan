@@ -7,44 +7,98 @@ interface BarcodeScannerProps {
   onClose: () => void
 }
 
-// Compress canvas image before sending to API — reduces payload from ~800KB to ~80KB
-function compressCanvas(
-  video: HTMLVideoElement,
-  isFrontCamera: boolean,
-  maxDim = 800,
-  quality = 0.82
-): string {
-  const srcW = video.videoWidth
-  const srcH = video.videoHeight
-
-  // Scale down to maxDim on the longest side
-  const scale = Math.min(1, maxDim / Math.max(srcW, srcH))
-  const w = Math.round(srcW * scale)
-  const h = Math.round(srcH * scale)
-
-  const canvas = document.createElement('canvas')
-  canvas.width  = w
-  canvas.height = h
-  const ctx = canvas.getContext('2d')!
-
-  if (isFrontCamera) {
-    ctx.translate(w, 0)
-    ctx.scale(-1, 1)
+// TypeScript declaration for BarcodeDetector API
+declare global {
+  interface Window {
+    BarcodeDetector?: new (options: { formats: string[] }) => {
+      detect(video: HTMLVideoElement): Promise<Array<{ rawValue: string }>>
+    }
   }
+}
 
-  ctx.drawImage(video, 0, 0, w, h)
-  return canvas.toDataURL('image/jpeg', quality).split(',')[1]
+// Client-side barcode detection using BarcodeDetector API
+async function detectBarcode(video: HTMLVideoElement): Promise<string | null> {
+  if (!('BarcodeDetector' in window)) {
+    console.log('BarcodeDetector not supported')
+    return null
+  }
+  
+  try {
+    const barcodeDetector = new window.BarcodeDetector!({
+      formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'],
+    })
+    
+    const barcodes = await barcodeDetector.detect(video)
+    
+    if (barcodes.length > 0) {
+      console.log('Detected barcode:', barcodes[0].rawValue)
+      return barcodes[0].rawValue
+    }
+  } catch (err) {
+    console.warn('Barcode detection error:', err)
+  }
+  
+  return null
 }
 
 export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerProps) {
   const videoRef   = useRef<HTMLVideoElement>(null)
   const streamRef  = useRef<MediaStream | null>(null)
   const mountedRef = useRef(true)
+  const detectorRef = useRef<any>(null)
 
   const [status,        setStatus]        = useState('Starting camera...')
   const [failureTip,    setFailureTip]    = useState<string | null>(null)
   const [isFrontCamera, setIsFrontCamera] = useState(false)
-  const [isCapturing,   setIsCapturing]   = useState(false)
+
+  // Setup BarcodeDetector once
+  useEffect(() => {
+    if ('BarcodeDetector' in window) {
+      detectorRef.current = new (window as any).BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'],
+      })
+    }
+  }, [])
+
+  // Real-time barcode detection
+  useEffect(() => {
+    if (!videoRef.current || !detectorRef.current) return
+    
+    const video = videoRef.current
+    let animationId: number
+    
+    const detectLoop = async () => {
+      if (!mountedRef.current || !video.srcObject) return
+      
+      try {
+        const barcodes = await detectorRef.current.detect(video)
+        
+        if (barcodes.length > 0 && mountedRef.current) {
+          const barcode = barcodes[0].rawValue
+          console.log('Live barcode detected:', barcode)
+          setStatus('✅ Barcode found!')
+          stopCamera()
+          onDetected(barcode)
+          return
+        }
+      } catch (err) {
+        // Ignore detection errors during scanning
+      }
+      
+      if (mountedRef.current) {
+        animationId = requestAnimationFrame(detectLoop)
+      }
+    }
+    
+    // Start detection after video is playing
+    video.onplaying = () => {
+      detectLoop()
+    }
+    
+    return () => {
+      if (animationId) cancelAnimationFrame(animationId)
+    }
+  }, [onDetected])
 
   useEffect(() => {
     mountedRef.current = true
@@ -90,94 +144,26 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
     streamRef.current = null
   }
 
-  async function handleCapture() {
-    if (!videoRef.current || isCapturing) return
-    setIsCapturing(true)
-    setFailureTip(null)
-    setStatus('📸 Capturing...')
-
-    // Compress image to ~80KB before sending
-    const imageBase64 = compressCanvas(videoRef.current, isFrontCamera, 1200, 0.95)
-
-    setStatus('🤖 Reading barcode...')
-
-    try {
-      // Single pass - use local OCR + Open Food Facts fallback
-      const res = await fetch('/api/scan-vision', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ imageBase64 }),
-      })
-      
-      if (!res.ok) {
-        setStatus('❌ Server error')
-        setFailureTip(`Status: ${res.status}. Try again.`)
-        setIsCapturing(false)
-        return
-      }
-      
-      const json = await res.json()
-
-      console.log('Scan result:', JSON.stringify(json).slice(0, 500))
-
-      // Handle errors
-      if (!json.success) {
-        console.error('API Error:', json.error, json.tip)
-        
-        if (res.status === 401) {
-          setStatus('🔐 Please sign in to scan')
-          setFailureTip(json.tip || 'Sign in and try again')
-        } else if (res.status === 429) {
-          setStatus('⏳ Daily limit reached')
-          setFailureTip(json.tip || 'Try again tomorrow')
-        } else {
-          setStatus('❌ ' + (json.error || 'Scan failed'))
-          setFailureTip(json.tip || 'Try again with better lighting')
-        }
-        setIsCapturing(false)
-        return
-      }
-
-      // Success - check if we got a barcode
-      if (json.data?.barcode) {
-        setStatus('✅ Barcode found!')
-        stopCamera()
-        onDetected(json.data.barcode)
-        return
-      }
-
-      // Got data but no barcode
-      if (json.data?.name) {
-        setStatus('💾 Saving product...')
-        const submitRes = await fetch('/api/products/submit', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(json.data),
-        })
-        const submitJson = await submitRes.json()
-        if (submitJson.success) {
-          stopCamera()
-          onDetected(submitJson.data.barcode || 'unknown')
-          return
-        }
-      }
-
-      // Check what data we got
-      console.log('No barcode, data:', json.data)
-      
-      // Failed to get any useful data
-      const tip = json.data?._warning || json.data?._local_ocr ? 'Barcode not detected. Try scanning with better lighting.' : 'Could not read product.'
-      setStatus('❌ Could not read the label')
-      setFailureTip(tip)
-      toast.error('Could not read — see tip below')
-
-    } catch (e) {
-      console.error('Capture error:', e)
-      setStatus('❌ Something went wrong.')
-      setFailureTip('Check your internet connection, then try again.')
+  // Manual capture fallback (for browsers without BarcodeDetector)
+  async function handleManualCapture() {
+    if (!videoRef.current) return
+    
+    setStatus('📸 Checking for barcode...')
+    
+    // Try client-side detection first
+    const barcode = await detectBarcode(videoRef.current)
+    
+    if (barcode) {
+      setStatus('✅ Barcode found!')
+      stopCamera()
+      onDetected(barcode)
+      return
     }
-
-    setIsCapturing(false)
+    
+    // If no barcode detected, show message
+    setStatus('Point camera at barcode')
+    setFailureTip('Make sure barcode is clearly visible and well-lit')
+    toast.error('No barcode detected - try moving closer')
   }
 
   return (
@@ -206,9 +192,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
               <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-emerald-400 rounded-tr" />
               <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-emerald-400 rounded-bl" />
               <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-emerald-400 rounded-br" />
-              {!isCapturing && (
-                <div className="absolute left-1 right-1 top-1/2 h-px bg-emerald-400/60" />
-              )}
+              <div className="absolute left-1 right-1 top-1/2 h-px bg-emerald-400/60" />
             </div>
           </div>
 
@@ -221,20 +205,19 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         </div>
 
         {/* Failure tip */}
-        {failureTip && !isCapturing && (
+        {failureTip && (
           <div className="px-4 py-3 bg-[#1a1f2a] border-b border-amber-500/30">
             <p className="text-xs text-amber-300 text-center">💡 {failureTip}</p>
           </div>
         )}
 
-        {/* Capture button */}
+        {/* Capture button - fallback for browsers without auto-detection */}
         <div className="p-4 bg-[#161a20]">
           <button
-            onClick={handleCapture}
-            disabled={isCapturing}
-            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors text-sm"
+            onClick={handleManualCapture}
+            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition-colors text-sm"
           >
-            {isCapturing ? '⏳ Reading...' : '📸 Capture & Read'}
+            📸 Manual Scan (Tap if auto-detect fails)
           </button>
         </div>
 
