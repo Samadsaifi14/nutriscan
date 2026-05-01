@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
     if (userId && !profile) {
       const { data: dbProfile } = await supabaseAdmin
         .from('user_profiles')
-        .select('age, weight_kg, height_cm, weight_goal, is_diabetic, has_bp, is_vegetarian, gender')
+        .select('age, weight_kg, height_cm, weight_goal, is_diabetic, has_bp, is_vegetarian, gender, daily_calorie_goal')
         .eq('user_id', userId)
         .single()
 
@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
           has_bp: dbProfile.has_bp || false,
           is_vegetarian: dbProfile.is_vegetarian || false,
           gender: dbProfile.gender || undefined,
+          daily_calorie_goal: dbProfile.daily_calorie_goal || undefined,
         }
       }
     }
