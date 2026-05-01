@@ -38,7 +38,6 @@ export async function POST(req: NextRequest) {
   try {
     const session         = await getServerSession(authOptions)
     const userId          = (session as any)?.userId
-    const userAccessToken = (session as any)?.googleAccessToken as string | undefined
 
     if (!userId) {
       return NextResponse.json(
@@ -60,8 +59,7 @@ export async function POST(req: NextRequest) {
     const { imageBase64, mode } = parsed.data
 
     // ─────────────────────────────────────────────────────────────────────────
-    // PHASE 2: Use Local OCR as Primary (offline-capable)
-    // Skip for barcode_only mode - AI is better at detecting barcodes
+    // Use Local OCR first for full_label mode (faster, free)
     // ─────────────────────────────────────────────────────────────────────────
     let ocrResult: any = null
     let ocrFailed = false
@@ -150,60 +148,25 @@ Return ONLY valid JSON, no markdown, no code fences:
 
     let text: string
 
-    // ── Try user's OAuth token first (burns their quota, not yours) ────────────
-    if (userAccessToken) {
-      try {
-        const result = await callGeminiVisionWithUserToken(
-          prompt, imageBase64, userAccessToken,
-          { temperature: 0.1, maxTokens: 2048 }
-        )
-        text = result.text
-        console.log('scan-vision: used user OAuth token')
-      } catch (userTokenErr: any) {
-        // Token expired or Gemini API not enabled on their Google account
-        // Fall through to your API key with a 25/day rate limit
-        console.warn('User token failed, falling back to API key:', userTokenErr.message)
-
-        const limit = await checkRateLimit(userId, 'scan')
-        if (!limit.allowed) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'Daily scan limit reached.',
-              tip: 'You have used your 25 free scans today. Try again tomorrow.',
-            },
-            { status: 429 }
-          )
-        }
-
-        const result = await callGeminiVision(
-          prompt, imageBase64,
-          { temperature: 0.1, maxTokens: 2048 }
-        )
-        text = result.text
-        console.log('scan-vision: used fallback API key')
-      }
-    } else {
-      // No OAuth token — use API key with 25/day rate limit
-      const limit = await checkRateLimit(userId, 'scan')
-      if (!limit.allowed) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Daily scan limit reached.',
-            tip: 'You have used your 25 free scans today. Try again tomorrow.',
-          },
-          { status: 429 }
-        )
-      }
-
-      const result = await callGeminiVision(
-        prompt, imageBase64,
-        { temperature: 0.1, maxTokens: 2048 }
+    // Use API key directly (skip user OAuth token since we removed generative-language scope)
+    const limit = await checkRateLimit(userId, 'scan')
+    if (!limit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Daily scan limit reached.',
+          tip: 'You have used your 25 free scans today. Try again tomorrow.',
+        },
+        { status: 429 }
       )
-      text = result.text
-      console.log('scan-vision: used API key (no user token)')
     }
+
+    const result = await callGeminiVision(
+      prompt, imageBase64,
+      { temperature: 0.1, maxTokens: 2048 }
+    )
+    text = result.text
+    console.log('scan-vision: used API key')
 
     const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
