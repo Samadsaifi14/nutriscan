@@ -110,7 +110,26 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
       })
       const json1 = await res1.json()
 
-      if (json1.success && json1.data?.barcode) {
+      // Handle auth/rate-limit errors explicitly
+      if (!json1.success) {
+        console.error('API Error:', json1.error, json1.tip)
+        
+        // Show specific error message
+        if (res1.status === 401) {
+          setStatus('🔐 Please sign in to scan')
+          setFailureTip(json1.tip || 'Sign in and try again')
+        } else if (res1.status === 429) {
+          setStatus('⏳ Daily limit reached')
+          setFailureTip(json1.tip || 'Try again tomorrow')
+        } else {
+          setStatus('❌ ' + (json1.error || 'Scan failed'))
+          setFailureTip(json1.tip || 'Try again with better lighting')
+        }
+        setIsCapturing(false)
+        return
+      }
+
+      if (json1.data?.barcode) {
         setStatus('✅ Barcode found!')
         stopCamera()
         onDetected(json1.data.barcode)
@@ -128,6 +147,24 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         body:    JSON.stringify({ imageBase64, mode: 'full_label' }),
       })
       const json2 = await res2.json()
+
+      // Handle errors in pass 2
+      if (!json2.success) {
+        console.error('API Error (pass 2):', json2.error, json1.tip)
+        
+        if (res2.status === 401) {
+          setStatus('🔐 Please sign in to scan')
+          setFailureTip(json2.tip || 'Sign in and try again')
+        } else if (res2.status === 429) {
+          setStatus('⏳ Daily limit reached')
+          setFailureTip(json2.tip || 'Try again tomorrow')
+        } else {
+          setStatus('❌ ' + (json2.error || 'Scan failed'))
+          setFailureTip(json2.tip || 'Try again with better lighting')
+        }
+        setIsCapturing(false)
+        return
+      }
 
       console.log('Pass 2 result:', JSON.stringify(json2).slice(0, 200))
 
