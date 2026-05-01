@@ -320,10 +320,8 @@ export default function DashboardPage() {
           </p>
           <div className="divide-y divide-[var(--card-border)]">
             {[
-              { icon: '📷', label: 'Scan a product', sub: 'Instant AI health rating', href: '/scan' },
               { icon: '⭐', label: 'View last result', sub: 'Health score & ingredients', href: '/results' },
               { icon: '🍽️', label: 'Meal history', sub: 'Your logged meals', href: '/history' },
-              { icon: '📊', label: 'Scan history', sub: 'All your past scans', href: '/scan-history' },
               { icon: '👤', label: 'Health profile', sub: 'Personalise your advice', href: '/profile-setup' },
             ].map(item => (
               <button key={item.href} onClick={() => router.push(item.href)}

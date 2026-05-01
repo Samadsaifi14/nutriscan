@@ -3,10 +3,11 @@
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Home, Clock, User } from 'lucide-react'
+import { Home, Clock, User, Star } from 'lucide-react'
 
 const NAV_ITEMS = [
   { href: '/dashboard',    label: 'Home',    icon: Home,  authRequired: true  },
+  { href: '/results',     label: 'Last',    icon: Star,  authRequired: false },
   { href: '/history',      label: 'History', icon: Clock, authRequired: true  },
   { href: '/profile-setup',label: 'Profile', icon: User,  authRequired: true  },
 ]
@@ -20,7 +21,7 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 bg-[#0d1117]/95 backdrop-blur-2xl border-t border-[#2a3545] safe-area-bottom">
-      <div className="flex items-center justify-around max-w-lg mx-auto px-4 py-3">
+      <div className="flex items-center justify-around max-w-lg mx-auto px-2 py-3">
         {NAV_ITEMS.map(item => {
           const isActive = pathname === item.href
           const Icon = item.icon
@@ -28,7 +29,7 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-1.5 px-5 py-2 rounded-2xl transition-all ${
+              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all ${
                 isActive
                   ? 'text-emerald-400 bg-emerald-500/10'
                   : 'text-[#7a8fa6] hover:text-white hover:bg-[#1a2030]'
