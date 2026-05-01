@@ -22,6 +22,10 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     const userId = (session as any)?.userId
 
+    console.log('=== MEAL LOG API ===')
+    console.log('Session:', session ? 'exists' : 'null')
+    console.log('UserId from session:', userId)
+
     if (!userId) {
       return NextResponse.json(
         { success: false, error: 'You must be signed in to log meals' },
@@ -55,6 +59,14 @@ export async function POST(req: NextRequest) {
     const data = parsed.data
     const qty = data.quantity_g / 100
 
+    console.log('Inserting log with:', {
+      user_id: userId,
+      product_name: data.product_name,
+      quantity_g: data.quantity_g,
+      calories: +(data.calories_per_100g * qty).toFixed(1),
+      meal_type: data.meal_type,
+    })
+
     const { data: log, error } = await supabaseAdmin
       .from('food_logs')
       .insert({
@@ -83,7 +95,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    console.log('Meal logged:', data.product_name, data.quantity_g + 'g')
+    console.log('Meal logged successfully:', log)
     return NextResponse.json({ success: true, data: log })
 
   } catch (err: any) {
