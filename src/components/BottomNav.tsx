@@ -6,10 +6,10 @@ import Link from 'next/link'
 import { Home, Clock, User, Star } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/dashboard',    label: 'Home',    icon: Home,  authRequired: true  },
-  { href: '/results',     label: 'Last',    icon: Star,  authRequired: false },
-  { href: '/history',      label: 'History', icon: Clock, authRequired: true  },
-  { href: '/profile-setup',label: 'Profile', icon: User,  authRequired: true  },
+  { href: '/dashboard',    label: 'Home',    icon: Home,  },
+  { href: '/results',     label: 'Results', icon: Star,  },
+  { href: '/history',      label: 'History', icon: Clock, },
+  { href: '/profile-setup',label: 'Profile', icon: User,  },
 ]
 
 export default function BottomNav() {
