@@ -71,3 +71,96 @@ export function ScoreBar({ label, score, colorClass }: { label: string; score: n
     </div>
   )
 }
+
+// Enhanced detailed breakdown with icons
+export function DetailedScoreBreakdown({ 
+  nutrition,
+  additives,
+  novaGroup,
+  breakdown 
+}: { 
+  nutrition?: { sugar?: number; sodium?: number; protein?: number; fiber?: number }
+  additives?: { name: string; risk: string }[]
+  novaGroup?: number
+  breakdown?: { factor: string; impact: string; detail: string }[]
+}) {
+  const getImpactIcon = (impact: string) => {
+    switch (impact) {
+      case 'critical': return '🔴'
+      case 'negative': return '❌'
+      case 'warning': return '⚠️'
+      case 'positive': return '✅'
+      default: return '➖'
+    }
+  }
+
+  const getImpactColor = (impact: string) => {
+    switch (impact) {
+      case 'critical': return 'text-red-400'
+      case 'negative': return 'text-red-400'
+      case 'warning': return 'text-amber-400'
+      case 'positive': return 'text-emerald-400'
+      default: return 'text-gray-400'
+    }
+  }
+
+  // Create summary items from nutrition
+  const summaryItems: { label: string; value: string; impact: string }[] = []
+  
+  if (nutrition?.sugar !== undefined) {
+    const impact = nutrition.sugar > 15 ? 'critical' : nutrition.sugar > 5 ? 'warning' : 'positive'
+    summaryItems.push({ label: 'Sugar', value: `${nutrition.sugar}g`, impact })
+  }
+  
+  if (nutrition?.sodium !== undefined) {
+    const impact = nutrition.sodium > 500 ? 'critical' : nutrition.sodium > 150 ? 'warning' : 'positive'
+    summaryItems.push({ label: 'Sodium', value: `${nutrition.sodium}mg`, impact })
+  }
+  
+  if (nutrition?.protein !== undefined) {
+    const impact = nutrition.protein > 10 ? 'positive' : nutrition.protein < 3 ? 'negative' : 'warning'
+    summaryItems.push({ label: 'Protein', value: `${nutrition.protein}g`, impact })
+  }
+
+  if (additives && additives.length > 0) {
+    const highRisk = additives.filter(a => a.risk === 'high' || a.risk === 'critical').length
+    const impact = highRisk > 0 ? 'critical' : additives.length > 0 ? 'warning' : 'positive'
+    summaryItems.push({ label: 'Additives', value: `${additives.length} risky`, impact })
+  }
+
+  // Add NOVA group
+  if (novaGroup) {
+    const novaLabels = { 1: 'Minimal', 2: 'Processed', 3: 'Ultra', 4: 'Highly Ultra' }
+    const impact = novaGroup >= 4 ? 'critical' : novaGroup >= 3 ? 'warning' : 'positive'
+    summaryItems.push({ label: 'Processing', value: novaLabels[novaGroup as keyof typeof novaLabels] || 'Unknown', impact })
+  }
+
+  // Add from breakdown if available
+  if (breakdown) {
+    breakdown.forEach(item => {
+      if (!summaryItems.find(s => s.label.toLowerCase() === item.factor.toLowerCase())) {
+        summaryItems.push({ 
+          label: item.factor.charAt(0).toUpperCase() + item.factor.slice(1).replace('_', ' '), 
+          value: item.detail.split('—')[0].trim() || item.detail.substring(0, 20),
+          impact: item.impact 
+        })
+      }
+    })
+  }
+
+  return (
+    <div className="space-y-2">
+      {summaryItems.map((item, idx) => (
+        <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-[#1e242d]">
+          <div className="flex items-center gap-2">
+            <span className="text-base">{getImpactIcon(item.impact)}</span>
+            <span className="text-sm text-[#7a8fa6]">{item.label}</span>
+          </div>
+          <span className={`text-sm font-medium ${getImpactColor(item.impact)}`}>
+            {item.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
