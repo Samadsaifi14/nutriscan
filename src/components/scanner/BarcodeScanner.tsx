@@ -106,9 +106,19 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
       const res = await fetch('/api/scan-vision', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ imageBase64, mode: 'full_label' }),
+        body:    JSON.stringify({ imageBase64 }),
       })
+      
+      if (!res.ok) {
+        setStatus('❌ Server error')
+        setFailureTip(`Status: ${res.status}. Try again.`)
+        setIsCapturing(false)
+        return
+      }
+      
       const json = await res.json()
+
+      console.log('Scan result:', JSON.stringify(json).slice(0, 500))
 
       // Handle errors
       if (!json.success) {
@@ -136,7 +146,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         return
       }
 
-      // No barcode but got some data (OCR worked)
+      // Got data but no barcode
       if (json.data?.name) {
         setStatus('💾 Saving product...')
         const submitRes = await fetch('/api/products/submit', {
@@ -152,8 +162,11 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         }
       }
 
+      // Check what data we got
+      console.log('No barcode, data:', json.data)
+      
       // Failed to get any useful data
-      const tip = json.data?._warning || 'Try better lighting or move closer.'
+      const tip = json.data?._warning || json.data?._local_ocr ? 'Barcode not detected. Try scanning with better lighting.' : 'Could not read product.'
       setStatus('❌ Could not read the label')
       setFailureTip(tip)
       toast.error('Could not read — see tip below')
