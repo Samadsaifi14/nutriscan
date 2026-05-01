@@ -61,51 +61,55 @@ export async function POST(req: NextRequest) {
 
     // ─────────────────────────────────────────────────────────────────────────
     // PHASE 2: Use Local OCR as Primary (offline-capable)
+    // Skip for barcode_only mode - AI is better at detecting barcodes
     // ─────────────────────────────────────────────────────────────────────────
     let ocrResult: any = null
     let ocrFailed = false
 
-    try {
-      console.log('Attempting local OCR...')
-      ocrResult = await performLocalOCR(imageBase64)
-      console.log('Local OCR success:', {
-        barcode: ocrResult.barcode,
-        name: ocrResult.parsed.name,
-        confidence: ocrResult.confidence,
-      })
-    } catch (ocrErr: any) {
-      console.warn('Local OCR failed, falling back to AI:', ocrErr.message)
-      ocrFailed = true
-    }
-
-    // If local OCR succeeded, return it
-    if (ocrResult && !ocrFailed) {
-      const response: Record<string, any> = {
-        barcode: ocrResult.barcode,
-        name: ocrResult.parsed.name || null,
-        brand: ocrResult.parsed.brand || null,
-        serving_size_g: ocrResult.parsed.serving_size_g || null,
-        ingredients_text: ocrResult.parsed.ingredients_text || null,
-        nutrition_per_100g: ocrResult.parsed.nutrition_per_100g || null,
-        additives: ocrResult.parsed.additives || [],
-        allergens: ocrResult.parsed.allergens || [],
-        fssai_number: null,
-        mrp: null,
-        confidence: ocrResult.confidence > 60 ? 'high' : ocrResult.confidence > 40 ? 'medium' : 'low',
-        image_issues: ocrResult.warnings.length > 0 ? ocrResult.warnings.join('; ') : null,
-        _local_ocr: true,
-        _raw_text: ocrResult.rawText.substring(0, 500),
+    // For barcode detection, always use AI (local OCR can't reliably detect barcodes)
+    if (mode !== 'barcode_only') {
+      try {
+        console.log('Attempting local OCR...')
+        ocrResult = await performLocalOCR(imageBase64)
+        console.log('Local OCR success:', {
+          barcode: ocrResult.barcode,
+          name: ocrResult.parsed.name,
+          confidence: ocrResult.confidence,
+        })
+      } catch (ocrErr: any) {
+        console.warn('Local OCR failed, falling back to AI:', ocrErr.message)
+        ocrFailed = true
       }
 
-      if (ocrResult.warnings.length > 0) {
-        response._warning = `Local OCR warnings: ${ocrResult.warnings.join('; ')}`
-      }
+      // If local OCR succeeded AND found useful data (barcode OR name OR nutrition), use it
+      if (ocrResult && !ocrFailed && (ocrResult.barcode || ocrResult.parsed.name || ocrResult.parsed.nutrition_per_100g)) {
+        const response: Record<string, any> = {
+          barcode: ocrResult.barcode,
+          name: ocrResult.parsed.name || null,
+          brand: ocrResult.parsed.brand || null,
+          serving_size_g: ocrResult.parsed.serving_size_g || null,
+          ingredients_text: ocrResult.parsed.ingredients_text || null,
+          nutrition_per_100g: ocrResult.parsed.nutrition_per_100g || null,
+          additives: ocrResult.parsed.additives || [],
+          allergens: ocrResult.parsed.allergens || [],
+          fssai_number: null,
+          mrp: null,
+          confidence: ocrResult.confidence > 60 ? 'high' : ocrResult.confidence > 40 ? 'medium' : 'low',
+          image_issues: ocrResult.warnings.length > 0 ? ocrResult.warnings.join('; ') : null,
+          _local_ocr: true,
+          _raw_text: ocrResult.rawText.substring(0, 500),
+        }
 
-      return NextResponse.json({ success: true, data: response })
+        if (ocrResult.warnings.length > 0) {
+          response._warning = `Local OCR warnings: ${ocrResult.warnings.join('; ')}`
+        }
+
+        return NextResponse.json({ success: true, data: response })
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // AI Fallback (when local OCR fails or for enhanced results)
+    // AI Fallback (when local OCR fails or for barcode_only mode)
     // ─────────────────────────────────────────────────────────────────────────
 
     const prompt = mode === 'barcode_only'
