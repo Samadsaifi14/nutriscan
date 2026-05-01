@@ -16,6 +16,7 @@ import { LoadingProduct, LoadingAnalysis } from '@/components/scan/LoadingState'
 import { ScanErrorBanner, AnalysisErrorBanner } from '@/components/scan/ScanErrorBanner'
 import { VisionCapturePanel }              from '@/components/scan/VisionCaptureModal'
 import { ProductPhotoCaptureModal }        from '@/components/scan/ProductPhotoCaptureModal'
+import { CaptureLaterModal }               from '@/components/scan/CaptureLaterModal'
 import { ProductCard }                     from '@/components/results/ProductCard'
 import { AnalysisCard }                    from '@/components/results/AnalysisCard'
 
@@ -48,6 +49,40 @@ export default function ScanPage() {
   const [loggedMeal,  setLoggedMeal]  = useState<string | null>(null)
 
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null)
+
+  // Background scan state
+  const [showCaptureLater, setShowCaptureLater] = useState(false)
+  const [captureLaterSuccess, setCaptureLaterSuccess] = useState(false)
+
+  // Capture and scan later handler
+  async function handleCaptureLater(imageData: string, barcode?: string) {
+    try {
+      setLoadingPhoto(true)
+      const res = await fetch('/api/background-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          barcode: barcode || null,
+          image_data: imageData,
+          scan_type: barcode ? 'barcode' : 'photo',
+        }),
+      })
+      const json = await res.json()
+      
+      if (json.success) {
+        setCaptureLaterSuccess(true)
+        setShowCaptureLater(false)
+        toast.success('📸 Capture queued! We\'ll notify you when it\'s done.')
+        setTimeout(() => setCaptureLaterSuccess(false), 5000)
+      } else {
+        toast.error(json.error || 'Failed to queue scan')
+      }
+    } catch {
+      toast.error('Failed to queue scan')
+    } finally {
+      setLoadingPhoto(false)
+    }
+  }
 
   useEffect(() => {
     if (!localStorage.getItem('hox_disclaimer')) {
@@ -458,6 +493,7 @@ export default function ScanPage() {
         <ScanModeButtons
           onBarcode={()   => { setShowScanner(true);  resetScan() }}
           onPhotoMode={() => { setShowPhotoMode(true); resetScan() }}
+          onCaptureLater={() => { setShowCaptureLater(true); resetScan() }}
         />
 
         {(loadingProduct || loadingPhoto) && <LoadingProduct status={loadingPhoto ? photoStatus : undefined} />}
@@ -493,6 +529,21 @@ export default function ScanPage() {
       )}
       {showPhotoMode && (
         <ProductPhotoCaptureModal onCapture={handleProductPhoto} onClose={() => setShowPhotoMode(false)} />
+      )}
+      {showCaptureLater && (
+        <CaptureLaterModal 
+          onCapture={handleCaptureLater} 
+          onClose={() => setShowCaptureLater(false)} 
+        />
+      )}
+      {captureLaterSuccess && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-gray-900 p-8 rounded-2xl text-center max-w-sm mx-4">
+            <div className="text-5xl mb-4">✅</div>
+            <h3 className="text-xl font-bold text-white mb-2">Queued!</h3>
+            <p className="text-gray-400">We'll process your scan in the background.</p>
+          </div>
+        </div>
       )}
     </div>
   )
