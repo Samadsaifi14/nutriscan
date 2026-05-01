@@ -145,14 +145,49 @@ export async function POST(req: NextRequest) {
     }
 
     // Cache check — only for barcode scans without personalization
-    // Note: We don't use cache for local scoring anymore (always fresh), but keep for AI enhancement
-    if (product.barcode && !profile) {
+    // Extended cache to 30 days for better performance
+    const CACHE_DURATION_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+    
+    if (product.barcode) {
       const { data: cached } = await supabaseAdmin
         .from('products')
-        .select('ai_analysis_json, ai_analyzed_at')
+        .select('health_score, health_grade, nutrition_score, additive_score, nova_group, local_analysis_json, cached_at, ai_analysis_json, ai_analyzed_at')
         .eq('barcode', product.barcode)
         .single()
 
+      // Check local score cache first (30 days)
+      if (cached?.health_score && cached?.cached_at) {
+        const cacheAge = Date.now() - new Date(cached.cached_at).getTime()
+        if (cacheAge < CACHE_DURATION_MS) {
+          console.log(`📦 Returning cached local score: ${cached.health_score}/10 (cached ${Math.round(cacheAge / 86400000)} days ago)`)
+          
+          // Merge cached local score with fresh computation
+          const mergedResult = {
+            health_score: localHealthScore,
+            health_rating: localHealthRating,
+            health_score_breakdown: {
+              nutrition_score: localResult.nutrition_score,
+              ingredient_safety_score: localResult.additive_score,
+              processing_score: localResult.nova_score,
+              overall: localResult.score,
+            },
+            harmful_ingredients: localDetectedAdditives,
+            ingredient_warnings: localResult.detected_additives.map(a => ({
+              ingredient: a.name,
+              concern: a.concern || a.description,
+              severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
+            })),
+            summary: localResult.summary,
+            analyzed_at: new Date().toISOString(),
+            personalized: !!profile,
+            scoring_method: 'local_cached',
+            _from_cache: true,
+          }
+          return NextResponse.json({ success: true, data: mergedResult, cached: true })
+        }
+      }
+
+      // Check AI enhancement cache (7 days for AI)
       if (cached?.ai_analysis_json && cached?.ai_analyzed_at) {
         const ageMs = Date.now() - new Date(cached.ai_analyzed_at).getTime()
         if (ageMs < 7 * 24 * 60 * 60 * 1000) {
@@ -175,15 +210,10 @@ export async function POST(req: NextRequest) {
               severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
             })),
             summary: cachedAnalysis.summary || localResult.summary,
-            detailed_breakdown: cachedAnalysis.detailed_breakdown || {
-              processing_level: localResult.nova_label,
-              overall_nutrient_density: localResult.score >= 7 ? 'high' : localResult.score >= 5 ? 'medium' : 'low'
-            },
             analyzed_at: new Date().toISOString(),
             personalized: false,
             scoring_method: 'hybrid_local_cache',
           }
-          console.log(`📊 Returning cached AI + fresh local score: ${localResult.score}/10`)
           return NextResponse.json({ success: true, data: mergedResult, cached: true })
         }
       }
@@ -318,15 +348,29 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10) | method: ${analysis.scoring_method}`)
 
-    // Cache result for non-personalized barcode scans (store AI enhancement only)
-    if (product.barcode && !profile && !aiFailed && aiEnhancement) {
+    // Cache result for non-personalized barcode scans
+    if (product.barcode && !profile) {
+      const updateData: Record<string, any> = {
+        last_scanned: new Date().toISOString(),
+        // Always cache local scores
+        health_score: localResult.score,
+        health_grade: localResult.grade,
+        nutrition_score: localResult.nutrition_score,
+        additive_score: localResult.additive_score,
+        nova_group: localResult.nova_group,
+        cached_at: new Date().toISOString(),
+      }
+
+      // Also cache AI enhancement if available
+      if (!aiFailed && aiEnhancement) {
+        updateData.ai_health_rating = analysis.health_rating
+        updateData.ai_analysis_json = aiEnhancement
+        updateData.ai_analyzed_at = analysis.analyzed_at
+      }
+
       await supabaseAdmin
         .from('products')
-        .update({
-          ai_health_rating: analysis.health_rating,
-          ai_analysis_json: aiEnhancement,
-          ai_analyzed_at: analysis.analyzed_at,
-        })
+        .update(updateData)
         .eq('barcode', product.barcode)
     }
 
