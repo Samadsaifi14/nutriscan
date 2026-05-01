@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    const userId = (session as any)?.userId || 'guest'
     const body = await req.json()
 
-    const { data, error } = await supabaseAdmin
+    // Save product
+    const { data: product, error } = await supabaseAdmin
       .from('products')
       .upsert({
         barcode: body.barcode || `vision-${Date.now()}`,
@@ -23,7 +28,10 @@ export async function POST(req: NextRequest) {
         ingredients_text: body.ingredients_text,
         additives: body.additives || [],
         allergens: body.allergens || [],
-        source: 'gemini_vision',
+        source: body._source || 'openfoodfacts',
+        health_score: body.health_score,
+        health_grade: body.health_grade,
+        last_scanned: new Date().toISOString(),
       }, { onConflict: 'barcode', ignoreDuplicates: false })
       .select()
       .single()
@@ -36,8 +44,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    console.log('Product submitted:', data.name)
-    return NextResponse.json({ success: true, data })
+    // Create scan session for "last result" feature
+    await supabaseAdmin
+      .from('scan_sessions')
+      .insert({
+        user_id: userId,
+        barcode: body.barcode || product.barcode,
+        product_name: body.name || product.name,
+        product_image: body.image_url || null,
+        ai_health_rating: body.health_grade || 'moderate',
+        ai_health_score: body.health_score || 5,
+        scanned_at: new Date().toISOString(),
+      })
+
+    console.log('Product submitted:', product.name)
+    return NextResponse.json({ success: true, data: product })
 
   } catch (err: any) {
     console.error('Submit error:', err.message)
