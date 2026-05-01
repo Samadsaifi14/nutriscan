@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
 import BottomNav from '@/components/BottomNav'
+import FloatingScanButton from '@/components/FloatingScanButton'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
             </main>
             <BottomNav />
+            <FloatingScanButton />
             <ServiceWorkerRegister />
           </ErrorBoundary>
         </Providers>
