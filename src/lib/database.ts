@@ -2,17 +2,7 @@
 
 import { supabaseAdmin } from './supabaseAdmin'
 
-export interface ProductNutrition {
-  calories?: number
-  protein?: number
-  carbs?: number
-  fat?: number
-  sugar?: number
-  sodium?: number
-  fiber?: number
-  saturated_fat?: number
-}
-
+// Products table matches your Supabase schema
 export interface Product {
   id?: string
   barcode: string
@@ -21,38 +11,49 @@ export interface Product {
   category?: string | null
   country_of_origin?: string | null
   image_url?: string | null
-  nutrition?: ProductNutrition
+  // Nutrition per 100g (individual columns)
+  calories_per_100g?: number | null
+  protein_per_100g?: number | null
+  carbs_per_100g?: number | null
+  fat_per_100g?: number | null
+  sugar_per_100g?: number | null
+  sodium_per_100g?: number | null
+  fiber_per_100g?: number | null
+  serving_size_g?: number | null
+  // Additional fields
   ingredients_text?: string | null
-  additives?: string[]
-  allergens?: string[]
-  health_score?: number
-  health_grade?: string
-  nutrition_score?: number
-  additive_score?: number
-  nova_group?: number
-  scan_count?: number
-  last_scanned?: string
+  allergens?: string[] | null
+  additives?: string[] | null
+  source?: string
+  submitted_by?: string | null
+  // Health scoring fields
+  ai_health_rating?: string | null
+  ai_analysis_json?: any
+  ai_analyzed_at?: string | null
+  // New fields for Phase 5
+  last_scanned?: string | null
+  created_at?: string
 }
 
+// Additives table
 export interface Additive {
   id?: string
   name: string
   ins_code?: string | null
   e_code?: string | null
   risk_level: 'safe' | 'low' | 'medium' | 'high' | 'critical'
-  category: 'preservative' | 'color' | 'sweetener' | 'emulsifier' | 'flavor' | 'thickener' | 'antioxidant' | 'acidity' | 'other'
+  category: string
   description?: string | null
   concern?: string | null
-  source_org?: string | null
-  source_url?: string | null
-  global_safe_limit?: string | null
+  source?: string | null
+  created_at?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PRODUCTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function saveProduct(product: Product): Promise<Product> {
+export async function saveProduct(product: Partial<Product>): Promise<Product> {
   const { data, error } = await supabaseAdmin
     .from('products')
     .upsert({
@@ -60,17 +61,23 @@ export async function saveProduct(product: Product): Promise<Product> {
       name: product.name,
       brand: product.brand,
       category: product.category,
-      country_of_origin: product.country_of_origin,
+      country_of_origin: product.country_of_origin || 'IN',
       image_url: product.image_url,
-      nutrition: product.nutrition || {},
+      calories_per_100g: product.calories_per_100g,
+      protein_per_100g: product.protein_per_100g,
+      carbs_per_100g: product.carbs_per_100g,
+      fat_per_100g: product.fat_per_100g,
+      sugar_per_100g: product.sugar_per_100g,
+      sodium_per_100g: product.sodium_per_100g,
+      fiber_per_100g: product.fiber_per_100g,
+      serving_size_g: product.serving_size_g,
       ingredients_text: product.ingredients_text,
-      additives: product.additives || [],
       allergens: product.allergens || [],
-      health_score: product.health_score,
-      health_grade: product.health_grade,
-      nutrition_score: product.nutrition_score,
-      additive_score: product.additive_score,
-      nova_group: product.nova_group,
+      additives: product.additives || [],
+      source: product.source || 'user',
+      submitted_by: product.submitted_by,
+      ai_health_rating: product.ai_health_rating,
+      ai_analysis_json: product.ai_analysis_json,
       last_scanned: new Date().toISOString(),
     }, { onConflict: 'barcode' })
     .select()
@@ -96,23 +103,12 @@ export async function getSimilarProducts(
   minScore: number,
   limit: number = 5
 ): Promise<Product[]> {
+  // Since we don't have health_score column, we'll filter by category and sort by name
   const { data, error } = await supabaseAdmin
     .from('products')
     .select('*')
     .eq('category', category)
-    .gt('health_score', minScore)
-    .order('health_score', { ascending: false })
-    .limit(limit)
-
-  if (error) throw error
-  return data || []
-}
-
-export async function getTopScannedProducts(limit: number = 10): Promise<Product[]> {
-  const { data, error } = await supabaseAdmin
-    .from('products')
-    .select('*')
-    .order('scan_count', { ascending: false })
+    .order('name')
     .limit(limit)
 
   if (error) throw error
@@ -124,6 +120,18 @@ export async function getRecentlyScannedProducts(limit: number = 10): Promise<Pr
     .from('products')
     .select('*')
     .order('last_scanned', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return data || []
+}
+
+export async function getTopScannedProducts(limit: number = 10): Promise<Product[]> {
+  // Group by barcode and count
+  const { data, error } = await supabaseAdmin
+    .from('products')
+    .select('*')
+    .order('created_at', { ascending: false })
     .limit(limit)
 
   if (error) throw error
@@ -179,7 +187,7 @@ export async function searchAdditives(query: string): Promise<Additive[]> {
   return data || []
 }
 
-export async function saveAdditive(additive: Additive): Promise<Additive> {
+export async function saveAdditive(additive: Partial<Additive>): Promise<Additive> {
   const { data, error } = await supabaseAdmin
     .from('additives')
     .upsert({
@@ -190,9 +198,7 @@ export async function saveAdditive(additive: Additive): Promise<Additive> {
       category: additive.category,
       description: additive.description,
       concern: additive.concern,
-      source_org: additive.source_org,
-      source_url: additive.source_url,
-      global_safe_limit: additive.global_safe_limit,
+      source: additive.source,
     }, { onConflict: 'name' })
     .select()
     .single()
