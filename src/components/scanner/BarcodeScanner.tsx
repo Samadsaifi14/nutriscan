@@ -102,96 +102,58 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
     setStatus('🤖 Reading barcode...')
 
     try {
-      // ── Pass 1: barcode_only (fast, cheap) ──────────────────────────────
-      const res1  = await fetch('/api/scan-vision', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ imageBase64, mode: 'barcode_only' }),
-      })
-      const json1 = await res1.json()
-
-      // Handle auth/rate-limit errors explicitly
-      if (!json1.success) {
-        console.error('API Error:', json1.error, json1.tip)
-        
-        // Show specific error message
-        if (res1.status === 401) {
-          setStatus('🔐 Please sign in to scan')
-          setFailureTip(json1.tip || 'Sign in and try again')
-        } else if (res1.status === 429) {
-          setStatus('⏳ Daily limit reached')
-          setFailureTip(json1.tip || 'Try again tomorrow')
-        } else {
-          setStatus('❌ ' + (json1.error || 'Scan failed'))
-          setFailureTip(json1.tip || 'Try again with better lighting')
-        }
-        setIsCapturing(false)
-        return
-      }
-
-      if (json1.data?.barcode) {
-        setStatus('✅ Barcode found!')
-        stopCamera()
-        onDetected(json1.data.barcode)
-        return
-      }
-
-      // Log what went wrong in pass 1
-      console.log('Pass 1 result:', JSON.stringify(json1).slice(0, 200))
-
-      // ── Pass 2: full_label (slower, extracts all info) ──────────────────
-      setStatus('🔍 Reading full label...')
-      const res2  = await fetch('/api/scan-vision', {
+      // Single pass - use local OCR + Open Food Facts fallback
+      const res = await fetch('/api/scan-vision', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ imageBase64, mode: 'full_label' }),
       })
-      const json2 = await res2.json()
+      const json = await res.json()
 
-      // Handle errors in pass 2
-      if (!json2.success) {
-        console.error('API Error (pass 2):', json2.error, json1.tip)
+      // Handle errors
+      if (!json.success) {
+        console.error('API Error:', json.error, json.tip)
         
-        if (res2.status === 401) {
+        if (res.status === 401) {
           setStatus('🔐 Please sign in to scan')
-          setFailureTip(json2.tip || 'Sign in and try again')
-        } else if (res2.status === 429) {
+          setFailureTip(json.tip || 'Sign in and try again')
+        } else if (res.status === 429) {
           setStatus('⏳ Daily limit reached')
-          setFailureTip(json2.tip || 'Try again tomorrow')
+          setFailureTip(json.tip || 'Try again tomorrow')
         } else {
-          setStatus('❌ ' + (json2.error || 'Scan failed'))
-          setFailureTip(json2.tip || 'Try again with better lighting')
+          setStatus('❌ ' + (json.error || 'Scan failed'))
+          setFailureTip(json.tip || 'Try again with better lighting')
         }
         setIsCapturing(false)
         return
       }
 
-      console.log('Pass 2 result:', JSON.stringify(json2).slice(0, 200))
-
-      if (json2.success && json2.data?.barcode) {
+      // Success - check if we got a barcode
+      if (json.data?.barcode) {
         setStatus('✅ Barcode found!')
         stopCamera()
-        onDetected(json2.data.barcode)
+        onDetected(json.data.barcode)
         return
       }
 
-      if (json2.success && json2.data?.name) {
+      // No barcode but got some data (OCR worked)
+      if (json.data?.name) {
         setStatus('💾 Saving product...')
-        const submitRes  = await fetch('/api/products/submit', {
+        const submitRes = await fetch('/api/products/submit', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(json2.data),
+          body:    JSON.stringify(json.data),
         })
         const submitJson = await submitRes.json()
         if (submitJson.success) {
           stopCamera()
-          onDetected(submitJson.data.barcode)
+          onDetected(submitJson.data.barcode || 'unknown')
           return
         }
       }
 
-      // Both passes failed
-      const tip = json2.tip || json1.tip || 'Try better lighting or move closer.'
+      // Failed to get any useful data
+      const tip = json.data?._warning || 'Try better lighting or move closer.'
       setStatus('❌ Could not read the label')
       setFailureTip(tip)
       toast.error('Could not read — see tip below')

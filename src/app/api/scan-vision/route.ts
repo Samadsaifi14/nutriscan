@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { checkRateLimit } from '@/lib/rateLimit'
 import { performLocalOCR } from '@/lib/ocr'
 import { lookupBarcode, scoreOFFProduct } from '@/lib/openfoodfacts'
 
 const RequestSchema = z.object({
   imageBase64: z.string().min(100, 'Image data too small'),
-  mode: z.enum(['barcode_only', 'full_label']).optional().default('full_label'),
 })
 
 const FAILURE_REASONS = {
@@ -56,83 +54,81 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { imageBase64, mode } = parsed.data
+    const { imageBase64 } = parsed.data
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Use Local OCR first for full_label mode (faster, free)
+    // Always use Local OCR first (free, no quota limits)
     // ─────────────────────────────────────────────────────────────────────────
     let ocrResult: any = null
     let ocrFailed = false
 
-    // For barcode detection, always use AI (local OCR can't reliably detect barcodes)
-    if (mode !== 'barcode_only') {
-      try {
-        console.log('Attempting local OCR...')
-        ocrResult = await performLocalOCR(imageBase64)
-        console.log('Local OCR success:', {
-          barcode: ocrResult.barcode,
-          name: ocrResult.parsed.name,
-          confidence: ocrResult.confidence,
-        })
-      } catch (ocrErr: any) {
-        console.warn('Local OCR failed, falling back to AI:', ocrErr.message)
-        ocrFailed = true
-      }
-
-      // If local OCR succeeded AND found useful data (barcode OR name OR nutrition), use it
-      if (ocrResult && !ocrFailed && (ocrResult.barcode || ocrResult.parsed.name || ocrResult.parsed.nutrition_per_100g)) {
-        const response: Record<string, any> = {
-          barcode: ocrResult.barcode,
-          name: ocrResult.parsed.name || null,
-          brand: ocrResult.parsed.brand || null,
-          serving_size_g: ocrResult.parsed.serving_size_g || null,
-          ingredients_text: ocrResult.parsed.ingredients_text || null,
-          nutrition_per_100g: ocrResult.parsed.nutrition_per_100g || null,
-          additives: ocrResult.parsed.additives || [],
-          allergens: ocrResult.parsed.allergens || [],
-          fssai_number: null,
-          mrp: null,
-          confidence: ocrResult.confidence > 60 ? 'high' : ocrResult.confidence > 40 ? 'medium' : 'low',
-          image_issues: ocrResult.warnings.length > 0 ? ocrResult.warnings.join('; ') : null,
-          _local_ocr: true,
-          _raw_text: ocrResult.rawText.substring(0, 500),
-        }
-
-        if (ocrResult.warnings.length > 0) {
-          response._warning = `Local OCR warnings: ${ocrResult.warnings.join('; ')}`
-        }
-
-        return NextResponse.json({ success: true, data: response })
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Use Open Food Facts API (free, no key needed)
-    // ─────────────────────────────────────────────────────────────────────────
-    
-    // First, try to get barcode from OCR result (already tried in step above)
-    const ocrBarcode = ocrResult?.barcode
-    
-    // For barcode_only mode, we need a barcode to lookup
-    if (mode === 'barcode_only' && !ocrBarcode) {
-      return NextResponse.json({
-        success: false,
-        error: FAILURE_REASONS.no_barcode.message,
-        tip: 'No barcode detected. Try capturing the barcode more clearly.',
+    try {
+      console.log('Attempting local OCR...')
+      ocrResult = await performLocalOCR(imageBase64)
+      console.log('Local OCR success:', {
+        barcode: ocrResult.barcode,
+        name: ocrResult.parsed.name,
+        confidence: ocrResult.confidence,
       })
+    } catch (ocrErr: any) {
+      console.warn('Local OCR failed:', ocrErr.message)
+      ocrFailed = true
     }
+
+    // If local OCR succeeded AND found useful data (barcode OR name OR nutrition), return it
+    if (ocrResult && !ocrFailed && (ocrResult.barcode || ocrResult.parsed.name || ocrResult.parsed.nutrition_per_100g)) {
+      const response: Record<string, any> = {
+        barcode: ocrResult.barcode,
+        name: ocrResult.parsed.name || null,
+        brand: ocrResult.parsed.brand || null,
+        serving_size_g: ocrResult.parsed.serving_size_g || null,
+        ingredients_text: ocrResult.parsed.ingredients_text || null,
+        nutrition_per_100g: ocrResult.parsed.nutrition_per_100g || null,
+        additives: ocrResult.parsed.additives || [],
+        allergens: ocrResult.parsed.allergens || [],
+        fssai_number: null,
+        mrp: null,
+        confidence: ocrResult.confidence > 60 ? 'high' : ocrResult.confidence > 40 ? 'medium' : 'low',
+        image_issues: ocrResult.warnings.length > 0 ? ocrResult.warnings.join('; ') : null,
+        _local_ocr: true,
+        _raw_text: ocrResult.rawText.substring(0, 500),
+      }
+
+      if (ocrResult.warnings.length > 0) {
+        response._warning = `Local OCR warnings: ${ocrResult.warnings.join('; ')}`
+      }
+
+      // If we have a barcode, score the product locally
+      if (ocrResult.barcode) {
+        // Try to enhance with OFF data
+        const offProduct = await lookupBarcode(ocrResult.barcode)
+        if (offProduct) {
+          const scored = scoreOFFProduct(offProduct)
+          response.nutrition_per_100g = scored.nutrition_per_100g
+          response.health_score = scored.health_score
+          response.health_grade = scored.health_grade
+          response.nova_group = scored.nova_group
+          response.additives = scored.additives
+        }
+      }
+
+      return NextResponse.json({ success: true, data: response })
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // If OCR didn't find barcode, try Open Food Facts API (free)
+    // ─────────────────────────────────────────────────────────────────────────
     
-    // Lookup in Open Food Facts
-    const barcodeToLookup = ocrBarcode || (ocrResult?.rawText?.match(/\d{12,14}/)?.[0])
+    // Try to extract barcode from raw OCR text
+    const barcodeMatch = ocrResult?.rawText?.match(/\d{12,14}/)
+    const extractedBarcode = barcodeMatch ? barcodeMatch[0] : null
     
-    if (barcodeToLookup) {
-      console.log('Looking up barcode in OFF:', barcodeToLookup)
-      const offProduct = await lookupBarcode(barcodeToLookup)
+    if (extractedBarcode) {
+      console.log('Looking up barcode in OFF:', extractedBarcode)
+      const offProduct = await lookupBarcode(extractedBarcode)
       
       if (offProduct) {
         console.log('OFF found product:', offProduct.name)
-        
-        // Score the product
         const scored = scoreOFFProduct(offProduct)
         
         return NextResponse.json({
@@ -155,20 +151,15 @@ export async function POST(req: NextRequest) {
             _source: 'openfoodfacts',
           },
         })
-      } else {
-        console.log('OFF: Product not found for barcode:', barcodeToLookup)
       }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // If OFF lookup fails, return OCR result if we have any data
-    // ─────────────────────────────────────────────────────────────────────────
-    
+    // Everything failed - return OCR data if available
     if (ocrResult) {
       return NextResponse.json({
         success: true,
         data: {
-          barcode: ocrResult.barcode,
+          barcode: null,
           name: ocrResult.parsed.name || null,
           brand: ocrResult.parsed.brand || null,
           serving_size_g: ocrResult.parsed.serving_size_g || null,
@@ -186,7 +177,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Everything failed
+    // Complete failure
     return NextResponse.json({
       success: false,
       error: FAILURE_REASONS.generic.message,
