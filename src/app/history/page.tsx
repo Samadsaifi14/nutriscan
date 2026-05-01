@@ -3,7 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 const mealEmoji: Record<string, string> = {
   breakfast: '🌅',
@@ -29,11 +29,11 @@ export default function HistoryPage() {
     if (status === 'unauthenticated') router.push('/auth/signin')
   }, [status])
 
-  const { data: logs, isLoading, refetch } = useQuery({
+const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ['meal-history', userId],
     queryFn: async () => {
       if (!userId) return []
-      const { data } = await supabase
+      const { data } = await supabaseAdmin
         .from('food_logs')
         .select('*')
         .eq('user_id', userId)
@@ -42,7 +42,7 @@ export default function HistoryPage() {
       return data || []
     },
     enabled: !!userId,
-    refetchInterval: 5000, // Auto-refresh every 5 seconds to see new logs
+    refetchInterval: 5000,
   })
 
   const filtered = filter === 'all' ? logs || [] : (logs || []).filter((l: any) => l.meal_type === filter)
