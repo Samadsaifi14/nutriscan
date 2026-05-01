@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { callGeminiVision, callGeminiVisionWithUserToken, GeminiError } from '@/lib/gemini'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { performLocalOCR } from '@/lib/ocr'
+import { lookupBarcode, scoreOFFProduct } from '@/lib/openfoodfacts'
 
 const RequestSchema = z.object({
   imageBase64: z.string().min(100, 'Image data too small'),
@@ -107,131 +107,96 @@ export async function POST(req: NextRequest) {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // AI Fallback (when local OCR fails or for barcode_only mode)
+    // Use Open Food Facts API (free, no key needed)
     // ─────────────────────────────────────────────────────────────────────────
-
-    const prompt = mode === 'barcode_only'
-      ? `Look at this image. Find the barcode — the parallel black vertical lines with a number printed below them.
-Extract the exact number printed below the barcode lines. Do not guess — only return numbers you can clearly read.
-Return ONLY this JSON, no markdown, no code fences:
-{
-  "barcode": "<exact digits printed below barcode, or null if not clearly visible>",
-  "confidence": "high",
-  "image_issues": null,
-  "visible_elements": ["list what you can see in the image"]
-}`
-      : `You are a food label reader for Indian packaged food products.
-Look at this image carefully and extract ALL visible text and numbers from the packaging.
-Return ONLY valid JSON, no markdown, no code fences:
-{
-  "barcode": "<barcode number if visible, or null>",
-  "name": "<product name>",
-  "brand": "<brand name or null>",
-  "serving_size_g": <number or null>,
-  "ingredients_text": "<full ingredients list as text, or null>",
-  "nutrition_per_100g": {
-    "calories": <number or null>,
-    "protein": <number or null>,
-    "carbs": <number or null>,
-    "fat": <number or null>,
-    "sugar": <number or null>,
-    "sodium": <number or null>,
-    "fiber": <number or null>
-  },
-  "additives": ["<additive name>"],
-  "allergens": ["<allergen>"],
-  "fssai_number": "<14-digit FSSAI number or null>",
-  "mrp": <price in rupees as number or null>,
-  "confidence": "high",
-  "image_issues": null
-}`
-
-    let text: string
-
-    // Use API key directly (skip user OAuth token since we removed generative-language scope)
-    const limit = await checkRateLimit(userId, 'scan')
-    if (!limit.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Daily scan limit reached.',
-          tip: 'You have used your 25 free scans today. Try again tomorrow.',
-        },
-        { status: 429 }
-      )
-    }
-
-    const result = await callGeminiVision(
-      prompt, imageBase64,
-      { temperature: 0.1, maxTokens: 2048 }
-    )
-    text = result.text
-    console.log('scan-vision: used API key')
-
-    const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
-
-    let extracted: any
-    try {
-      extracted = JSON.parse(cleaned)
-    } catch {
-      console.error('Vision JSON parse failed. Raw:', cleaned.slice(0, 400))
-      return NextResponse.json(
-        { success: false, error: FAILURE_REASONS.generic.message, tip: FAILURE_REASONS.generic.tip },
-        { status: 500 }
-      )
-    }
-
-    if (extracted.image_issues && !extracted.barcode && !extracted.name) {
-      const reason = FAILURE_REASONS[extracted.image_issues as keyof typeof FAILURE_REASONS]
-        || FAILURE_REASONS.generic
+    
+    // First, try to get barcode from OCR result (already tried in step above)
+    const ocrBarcode = ocrResult?.barcode
+    
+    // For barcode_only mode, we need a barcode to lookup
+    if (mode === 'barcode_only' && !ocrBarcode) {
       return NextResponse.json({
         success: false,
-        error: reason.message,
-        tip: reason.tip,
-        image_issues: extracted.image_issues,
+        error: FAILURE_REASONS.no_barcode.message,
+        tip: 'No barcode detected. Try capturing the barcode more clearly.',
+      })
+    }
+    
+    // Lookup in Open Food Facts
+    const barcodeToLookup = ocrBarcode || (ocrResult?.rawText?.match(/\d{12,14}/)?.[0])
+    
+    if (barcodeToLookup) {
+      console.log('Looking up barcode in OFF:', barcodeToLookup)
+      const offProduct = await lookupBarcode(barcodeToLookup)
+      
+      if (offProduct) {
+        console.log('OFF found product:', offProduct.name)
+        
+        // Score the product
+        const scored = scoreOFFProduct(offProduct)
+        
+        return NextResponse.json({
+          success: true,
+          data: {
+            barcode: offProduct.barcode,
+            name: offProduct.name,
+            brand: offProduct.brand,
+            ingredients_text: offProduct.ingredients_text,
+            nutrition_per_100g: offProduct.nutrition_per_100g,
+            additives: offProduct.additives,
+            allergens: [],
+            fssai_number: null,
+            mrp: null,
+            confidence: 'high',
+            image_issues: null,
+            health_score: scored.health_score,
+            health_grade: scored.health_grade,
+            nova_group: scored.nova_group,
+            _source: 'openfoodfacts',
+          },
+        })
+      } else {
+        console.log('OFF: Product not found for barcode:', barcodeToLookup)
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // If OFF lookup fails, return OCR result if we have any data
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    if (ocrResult) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          barcode: ocrResult.barcode,
+          name: ocrResult.parsed.name || null,
+          brand: ocrResult.parsed.brand || null,
+          serving_size_g: ocrResult.parsed.serving_size_g || null,
+          ingredients_text: ocrResult.parsed.ingredients_text || null,
+          nutrition_per_100g: ocrResult.parsed.nutrition_per_100g || null,
+          additives: ocrResult.parsed.additives || [],
+          allergens: ocrResult.parsed.allergens || [],
+          fssai_number: null,
+          mrp: null,
+          confidence: ocrResult.confidence > 40 ? 'medium' : 'low',
+          image_issues: ocrResult.warnings.length > 0 ? ocrResult.warnings.join('; ') : null,
+          _local_ocr: true,
+          _warning: 'Product not found in database. OCR data shown.',
+        },
       })
     }
 
-    if (extracted.confidence === 'low') {
-      extracted._warning = 'Low confidence — some values may be inaccurate.'
-    }
-
-    // Mark as AI-generated
-    extracted._ai_fallback = true
-
-    console.log('Vision barcode:', extracted.barcode, '| name:', extracted.name, '| confidence:', extracted.confidence)
-    return NextResponse.json({ success: true, data: extracted })
+    // Everything failed
+    return NextResponse.json({
+      success: false,
+      error: FAILURE_REASONS.generic.message,
+      tip: FAILURE_REASONS.generic.tip,
+    })
 
   } catch (err: any) {
-    if (err instanceof GeminiError) {
-      console.error(`Gemini Vision Error [${err.type}]:`, err.message)
-      const isQuota = err.message.toLowerCase().includes('quota')
-      if (err.type === 'unavailable') {
-        return NextResponse.json(
-          { success: false, error: 'AI is busy. Please wait 30 seconds and try again.', tip: 'Retry in a moment.' },
-          { status: 503 }
-        )
-      }
-      if (err.type === 'rate_limit') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: isQuota ? 'Daily AI quota reached. Try again tomorrow.' : 'Too many requests. Wait a minute.',
-            tip:   isQuota ? 'Check aistudio.google.com for quota details.' : 'Too many scans right now.',
-          },
-          { status: 429 }
-        )
-      }
-      if (err.type === 'timeout') {
-        return NextResponse.json(
-          { success: false, error: 'AI timed out. Try a clearer photo.', tip: 'Ensure the label is well-lit and in focus.' },
-          { status: 504 }
-        )
-      }
-    }
-    console.error('Vision error:', err.message)
+    console.error('Scan vision error:', err.message)
     return NextResponse.json(
-      { success: false, error: FAILURE_REASONS.generic.message, tip: FAILURE_REASONS.generic.tip },
+      { success: false, error: FAILURE_REASONS.generic.message, tip: 'Try again with a clearer image.' },
       { status: 500 }
     )
   }

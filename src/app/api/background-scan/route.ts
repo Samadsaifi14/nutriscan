@@ -5,8 +5,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
-import { callGeminiVision } from '@/lib/gemini'
-import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
+import { lookupBarcode, scoreOFFProduct } from '@/lib/openfoodfacts'
 
 // Queue a scan for later processing
 export async function POST(req: NextRequest) {
@@ -103,42 +102,23 @@ export async function PUT(req: NextRequest) {
           if (existing) {
             productData = existing
           }
-        } else if (scan.scan_type === 'photo') {
-          // Process image with Vision AI
-          try {
-            const prompt = `Extract product information from this food packaging image. 
-Return JSON: { "name": "product name", "brand": "brand", "ingredients_text": "list", 
-"nutrition_per_100g": { "calories": number, "protein": number, "carbs": number, 
-"fat": number, "sugar": number, "sodium": number } }`
-
-            const { text } = await callGeminiVision(prompt, scan.image_data)
-            
-            // Parse result
-            const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
-            const parsed = JSON.parse(cleaned)
-            
-            // Score the product
-            const nutrition: NutritionPer100g = {
-              calories: parsed.nutrition_per_100g?.calories,
-              protein: parsed.nutrition_per_100g?.protein,
-              carbohydrates: parsed.nutrition_per_100g?.carbs,
-              total_fat: parsed.nutrition_per_100g?.fat,
-              sugar: parsed.nutrition_per_100g?.sugar,
-              sodium: parsed.nutrition_per_100g?.sodium,
-            }
-
-            const scored = scoreProduct(nutrition, parsed.ingredients_text || '')
-
+        } else if (scan.scan_type === 'photo' && scan.barcode) {
+          // Use Open Food Facts API to get product data
+          const offProduct = await lookupBarcode(scan.barcode)
+          
+          if (offProduct) {
+            const scored = scoreOFFProduct(offProduct)
             productData = {
-              name: parsed.name,
-              brand: parsed.brand,
-              ingredients_text: parsed.ingredients_text,
-              nutrition: parsed.nutrition_per_100g,
-              health_score: scored.score,
-              health_grade: scored.grade,
+              name: scored.name,
+              brand: scored.brand,
+              barcode: scored.barcode,
+              ingredients_text: scored.ingredients_text,
+              nutrition: scored.nutrition_per_100g,
+              health_score: scored.health_score,
+              health_grade: scored.health_grade,
+              nova_group: scored.nova_group,
+              additives: scored.additives,
             }
-          } catch (aiErr) {
-            console.error('Vision AI error:', aiErr)
           }
         }
 
