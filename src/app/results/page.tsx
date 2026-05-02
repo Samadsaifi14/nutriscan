@@ -1,11 +1,12 @@
 // src/app/results/page.tsx
 "use client"
 import { useEffect, useState }  from 'react'
-import { useRouter }             from 'next/navigation'
+import { useRouter, useSearchParams }             from 'next/navigation'
 import { useSession }            from 'next-auth/react'
 import toast                     from 'react-hot-toast'
-import { readScanResult, ScanResultPayload } from '@/types/scanResult'
+import { readScanResult, writeScanResult, ScanResultPayload } from '@/types/scanResult'
 import { event, AnalyticsEvents } from '@/lib/analytics'
+import { scoreProduct } from '@/lib/health-engine'
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
 
@@ -118,13 +119,79 @@ export default function ResultsPage() {
   const [quantity,   setQuantity]   = useState(100)
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
   const [logging,    setLogging]    = useState(false)
+  const searchParams = useSearchParams()
+  const barcodeParam = searchParams?.get('barcode')
 
+  // Fetch from API if barcode param exists, otherwise read from localStorage
   useEffect(() => {
+    async function fetchFromAPI() {
+      if (barcodeParam) {
+        try {
+          const res = await fetch(`/api/scan?barcode=${barcodeParam}`)
+          const json = await res.json()
+          
+          if (json.success && json.data) {
+            // Create payload from API data
+            const product = json.data
+            const nutrition = {
+              calories: product.calories_per_100g || 0,
+              protein: product.protein_per_100g || 0,
+              carbs: product.carbs_per_100g || 0,
+              fat: product.fat_per_100g || 0,
+              sugar: product.sugar_per_100g || 0,
+              sodium: product.sodium_per_100g || 0,
+            }
+            
+            // Calculate health score
+            const scored = scoreProduct(nutrition, product.ingredients_text || '')
+            
+const apiPayload: ScanResultPayload = {
+              version: 1,
+              product: {
+                name: product.name,
+                barcode: product.barcode,
+                brand: product.brand,
+                image_url: product.image_url || null,
+                ingredients_text: product.ingredients_text,
+                nutrition,
+                additives: product.additives || [],
+                allergens: product.allergens || [],
+                source: json.source,
+              },
+              analysis: {
+                health_rating: (scored.grade === 'A' ? 'healthy' : scored.grade === 'C' ? 'unhealthy' : 'moderate') as any,
+                health_score: scored.score,
+                confidence: 'high' as const,
+                summary: scored.summary || 'Analyzed with local health engine',
+                analyzed_at: new Date().toISOString(),
+                personalized: false,
+              },
+              quantity: 100,
+              timestamp: new Date().toISOString(),
+            }
+            
+            setPayload(apiPayload)
+            // Also save to localStorage for future reference
+            writeScanResult(apiPayload)
+          }
+        } catch (err) {
+          console.error('Failed to fetch product:', err)
+        }
+      }
+    }
+    
+    // First try to read from localStorage
     const data = readScanResult()
     setPayload(data)
     if (data) setQuantity(data.quantity || 100)
+    
+    // Then try API if barcode param exists
+    if (barcodeParam) {
+      fetchFromAPI()
+    }
+    
     setHydrated(true)
-  }, [])
+  }, [barcodeParam])
 
   async function handleLogMeal(mealType: string) {
     if (!payload || isGuest || logging) return
