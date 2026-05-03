@@ -136,26 +136,50 @@ export default function FloatingScanButton() {
 function LabelScanner({ onCapture, onClose }: { onCapture: (data: string) => void; onClose: () => void }) {
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [captured, setCaptured] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
+    let mounted = true
+    
     async function startCamera() {
       try {
+        console.log('Starting camera...')
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } 
         })
-        setStream(mediaStream)
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream
+        
+        if (!mounted) {
+          mediaStream.getTracks().forEach(t => t.stop())
+          return
         }
-      } catch (err) {
+        
+        console.log('Camera started, stream:', mediaStream.id)
+        setStream(mediaStream)
+        
+        // Wait for video element to be ready
+        setTimeout(() => {
+          if (videoRef.current && mounted) {
+            console.log('Setting video srcObject')
+            videoRef.current.srcObject = mediaStream
+            videoRef.current.play().catch(e => console.log('Play error:', e))
+          }
+        }, 100)
+        
+      } catch (err: any) {
         console.error('Camera error:', err)
-        toast.error('Could not access camera')
+        setCameraError(err.message || 'Could not access camera')
       }
     }
+    
     startCamera()
 
     return () => {
+      mounted = false
       if (stream) {
         stream.getTracks().forEach(track => track.stop())
       }
@@ -190,12 +214,31 @@ function LabelScanner({ onCapture, onClose }: { onCapture: (data: string) => voi
 
       {/* Camera Preview */}
       <div className="flex-1 relative">
-        <video 
-          ref={(el) => { if (el && stream) el.srcObject = stream }}
-          autoPlay 
-          playsInline 
-          className="w-full h-full object-cover"
-        />
+        {cameraError ? (
+          <div className="flex flex-col items-center justify-center h-full text-white p-6 text-center">
+            <div className="text-4xl mb-4">📷</div>
+            <p className="text-lg font-bold mb-2">Camera Error</p>
+            <p className="text-sm text-gray-300 mb-4">{cameraError}</p>
+            <button 
+              onClick={() => setCameraError(null)}
+              className="px-4 py-2 bg-emerald-500 rounded-lg font-bold"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : stream ? (
+          <video 
+            ref={videoRef}
+            autoPlay 
+            playsInline
+            muted
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-white">
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
         
         {/* Overlay guide */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
