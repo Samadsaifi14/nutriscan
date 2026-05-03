@@ -1,4 +1,4 @@
-// NutriScan Health Engine - Public API
+// HealthOX Health Engine - Public API
 
 export { scoreProduct, scoreNutrition, scoreAdditives, classifyNOVA } from "./scorer";
 export { detectAdditives, ADDITIVES_DB, getAdditivesByRisk, getAdditivesByCategory } from "./additives-db";

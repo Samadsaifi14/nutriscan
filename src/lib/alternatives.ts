@@ -1,4 +1,4 @@
-// NutriScan - Dynamic Healthier Alternatives Engine
+// HealthOX - Dynamic Healthier Alternatives Engine
 // Fetches similar products, scores them, ranks by health score
 
 import { scoreProduct, type NutritionPer100g, type HealthScoreResult } from '@/lib/health-engine'
@@ -86,7 +86,7 @@ async function fetchFromOpenFoodFacts(category: string, limit: number = 20): Pro
     
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'NutriScan/1.0',
+        'User-Agent': 'HealthOX/1.0',
       },
     })
 

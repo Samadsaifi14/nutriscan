@@ -1,4 +1,4 @@
-// NutriScan - Health Score Breakdown Component
+// HealthOX - Health Score Breakdown Component
 // Shows detailed score explanation with icons
 
 import { AlertTriangle, CheckCircle, XCircle, MinusCircle } from 'lucide-react'

@@ -11,24 +11,10 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
   title: {
-    default: 'NutriScan — AI Food Health Advisor',
-    template: '%s | NutriScan',
+    default: 'HealthOX — AI Food Health Advisor',
+    template: '%s | HealthOX',
   },
-  description: 'Scan any packaged food and get an instant AI health rating powered by Gemini. Detect harmful ingredients, get healthier alternatives, and track your meals.',
-  keywords: ['food scanner', 'nutrition analyzer', 'AI health', 'food labels', 'harmful ingredients', 'calorie tracker', 'India FSSAI', 'Gemini AI'],
-  manifest: '/manifest.json',
-  icons: { icon: '/icon.svg', apple: '/icon.svg' },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'NutriScan',
-  },
-  openGraph: {
-    title: 'NutriScan — AI Food Health Advisor',
-    description: 'Scan any packaged food and get an instant AI health rating',
-    type: 'website',
-    siteName: 'NutriScan',
-  },
+  description: 'Scan packaged foods to analyze ingredients, detect harmful additives, and get health scores. Made for India.',
   robots: {
     index: true,
     follow: true,

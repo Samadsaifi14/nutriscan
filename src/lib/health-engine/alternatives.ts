@@ -1,4 +1,4 @@
-// NutriScan Health Engine - Healthier Alternatives Database
+// HealthOX Health Engine - Healthier Alternatives Database
 // Provides local alternatives when AI fails or as supplement
 
 export type AlternativeType = "branded" | "homemade" | "whole_food"

@@ -1,4 +1,4 @@
-// NutriScan - Groq LLM for simple summaries
+// HealthOX - Groq LLM for simple summaries
 // Uses Groq API with free tier fallback to templates
 
 export interface SummaryRequest {

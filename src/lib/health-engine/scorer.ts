@@ -1,4 +1,4 @@
-// NutriScan Health Engine - Core Scoring Engine
+// HealthOX Health Engine - Core Scoring Engine
 // Deterministic scoring without AI dependency
 
 import { detectAdditives, type Additive, type RiskLevel, ADDITIVES_DB } from "./additives-db";

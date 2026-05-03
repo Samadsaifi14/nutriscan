@@ -1,4 +1,4 @@
-// NutriScan - Database helpers for products and additives tables
+// HealthOX - Database helpers for products and additives tables
 
 import { supabaseAdmin } from './supabaseAdmin'
 

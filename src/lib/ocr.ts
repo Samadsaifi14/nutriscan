@@ -1,4 +1,4 @@
-// NutriScan Local OCR - Replace Gemini Vision with Tesseract.js
+// HealthOX Local OCR - Replace Gemini Vision with Tesseract.js
 // Provides offline-capable barcode detection and text extraction
 
 import Tesseract, { createWorker } from 'tesseract.js'
