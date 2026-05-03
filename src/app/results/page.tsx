@@ -125,14 +125,25 @@ export default function ResultsPage() {
   const searchParams = useSearchParams()
   const barcodeParam = searchParams?.get('barcode')
   const photoMode = searchParams?.get('mode') === 'photo'
+  const [communityWarning, setCommunityWarning] = useState<string | null>(null)
 
   // Fetch from API if barcode param exists, otherwise read from localStorage
   useEffect(() => {
     async function fetchFromAPI() {
       if (barcodeParam) {
         try {
-          const res = await fetch(`/api/scan?barcode=${barcodeParam}`)
-          const json = await res.json()
+          // Try main scan first, then community
+          let res = await fetch(`/api/scan?barcode=${barcodeParam}`)
+          let json = await res.json()
+          
+          // If not found, try community products
+          if (!json.success || json.error === 'PRODUCT_NOT_FOUND') {
+            res = await fetch(`/api/scan-community?barcode=${barcodeParam}`)
+            json = await res.json()
+            if (json.warning) {
+              setCommunityWarning(json.warning)
+            }
+          }
           
           if (json.success && json.data) {
             // Create payload from API data
@@ -404,6 +415,12 @@ const apiPayload: ScanResultPayload = {
 
             {/* Alert badges */}
             <div className="flex flex-wrap gap-2 mt-3">
+              {/* Community/Unverified warning */}
+              {communityWarning && (
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                  ⚠️ Community - Not Verified
+                </span>
+              )}
               {highSevCount > 0 && (
                 <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-500/15 text-red-400 border border-red-500/20">
                   🚨 {highSevCount} High Risk

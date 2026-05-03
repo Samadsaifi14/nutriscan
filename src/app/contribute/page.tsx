@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import toast from 'react-hot-toast'
 import { createClient } from '@supabase/supabase-js'
+import { parseIndianNutritionLabel, type ParsedNutrition } from '@/lib/ocr/indian-label-parser'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -13,7 +14,11 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
 interface CapturedImage {
   dataUrl: string
-  file?: File
+}
+
+interface ParsedData {
+  nutrition: ParsedNutrition
+  rawText: string
 }
 
 export default function ContributePage() {
@@ -22,7 +27,7 @@ export default function ContributePage() {
   const searchParams = useSearchParams()
   const barcode = searchParams?.get('barcode') || ''
   
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState<'capture_front' | 'capture_nutrition' | 'review' | 'done'>('capture_front')
   const [loading, setLoading] = useState(false)
   const [capturedImages, setCapturedImages] = useState<{
     front: CapturedImage | null
@@ -32,98 +37,162 @@ export default function ContributePage() {
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
-    ingredients: '',
   })
+  
+  const [parsedData, setParsedData] = useState<ParsedData | null>(null)
+  const [correctedNutrition, setCorrectedNutrition] = useState<any>(null)
 
-  // Redirect if not logged in
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin?callbackUrl=/contribute')
     }
   }, [status, router])
 
-async function handleSubmit() {
+  // Auto-start camera on mount
+  useEffect(() => {
+    if (status === 'authenticated' && step === 'capture_front') {
+      // Camera starts automatically
+    }
+  }, [status, step])
+
+  async function handlePhotoCapture(imageDataUrl: string) {
+    if (step === 'capture_front') {
+      setCapturedImages({ ...capturedImages, front: { dataUrl: imageDataUrl } })
+      
+      // Pre-fill brand from barcode
+      if (barcode && barcode.startsWith('890')) {
+        // Could lookup brand from barcode-intelligence
+        setFormData({ ...formData, brand: '' })
+      }
+      
+      // Move to nutrition capture
+      setStep('capture_nutrition')
+      
+    } else if (step === 'capture_nutrition') {
+      setCapturedImages({ ...capturedImages, nutrition: { dataUrl: imageDataUrl } })
+      
+      // Process the nutrition label with OCR
+      await processNutritionLabel(imageDataUrl)
+      setStep('review')
+    }
+  }
+
+  async function processNutritionLabel(imageDataUrl: string) {
+    setLoading(true)
+    
+    try {
+      // Use AI to extract text from the image
+      const response = await fetch('/api/scan-product-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: imageDataUrl })
+      })
+      
+      const json = await response.json()
+      
+      if (json.success && json.data) {
+        const data = json.data
+        const nutritionText = (data.ingredients_text || '') + ' ' + JSON.stringify(data.nutrition_per_100g || {})
+        const parsed = parseIndianNutritionLabel(nutritionText)
+        
+        setParsedData({
+          nutrition: parsed,
+          rawText: data.ingredients_text || ''
+        })
+        
+        // Set initial corrected values from parsed data
+        const np = data.nutrition_per_100g || {}
+        setCorrectedNutrition({
+          calories: np.calories || null,
+          protein: np.protein || null,
+          fat: np.fat || null,
+          saturated_fat: null,
+          trans_fat: null,
+          carbohydrates: np.carbs || np.carbohydrates || null,
+          sugar: np.sugar || null,
+          fiber: np.fiber || null,
+          sodium: np.sodium || null,
+        })
+        
+        // Pre-fill name if available
+        if (data.name && !formData.name) {
+          setFormData({ ...formData, name: data.name, brand: data.brand || '' })
+        }
+      }
+    } catch (err) {
+      console.error('OCR error:', err)
+      toast.error('Could not read nutrition label')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleSubmit() {
     const userId = (session?.user as any)?.id
     if (!userId) {
       toast.error('Please sign in to contribute')
       return
     }
 
+    if (!capturedImages.front || !capturedImages.nutrition) {
+      toast.error('Please capture both photos')
+      return
+    }
+
+    if (!formData.name.trim()) {
+      toast.error('Product name is required')
+      return
+    }
+
     setLoading(true)
 
     try {
-      // Upload images to Supabase Storage
+      // Upload images
+      const userIdStr = userId as string
       const timestamp = Date.now()
       
-      const frontUrl = await uploadImage(capturedImages.front!.dataUrl, `front_${timestamp}.jpg`, userId)
-      const nutritionUrl = await uploadImage(capturedImages.nutrition!.dataUrl, `nutrition_${timestamp}.jpg`, userId)
+      const frontUrl = await uploadImage(capturedImages.front.dataUrl, `front_${timestamp}.jpg`, userIdStr)
+      const nutritionUrl = await uploadImage(capturedImages.nutrition.dataUrl, `nutrition_${timestamp}.jpg`, userIdStr)
 
-      // Extract ingredients from nutrition label image using AI
-      let extractedIngredients = formData.ingredients
-      let nutritionData = {}
-      
-      if (capturedImages.nutrition?.dataUrl) {
-        try {
-          const nutritionRes = await fetch('/api/scan-product-photo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageBase64: capturedImages.nutrition.dataUrl })
-          })
-          const nutritionJson = await nutritionRes.json()
-          
-          if (nutritionJson.success && nutritionJson.data) {
-            extractedIngredients = nutritionJson.data.ingredients_text || formData.ingredients
-            nutritionData = nutritionJson.data.nutrition_per_100g || {}
-          }
-        } catch (e) {
-          console.log('Could not extract from photo, using manual input')
-        }
-      }
-
-      // Save to community_products table
+      // Save to community_products - status = 'unverified' (shows immediately with badge)
       const { error } = await supabase.from('community_products').insert({
         barcode: barcode || null,
         name: formData.name,
         brand: formData.brand || null,
         front_label_url: frontUrl,
         nutrition_label_url: nutritionUrl,
-        ingredients_text: extractedIngredients || null,
-        nutrition: nutritionData,
+        ingredients_text: parsedData?.rawText || null,
+        nutrition: correctedNutrition,
         submitted_by: userId,
-        status: 'pending',
+        status: 'unverified', // Shows with warning badge immediately!
       })
 
       if (error) throw error
 
-      // Update user's contribution count
+      // Update user stats
       await supabase.rpc('increment_contributions', { user_id: userId })
 
-      toast.success('🎉 Thank you! Your contribution helps 10 crore Indians!')
-      setStep(4) // Success screen
+      // Show impact immediately
+      setStep('done')
+      setLoading(false)
 
     } catch (error: any) {
       console.error('Submit error:', error)
-      toast.error(error.message || 'Failed to submit. Please try again.')
-    } finally {
+      toast.error(error.message || 'Failed to submit')
       setLoading(false)
     }
   }
 
   async function uploadImage(dataUrl: string, filename: string, userId: string): Promise<string> {
-    // Convert base64 to blob
     const response = await fetch(dataUrl)
     const blob = await response.blob()
     
     const { data, error } = await supabase.storage
       .from('community-products')
-      .upload(`${userId}/${filename}`, blob, {
-        cacheControl: '3600',
-        upsert: false
-      })
+      .upload(`${userId}/${filename}`, blob, { cacheControl: '3600', upsert: false })
 
     if (error) throw error
 
-    // Get public URL
     const { data: urlData } = supabase.storage
       .from('community-products')
       .getPublicUrl(`${userId}/${filename}`)
@@ -132,277 +201,114 @@ async function handleSubmit() {
   }
 
   if (status === 'loading') {
-    return (
-      <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   return (
     <div className="min-h-screen bg-[#0d0f12] text-[#f0f4f8] pb-24">
-      {/* Header */}
-      <div className="bg-gradient-to-b from-emerald-500/20 to-transparent px-5 pt-12 pb-6">
-        <button onClick={() => router.back()} className="text-[#7a8fa6] text-sm mb-4">
-          ← Go back
-        </button>
-        
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center text-2xl">
-            🇮🇳
-          </div>
-          <div>
-            <h1 className="text-xl font-black">Help Build India's DB</h1>
-            <p className="text-sm text-[#7a8fa6]">Help 10 crore Indians eat healthier</p>
-          </div>
-        </div>
+      
+      {/* Step 1: Capture Front Label */}
+      {step === 'capture_front' && (
+        <CameraCapturePage
+          title="📷 Scan Front of Package"
+          description="Take a photo of the front of the product packet"
+          onCapture={handlePhotoCapture}
+          onSkip={() => { setStep('capture_nutrition') }}
+        />
+      )}
 
-        {/* Progress steps */}
-        <div className="flex items-center gap-2">
-          {[1, 2, 3].map(s => (
-            <div key={s} className="flex-1 h-1.5 rounded-full bg-[#2a3545] overflow-hidden">
-              <div className={`h-full transition-all ${step >= s ? 'bg-emerald-500' : 'bg-transparent'}`} />
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-between mt-2 text-[10px] text-[#7a8fa6]">
-          <span>Details</span>
-          <span>Photos</span>
-          <span>Review</span>
-        </div>
-      </div>
+      {/* Step 2: Capture Nutrition Label */}
+      {step === 'capture_nutrition' && (
+        <CameraCapturePage
+          title="📷 Scan Nutrition Label"
+          description="Take a photo of the nutrition facts table on the back"
+          onCapture={handlePhotoCapture}
+          onSkip={() => { 
+            setParsedData({ 
+              nutrition: {
+                calories: null,
+                protein: null,
+                fat: null,
+                saturated_fat: null,
+                trans_fat: null,
+                carbohydrates: null,
+                sugar: null,
+                fiber: null,
+                sodium: null,
+                serving_size: null,
+                ingredients_text: null,
+                fssai_license: null,
+                mrp: null,
+                confidence: {}
+              }, 
+              rawText: '' 
+            })
+            setCorrectedNutrition({})
+            setStep('review')
+          }}
+        />
+      )}
 
-      <div className="px-5 pt-4">
-        
-        {/* Step 1: Product Details */}
-        {step === 1 && (
-          <div className="space-y-4">
-            <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4">
-              <h2 className="text-sm font-bold mb-4">📝 Product Details</h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[11px] text-[#7a8fa6] font-bold uppercase mb-1.5 block">
-                    Product Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Parle-G Glucose Biscuits"
-                    className="w-full px-3 py-2.5 bg-[#1a1f28] border border-[#2a3545] rounded-xl text-sm text-[#f0f4f8] placeholder-[#7a8fa6]/50 outline-none focus:border-emerald-500/50"
-                  />
-                </div>
+      {/* Step 3: Review & Correct */}
+      {step === 'review' && (
+        <ReviewPage
+          formData={formData}
+          setFormData={setFormData}
+          parsedData={parsedData}
+          correctedNutrition={correctedNutrition}
+          setCorrectedNutrition={setCorrectedNutrition}
+          onSubmit={handleSubmit}
+          onBack={() => setStep('capture_nutrition')}
+          loading={loading}
+          barcode={barcode}
+        />
+      )}
 
-                <div>
-                  <label className="text-[11px] text-[#7a8fa6] font-bold uppercase mb-1.5 block">
-                    Brand (if known)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.brand}
-                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                    placeholder="e.g., Parle"
-                    className="w-full px-3 py-2.5 bg-[#1a1f28] border border-[#2a3545] rounded-xl text-sm text-[#f0f4f8] placeholder-[#7a8fa6]/50 outline-none focus:border-emerald-500/50"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] text-[#7a8fa6] font-bold uppercase mb-1.5 block">
-                    Ingredients (if you know them)
-                  </label>
-                  <textarea
-                    value={formData.ingredients}
-                    onChange={(e) => setFormData({ ...formData, ingredients: e.target.value })}
-                    placeholder="e.g., Wheat Flour, Sugar, Glucose, Vegetable Oil..."
-                    rows={3}
-                    className="w-full px-3 py-2.5 bg-[#1a1f28] border border-[#2a3545] rounded-xl text-sm text-[#f0f4f8] placeholder-[#7a8fa6]/50 outline-none focus:border-emerald-500/50 resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => formData.name.trim() && setStep(2)}
-              disabled={!formData.name.trim()}
-              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-[#2a3545] disabled:text-[#7a8fa6] text-white font-bold rounded-xl transition-colors"
-            >
-              Continue to Photos →
-            </button>
-          </div>
-        )}
-
-        {/* Step 2: Photo Capture */}
-        {step === 2 && (
-          <div className="space-y-4">
-            {/* Front Label */}
-            <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4">
-              <h2 className="text-sm font-bold mb-3">📷 Photo 1: Front of Package</h2>
-              
-              {capturedImages.front ? (
-                <div className="relative">
-                  <img 
-                    src={capturedImages.front.dataUrl} 
-                    alt="Front label" 
-                    className="w-full rounded-xl"
-                  />
-                  <button
-                    onClick={() => setCapturedImages({ ...capturedImages, front: null })}
-                    className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <CameraCapture 
-                  onCapture={(dataUrl) => setCapturedImages({ ...capturedImages, front: { dataUrl } })}
-                  label="Capture front of package"
-                />
-              )}
-            </div>
-
-            {/* Nutrition Label */}
-            <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4">
-              <h2 className="text-sm font-bold mb-3">📷 Photo 2: Nutrition Label</h2>
-              
-              {capturedImages.nutrition ? (
-                <div className="relative">
-                  <img 
-                    src={capturedImages.nutrition.dataUrl} 
-                    alt="Nutrition label" 
-                    className="w-full rounded-xl"
-                  />
-                  <button
-                    onClick={() => setCapturedImages({ ...capturedImages, nutrition: null })}
-                    className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <CameraCapture 
-                  onCapture={(dataUrl) => setCapturedImages({ ...capturedImages, nutrition: { dataUrl } })}
-                  label="Capture nutrition facts table"
-                />
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setStep(1)}
-                className="flex-1 py-3.5 bg-[#1a1f28] border border-[#2a3545] text-[#7a8fa6] font-bold rounded-xl"
-              >
-                ← Back
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                disabled={!capturedImages.front || !capturedImages.nutrition}
-                className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-[#2a3545] disabled:text-[#7a8fa6] text-white font-bold rounded-xl transition-colors"
-              >
-                Review →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Review */}
-        {step === 3 && (
-          <div className="space-y-4">
-            <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4">
-              <h2 className="text-sm font-bold mb-4">✅ Review Your Contribution</h2>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-[11px] text-[#7a8fa6]">Product</span>
-                  <span className="text-sm font-bold text-[#f0f4f8]">{formData.name}</span>
-                </div>
-                {formData.brand && (
-                  <div className="flex justify-between">
-                    <span className="text-[11px] text-[#7a8fa6]">Brand</span>
-                    <span className="text-sm text-[#f0f4f8]">{formData.brand}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-[11px] text-[#7a8fa6]">Front Photo</span>
-                  <span className="text-sm text-emerald-400">✓ Captured</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[11px] text-[#7a8fa6]">Nutrition Photo</span>
-                  <span className="text-sm text-emerald-400">✓ Captured</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-              <p className="text-[11px] text-amber-400">
-                📋 Your submission will be reviewed by the community. 
-                Once 3 users approve, it goes live and helps all NutriScan users!
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setStep(2)}
-                className="flex-1 py-3.5 bg-[#1a1f28] border border-[#2a3545] text-[#7a8fa6] font-bold rounded-xl"
-              >
-                ← Back
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-[#2a3545] text-white font-bold rounded-xl transition-colors"
-              >
-                {loading ? 'Submitting...' : 'Submit Contribution'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Success */}
-        {step === 4 && (
-          <div className="text-center py-8">
-            <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center text-5xl mb-6 mx-auto">
-              🎉
-            </div>
-            <h2 className="text-xl font-black text-[#f0f4f8] mb-2">Thank You, Contributor!</h2>
-            <p className="text-sm text-[#7a8fa6] mb-6">
-              You've helped build India's food database. Your contribution will help millions make healthier choices!
-            </p>
-            
-            <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 mb-6">
-              <p className="text-[11px] text-[#7a8fa6] mb-2">Your contribution count</p>
-              <p className="text-3xl font-black text-emerald-400">+1</p>
-            </div>
-
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-xl"
-            >
-              Back to Home
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Step 4: Success */}
+      {step === 'done' && (
+        <SuccessPage 
+          productName={formData.name}
+          onContributeMore={() => {
+            setStep('capture_front')
+            setCapturedImages({ front: null, nutrition: null })
+            setFormData({ name: '', brand: '' })
+            setParsedData(null)
+            setCorrectedNutrition(null)
+          }}
+          onGoHome={() => router.push('/dashboard')}
+        />
+      )}
     </div>
   )
 }
 
-// Camera capture component
-function CameraCapture({ onCapture, label }: { onCapture: (data: string) => void; label: string }) {
+// Camera Capture Component
+function CameraCapturePage({ title, description, onCapture, onSkip }: {
+  title: string
+  description: string
+  onCapture: (data: string) => void
+  onSkip?: () => void
+}) {
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [showCamera, setShowCamera] = useState(true)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const [showCamera, setShowCamera] = useState(false)
+
+  useEffect(() => {
+    startCamera()
+    return () => {
+      if (stream) stream.getTracks().forEach(t => t.stop())
+    }
+  }, [])
 
   async function startCamera() {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
       })
       setStream(mediaStream)
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
-      }
+      if (videoRef.current) videoRef.current.srcObject = mediaStream
     } catch (err) {
+      console.error('Camera error:', err)
       toast.error('Could not access camera')
     }
   }
@@ -415,42 +321,163 @@ function CameraCapture({ onCapture, label }: { onCapture: (data: string) => void
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.drawImage(videoRef.current, 0, 0)
-    onCapture(canvas.toDataURL('image/jpeg', 0.8))
-    stopCamera()
-    setShowCamera(false)
-  }
-
-  function stopCamera() {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop())
-      setStream(null)
-    }
-  }
-
-  if (showCamera) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black flex flex-col">
-        <div className="flex-1 relative">
-          <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-        </div>
-        <div className="p-4 bg-black/80 flex gap-3">
-          <button onClick={() => { stopCamera(); setShowCamera(false) }} className="flex-1 py-3 bg-gray-600 text-white font-bold rounded-xl">
-            Cancel
-          </button>
-          <button onClick={capture} className="flex-1 py-3 bg-emerald-500 text-white font-bold rounded-xl">
-            📸 Capture
-          </button>
-        </div>
-      </div>
-    )
+    if (stream) stream.getTracks().forEach(t => t.stop())
+    onCapture(canvas.toDataURL('image/jpeg', 0.85))
   }
 
   return (
-    <button
-      onClick={() => { startCamera(); setShowCamera(true) }}
-      className="w-full py-8 border-2 border-dashed border-[#2a3545] rounded-xl text-[#7a8fa6] hover:border-emerald-500/50 hover:text-emerald-400 transition-colors"
-    >
-      📷 {label}
-    </button>
+    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      <div className="flex-1 relative">
+        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-11/12 h-2/3 border-2 border-white/40 rounded-lg" />
+        </div>
+        <div className="absolute bottom-4 left-4 right-4">
+          <p className="text-white text-center bg-black/60 px-4 py-2 rounded-lg text-sm">{description}</p>
+        </div>
+      </div>
+      <div className="p-4 bg-black flex gap-3">
+        {onSkip && (
+          <button onClick={onSkip} className="flex-1 py-3 bg-gray-700 text-white font-bold rounded-xl">
+            Skip / Don't have
+          </button>
+        )}
+        <button onClick={capture} className="flex-1 py-3 bg-emerald-500 text-white font-bold rounded-xl">
+          📸 Capture
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Review & Correction Page
+function ReviewPage({ formData, setFormData, parsedData, correctedNutrition, setCorrectedNutrition, onSubmit, onBack, loading, barcode }: any) {
+  return (
+    <div className="px-4 pt-8 pb-6">
+      <h1 className="text-xl font-black mb-2">✅ Review & Correct</h1>
+      <p className="text-sm text-[#7a8fa6] mb-6">Please verify the extracted values</p>
+
+      {/* Product Details */}
+      <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 mb-4">
+        <div className="space-y-3">
+          <div>
+            <label className="text-[11px] text-[#7a8fa6] font-bold uppercase">Product Name *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 bg-[#1a1f28] border border-[#2a3545] rounded-xl text-sm mt-1"
+              placeholder="e.g., Parle-G Glucose Biscuits"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] text-[#7a8fa6] font-bold uppercase">Brand</label>
+            <input
+              type="text"
+              value={formData.brand}
+              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+              className="w-full px-3 py-2 bg-[#1a1f28] border border-[#2a3545] rounded-xl text-sm mt-1"
+              placeholder="e.g., Parle"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Nutrition Correction */}
+      <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold">📊 Nutrition (per 100g)</h2>
+          <span className="text-[10px] text-amber-400">Tap to correct</span>
+        </div>
+        
+        <div className="space-y-2">
+          {[
+            { key: 'calories', label: 'Energy', unit: 'kcal' },
+            { key: 'protein', label: 'Protein', unit: 'g' },
+            { key: 'fat', label: 'Total Fat', unit: 'g' },
+            { key: 'carbohydrates', label: 'Carbs', unit: 'g' },
+            { key: 'sugar', label: 'Sugar', unit: 'g' },
+            { key: 'sodium', label: 'Sodium', unit: 'mg' },
+          ].map((field) => (
+            <div key={field.key} className="flex items-center justify-between py-2 border-b border-[#2a3545] last:border-0">
+              <span className="text-sm text-[#7a8fa6]">{field.label}</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={correctedNutrition[field.key] || ''}
+                  onChange={(e) => setCorrectedNutrition({ ...correctedNutrition, [field.key]: e.target.value ? parseFloat(e.target.value) : null })}
+                  className="w-20 px-2 py-1 bg-[#1a1f28] border border-[#2a3545] rounded-lg text-sm text-right"
+                  placeholder="—"
+                />
+                <span className="text-xs text-[#7a8fa6] w-6">{field.unit}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Ingredients */}
+      {parsedData?.rawText && (
+        <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 mb-4">
+          <h2 className="text-sm font-bold mb-2">📋 Ingredients</h2>
+          <p className="text-xs text-[#7a8fa6] leading-relaxed">{parsedData.rawText}</p>
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <button onClick={onBack} className="flex-1 py-3 bg-[#1a1f28] border border-[#2a3545] text-[#7a8fa6] font-bold rounded-xl">
+          ← Back
+        </button>
+        <button onClick={onSubmit} disabled={loading || !formData.name} className="flex-1 py-3 bg-emerald-500 disabled:bg-[#2a3545] text-white font-bold rounded-xl">
+          {loading ? 'Submitting...' : '✅ Submit'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Success Page with Impact
+function SuccessPage({ productName, onContributeMore, onGoHome }: { productName: string; onContributeMore: () => void; onGoHome: () => void }) {
+  const [impact] = useState(Math.floor(Math.random() * 1000) + 100) // Simulated
+
+  return (
+    <div className="px-4 pt-12 pb-6 text-center">
+      <div className="w-24 h-24 rounded-full bg-gradient-to-b from-emerald-500 to-emerald-600 mx-auto mb-6 flex items-center justify-center text-6xl">
+        🎉
+      </div>
+      
+      <h1 className="text-2xl font-black mb-2">You're the First!</h1>
+      <p className="text-[#7a8fa6] mb-6">
+        You added <span className="text-emerald-400 font-bold">{productName}</span> to NutriScan.
+      </p>
+
+      <div className="bg-gradient-to-b from-amber-500/10 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-6">
+        <p className="text-amber-400 text-sm font-bold mb-2">🇮🇳 Helping 10 crore Indians!</p>
+        <p className="text-xs text-[#7a8fa6]">
+          When 2 more people confirm this product, it goes live and helps everyone make healthier choices.
+        </p>
+      </div>
+
+      <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 mb-6">
+        <p className="text-xs text-[#7a8fa6] mb-1">Your Impact</p>
+        <p className="text-2xl font-black text-emerald-400">{impact}+ people</p>
+        <p className="text-[10px] text-[#7a8fa6]">will see this product when it goes live</p>
+      </div>
+
+      <button onClick={onGoHome} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl mb-3">
+        Back to Home
+      </button>
+      <button onClick={onContributeMore} className="text-sm text-emerald-400 font-bold">
+        Add another product →
+      </button>
+    </div>
+  )
+}
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+    </div>
   )
 }
