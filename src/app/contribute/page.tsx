@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react'
 import toast from 'react-hot-toast'
 import { createClient } from '@supabase/supabase-js'
 import { parseIndianNutritionLabel, type ParsedNutrition } from '@/lib/ocr/indian-label-parser'
+import { enhanceImage, hasGlare } from '@/lib/ocr/image-enhancer'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -81,11 +82,28 @@ export default function ContributePage() {
     setLoading(true)
     
     try {
-      // Use AI to extract text from the image
+      // Step 1: Check for glare
+      const glareDetected = await hasGlare(imageDataUrl)
+      if (glareDetected) {
+        toast.error('⚠️ Glare detected! Please retake the photo without flash.')
+        setLoading(false)
+        return
+      }
+
+      // Step 2: Enhance image for better OCR
+      let enhancedDataUrl = imageDataUrl
+      try {
+        const enhanced = await enhanceImage(imageDataUrl)
+        enhancedDataUrl = enhanced.dataUrl
+      } catch (e) {
+        console.log('Enhancement failed, using original', e)
+      }
+
+      // Step 3: Use AI to extract text from the enhanced image
       const response = await fetch('/api/scan-product-photo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: imageDataUrl })
+        body: JSON.stringify({ imageBase64: enhancedDataUrl })
       })
       
       const json = await response.json()
