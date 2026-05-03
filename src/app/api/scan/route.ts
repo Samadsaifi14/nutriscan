@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { analyzeBarcode } from '@/lib/barcode-intelligence'
+import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
+import { lookupWithCache } from '@/lib/off-india-import'
 
 export async function GET(req: NextRequest) {
   const barcode = req.nextUrl.searchParams.get('barcode')
@@ -247,6 +249,21 @@ function formatProduct(p: any) {
 
 async function cacheProduct(product: any) {
   try {
+    // Compute health score
+    const nutrition: NutritionPer100g = {
+      calories: product.calories_per_100g || 0,
+      protein: product.protein_per_100g || 0,
+      carbohydrates: product.carbs_per_100g || 0,
+      total_fat: product.fat_per_100g || 0,
+      sugar: product.sugar_per_100g || 0,
+      sodium: product.sodium_per_100g || 0,
+    }
+    
+    const result = scoreProduct(nutrition, product.ingredients_text || '')
+    
+    // Detect harmful additives
+    const harmfulAdditives = detectHarmfulAdditives(product.ingredients_text || '')
+    
     await supabaseAdmin.from('products').upsert({
       barcode: product.barcode,
       name: product.name,
@@ -254,23 +271,41 @@ async function cacheProduct(product: any) {
       category: product.category,
       country_of_origin: product.country_of_origin,
       image_url: product.image_url,
-      calories_per_100g: product.calories_per_100g,
-      protein_per_100g: product.protein_per_100g,
-      carbs_per_100g: product.carbs_per_100g,
-      fat_per_100g: product.fat_per_100g,
-      sugar_per_100g: product.sugar_per_100g,
-      sodium_per_100g: product.sodium_per_100g,
-      fiber_per_100g: product.fiber_per_100g,
-      serving_size_g: product.serving_size_g,
+      calories: product.calories_per_100g,
+      protein: product.protein_per_100g,
+      fat: product.fat_per_100g,
+      saturated_fat: null,
+      carbohydrates: product.carbs_per_100g,
+      sugar: product.sugar_per_100g,
+      fiber: product.fiber_per_100g,
+      sodium: product.sodium_per_100g,
       ingredients_text: product.ingredients_text,
-      allergens: product.allergens,
-      additives: product.additives,
+      health_score: Math.round(result.score),
+      health_grade: result.grade,
+      nova_group: result.nova_group || 4,
+      detected_additives: harmfulAdditives,
       source: product.source,
+      last_updated: new Date().toISOString(),
     }, { onConflict: 'barcode', ignoreDuplicates: false })
-    console.log('Product cached successfully')
+    console.log('Product cached with health score:', result.score)
   } catch (e) {
     console.log('Cache failed:', e)
   }
+}
+
+function detectHarmfulAdditives(ingredientsText: string): string[] {
+  const harmful = [
+    'sodium benzoate', 'potassium sorbate', 'sodium nitrite', 'sodium nitrate',
+    'bha', 'bht', 'tbhq', 'tartrazine', 'sunset yellow', 'allura red',
+    'erythrosine', 'aspartame', 'acesulfame', 'sucralose',
+    'carrageenan', 'polysorbate', 'msg', 'monosodium glutamate',
+    'high fructose corn syrup', 'maltodextrin', 'trans fat', 
+    'hydrogenated oil', 'partially hydrogenated',
+  ]
+  
+  if (!ingredientsText) return []
+  const lower = ingredientsText.toLowerCase()
+  return harmful.filter(additive => lower.includes(additive))
 }
 
 async function searchIndianProductWeb(searchHint: string, brand: string | null): Promise<any | null> {
