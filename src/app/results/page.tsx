@@ -120,8 +120,10 @@ export default function ResultsPage() {
   const [quantity,   setQuantity]   = useState(100)
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
   const [logging,    setLogging]    = useState(false)
+  const [photoLoading, setPhotoLoading] = useState(false)
   const searchParams = useSearchParams()
   const barcodeParam = searchParams?.get('barcode')
+  const photoMode = searchParams?.get('mode') === 'photo'
 
   // Fetch from API if barcode param exists, otherwise read from localStorage
   useEffect(() => {
@@ -190,9 +192,75 @@ const apiPayload: ScanResultPayload = {
     if (barcodeParam) {
       fetchFromAPI()
     }
+
+    // Handle photo mode - scan an image
+    if (photoMode) {
+      const photoData = sessionStorage.getItem('photoScanData')
+      if (photoData) {
+        setPhotoLoading(true)
+        sessionStorage.removeItem('photoScanData')
+        
+        fetch('/api/scan-product-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: photoData }),
+        })
+        .then(res => res.json())
+        .then(json => {
+          if (json.success && json.data) {
+            const data = json.data
+            const nutrition = {
+              calories: data.nutrition_per_100g?.calories || 0,
+              protein: data.nutrition_per_100g?.protein || 0,
+              carbs: data.nutrition_per_100g?.carbs || 0,
+              fat: data.nutrition_per_100g?.fat || 0,
+              sugar: data.nutrition_per_100g?.sugar || 0,
+              sodium: data.nutrition_per_100g?.sodium || 0,
+            }
+            
+            const scored = scoreProduct(nutrition, data.ingredients_text || '')
+            
+            const photoPayload: ScanResultPayload = {
+              version: 1,
+              product: {
+                name: data.name || 'Unknown Product',
+                barcode: data.barcode,
+                brand: data.brand,
+                image_url: null,
+                ingredients_text: data.ingredients_text,
+                nutrition,
+                additives: data.additives || [],
+                allergens: data.allergens || [],
+                source: 'photo_scan',
+              },
+              analysis: {
+                health_rating: (scored.grade === 'A' ? 'healthy' : scored.grade === 'C' ? 'unhealthy' : 'moderate') as any,
+                health_score: scored.score,
+                confidence: data.confidence || 'medium',
+                summary: scored.summary || `Scanned from photo. ${data.what_was_visible || ''}`,
+                analyzed_at: new Date().toISOString(),
+                personalized: false,
+              },
+              quantity: 100,
+              timestamp: new Date().toISOString(),
+            }
+            
+            setPayload(photoPayload)
+            writeScanResult(photoPayload)
+          } else {
+            toast.error(json.error || 'Could not read the product photo')
+          }
+        })
+        .catch(err => {
+          console.error('Photo scan error:', err)
+          toast.error('Failed to scan photo')
+        })
+        .finally(() => setPhotoLoading(false))
+      }
+    }
     
     setHydrated(true)
-  }, [barcodeParam])
+  }, [barcodeParam, photoMode])
 
   async function handleLogMeal(mealType: string) {
     if (!payload || isGuest || logging) return
@@ -226,6 +294,22 @@ const apiPayload: ScanResultPayload = {
   }
 
   if (!hydrated) return null
+
+  // Photo loading state
+  if (photoLoading) {
+    return (
+      <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
+        <div className="w-20 h-20 rounded-full bg-purple-500/20 flex items-center justify-center mb-5 text-4xl animate-pulse">
+          📷
+        </div>
+        <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Scanning your photo...</h2>
+        <p className="text-sm text-[#7a8fa6] mb-8 leading-relaxed max-w-xs">
+          Analyzing the nutrition label to extract ingredients and health information.
+        </p>
+        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   // ── Empty state ───────────────────────────────────────────────────────────
 
@@ -303,10 +387,28 @@ const apiPayload: ScanResultPayload = {
             </div>
 
             {/* Ingredient preview - show immediately */}
-            {product.ingredients_text && (
+            {product.ingredients_text ? (
               <div className="mt-3 p-3 bg-[#1a1f28] rounded-xl border border-[#2a3545]">
                 <p className="text-[10px] text-[#7a8fa6] font-bold uppercase mb-2">📋 Ingredients</p>
                 <IngredientList ingredients={product.ingredients_text} harmfulIngredients={analysis.harmful_ingredients || []} />
+              </div>
+            ) : (
+              <div className="mt-3 p-3 bg-[#1a1f28] rounded-xl border border-amber-500/30">
+                <div className="flex items-start gap-3">
+                  <div className="text-xl">📷</div>
+                  <div className="flex-1">
+                    <p className="text-[11px] font-bold text-amber-400 mb-1">Ingredients not available</p>
+                    <p className="text-[10px] text-[#7a8fa6] leading-relaxed">
+                      This product was found from database but lacks ingredient details. Use camera to scan the label directly for complete breakdown.
+                    </p>
+                    <button 
+                      onClick={() => router.push('/scan?mode=photo')}
+                      className="mt-2 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-[11px] font-bold rounded-lg transition-colors"
+                    >
+                      📷 Scan Label Now
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
