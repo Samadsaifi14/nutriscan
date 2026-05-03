@@ -121,6 +121,7 @@ export default function ResultsPage() {
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
   const [logging,    setLogging]    = useState(false)
   const [photoLoading, setPhotoLoading] = useState(false)
+  const [notFound, setNotFound] = useState(false)
   const searchParams = useSearchParams()
   const barcodeParam = searchParams?.get('barcode')
   const photoMode = searchParams?.get('mode') === 'photo'
@@ -176,6 +177,8 @@ const apiPayload: ScanResultPayload = {
             setPayload(apiPayload)
             // Also save to localStorage for future reference
             writeScanResult(apiPayload)
+          } else if (json.error === 'PRODUCT_NOT_FOUND') {
+            setNotFound(true)
           }
         } catch (err) {
           console.error('Failed to fetch product:', err)
@@ -307,6 +310,43 @@ const apiPayload: ScanResultPayload = {
           Analyzing the nutrition label to extract ingredients and health information.
         </p>
         <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // Product not found state
+  if (notFound || (!payload && barcodeParam)) {
+    return (
+      <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
+        <div className="w-20 h-20 rounded-full bg-amber-500/20 flex items-center justify-center mb-5 text-4xl">
+          🇮🇳
+        </div>
+        <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Product Not Found</h2>
+        <p className="text-sm text-[#7a8fa6] mb-6 leading-relaxed max-w-xs">
+          This product isn't in our database yet. Help build India's largest food database!
+        </p>
+        
+        {/* Contribute CTA */}
+        <div className="w-full max-w-xs bg-gradient-to-b from-amber-500/10 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-6">
+          <p className="text-sm font-bold text-amber-400 mb-2">🇮🇳 Help 10 crore Indians!</p>
+          <p className="text-xs text-[#7a8fa6] mb-4">
+            Add this product to help others make healthier choices
+          </p>
+          <button 
+            onClick={() => router.push(`/contribute?barcode=${barcodeParam}`)}
+            className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-white font-bold rounded-xl transition-colors"
+          >
+            📝 Contribute Product
+          </button>
+        </div>
+        
+        {/* Also offer photo scan */}
+        <button 
+          onClick={() => router.push('/scan')}
+          className="text-sm text-emerald-400 font-bold"
+        >
+          Or scan with camera →
+        </button>
       </div>
     )
   }
