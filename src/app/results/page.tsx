@@ -7,6 +7,7 @@ import toast                     from 'react-hot-toast'
 import { readScanResult, writeScanResult, ScanResultPayload } from '@/types/scanResult'
 import { event, AnalyticsEvents } from '@/lib/analytics'
 import { scoreProduct } from '@/lib/health-engine'
+import IngredientList from '@/components/results/IngredientList'
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
 
@@ -103,7 +104,7 @@ function Section({ title, icon, children }: { title: string; icon: string; child
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
-const TABS = ['Overview', 'Ingredients', 'Nutrition', 'Alternatives'] as const
+const TABS = ['Ingredients', 'Overview', 'Nutrition', 'Alternatives'] as const
 type Tab = typeof TABS[number]
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ export default function ResultsPage() {
 
   const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
   const [hydrated,   setHydrated]   = useState(false)
-  const [activeTab,  setActiveTab]  = useState<Tab>('Overview')
+  const [activeTab,  setActiveTab]  = useState<Tab>('Ingredients')
   const [quantity,   setQuantity]   = useState(100)
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
   const [logging,    setLogging]    = useState(false)
@@ -300,6 +301,14 @@ const apiPayload: ScanResultPayload = {
                 </span>
               )}
             </div>
+
+            {/* Ingredient preview - show immediately */}
+            {product.ingredients_text && (
+              <div className="mt-3 p-3 bg-[#1a1f28] rounded-xl border border-[#2a3545]">
+                <p className="text-[10px] text-[#7a8fa6] font-bold uppercase mb-2">📋 Ingredients</p>
+                <IngredientList ingredients={product.ingredients_text} harmfulIngredients={analysis.harmful_ingredients || []} />
+              </div>
+            )}
           </div>
           <div className="flex-shrink-0">
             <ScoreRing score={Number(analysis.health_score)} rating={analysis.health_rating} />
