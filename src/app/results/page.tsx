@@ -1,13 +1,12 @@
 // src/app/results/page.tsx
 "use client"
-import { useEffect, useState }  from 'react'
+import { useEffect, useState, useMemo }  from 'react'
 import { useRouter, useSearchParams }             from 'next/navigation'
 import { useSession }            from 'next-auth/react'
 import toast                     from 'react-hot-toast'
 import { readScanResult, writeScanResult, ScanResultPayload } from '@/types/scanResult'
 import { event, AnalyticsEvents } from '@/lib/analytics'
 import { scoreProduct } from '@/lib/health-engine'
-import IngredientList from '@/components/results/IngredientList'
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
 
@@ -104,7 +103,7 @@ function Section({ title, icon, children }: { title: string; icon: string; child
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
-const TABS = ['Ingredients', 'Overview', 'Nutrition', 'Alternatives'] as const
+const TABS = ['Overview', 'Ingredients', 'Nutrition', 'Alternatives'] as const
 type Tab = typeof TABS[number]
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -116,70 +115,49 @@ export default function ResultsPage() {
 
   const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
   const [hydrated,   setHydrated]   = useState(false)
-  const [activeTab,  setActiveTab]  = useState<Tab>('Ingredients')
+  const [activeTab,  setActiveTab]  = useState<Tab>('Overview')
   const [quantity,   setQuantity]   = useState(100)
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
   const [logging,    setLogging]    = useState(false)
-  const [photoLoading, setPhotoLoading] = useState(false)
-  const [notFound, setNotFound] = useState(false)
   const searchParams = useSearchParams()
   const barcodeParam = searchParams?.get('barcode')
-  const photoMode = searchParams?.get('mode') === 'photo'
-  const [communityWarning, setCommunityWarning] = useState<string | null>(null)
 
   // Fetch from API if barcode param exists, otherwise read from localStorage
   useEffect(() => {
     async function fetchFromAPI() {
       if (barcodeParam) {
         try {
-          // Try main scan first, then community
-          let res = await fetch(`/api/scan?barcode=${barcodeParam}`)
-          let json = await res.json()
-          
-          // If not found, try community products
-          if (!json.success || json.error === 'PRODUCT_NOT_FOUND') {
-            res = await fetch(`/api/scan-community?barcode=${barcodeParam}`)
-            json = await res.json()
-            if (json.warning) {
-              setCommunityWarning(json.warning)
-            }
-          }
+          const res = await fetch(`/api/scan?barcode=${barcodeParam}`)
+          const json = await res.json()
           
           if (json.success && json.data) {
             // Create payload from API data
             const product = json.data
             
-            // Handle multiple nutrition formats:
-            // 1. Nested: { nutrition: { calories, protein, ... } }
-            // 2. Flat: { calories_per_100g, protein_per_100g, ... }
-            // 3. Community: { nutrition_per_100g: { calories, ... } }
+            // Handle multiple nutrition formats from different APIs
             let nutritionData: any = {}
-            
             if (product.nutrition) {
-              // Nested format from main scan API
               nutritionData = product.nutrition
-            } else if (product.nutrition_per_100g && typeof product.nutrition_per_100g === 'object') {
-              // Community format
+            } else if (product.nutrition_per_100g) {
               nutritionData = product.nutrition_per_100g
             } else {
-              // Flat format (legacy)
               nutritionData = {
-                calories: product.calories_per_100g || 0,
-                protein: product.protein_per_100g || 0,
-                carbs: product.carbs_per_100g || 0,
-                fat: product.fat_per_100g || 0,
-                sugar: product.sugar_per_100g || 0,
-                sodium: product.sodium_per_100g || 0,
+                calories: product.calories_per_100g,
+                protein: product.protein_per_100g,
+                carbs: product.carbs_per_100g,
+                fat: product.fat_per_100g,
+                sugar: product.sugar_per_100g,
+                sodium: product.sodium_per_100g,
               }
             }
             
             const nutrition = {
-              calories: nutritionData.calories ?? 0,
-              protein: nutritionData.protein ?? 0,
-              carbs: nutritionData.carbs ?? 0,
-              fat: nutritionData.fat ?? 0,
-              sugar: nutritionData.sugar ?? 0,
-              sodium: nutritionData.sodium ?? 0,
+              calories: nutritionData.calories || 0,
+              protein: nutritionData.protein || 0,
+              carbs: nutritionData.carbs || 0,
+              fat: nutritionData.fat || 0,
+              sugar: nutritionData.sugar || 0,
+              sodium: nutritionData.sodium || 0,
             }
             
             // Calculate health score
@@ -213,8 +191,6 @@ const apiPayload: ScanResultPayload = {
             setPayload(apiPayload)
             // Also save to localStorage for future reference
             writeScanResult(apiPayload)
-          } else if (json.error === 'PRODUCT_NOT_FOUND') {
-            setNotFound(true)
           }
         } catch (err) {
           console.error('Failed to fetch product:', err)
@@ -231,75 +207,9 @@ const apiPayload: ScanResultPayload = {
     if (barcodeParam) {
       fetchFromAPI()
     }
-
-    // Handle photo mode - scan an image
-    if (photoMode) {
-      const photoData = sessionStorage.getItem('photoScanData')
-      if (photoData) {
-        setPhotoLoading(true)
-        sessionStorage.removeItem('photoScanData')
-        
-        fetch('/api/scan-product-photo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: photoData }),
-        })
-        .then(res => res.json())
-        .then(json => {
-          if (json.success && json.data) {
-            const data = json.data
-            const nutrition = {
-              calories: data.nutrition_per_100g?.calories || 0,
-              protein: data.nutrition_per_100g?.protein || 0,
-              carbs: data.nutrition_per_100g?.carbs || 0,
-              fat: data.nutrition_per_100g?.fat || 0,
-              sugar: data.nutrition_per_100g?.sugar || 0,
-              sodium: data.nutrition_per_100g?.sodium || 0,
-            }
-            
-            const scored = scoreProduct(nutrition, data.ingredients_text || '')
-            
-            const photoPayload: ScanResultPayload = {
-              version: 1,
-              product: {
-                name: data.name || 'Unknown Product',
-                barcode: data.barcode,
-                brand: data.brand,
-                image_url: null,
-                ingredients_text: data.ingredients_text,
-                nutrition,
-                additives: data.additives || [],
-                allergens: data.allergens || [],
-                source: 'photo_scan',
-              },
-              analysis: {
-                health_rating: (scored.grade === 'A' ? 'healthy' : scored.grade === 'C' ? 'unhealthy' : 'moderate') as any,
-                health_score: scored.score,
-                confidence: data.confidence || 'medium',
-                summary: scored.summary || `Scanned from photo. ${data.what_was_visible || ''}`,
-                analyzed_at: new Date().toISOString(),
-                personalized: false,
-              },
-              quantity: 100,
-              timestamp: new Date().toISOString(),
-            }
-            
-            setPayload(photoPayload)
-            writeScanResult(photoPayload)
-          } else {
-            toast.error(json.error || 'Could not read the product photo')
-          }
-        })
-        .catch(err => {
-          console.error('Photo scan error:', err)
-          toast.error('Failed to scan photo')
-        })
-        .finally(() => setPhotoLoading(false))
-      }
-    }
     
     setHydrated(true)
-  }, [barcodeParam, photoMode])
+  }, [barcodeParam])
 
   async function handleLogMeal(mealType: string) {
     if (!payload || isGuest || logging) return
@@ -334,59 +244,6 @@ const apiPayload: ScanResultPayload = {
 
   if (!hydrated) return null
 
-  // Photo loading state
-  if (photoLoading) {
-    return (
-      <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
-        <div className="w-20 h-20 rounded-full bg-purple-500/20 flex items-center justify-center mb-5 text-4xl animate-pulse">
-          📷
-        </div>
-        <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Scanning your photo...</h2>
-        <p className="text-sm text-[#7a8fa6] mb-8 leading-relaxed max-w-xs">
-          Analyzing the nutrition label to extract ingredients and health information.
-        </p>
-        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  // Product not found state
-  if (notFound || (!payload && barcodeParam)) {
-    return (
-      <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
-        <div className="w-20 h-20 rounded-full bg-amber-500/20 flex items-center justify-center mb-5 text-4xl">
-          🇮🇳
-        </div>
-        <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Product Not Found</h2>
-        <p className="text-sm text-[#7a8fa6] mb-6 leading-relaxed max-w-xs">
-          This product isn't in our database yet. Help build India's largest food database!
-        </p>
-        
-        {/* Contribute CTA */}
-        <div className="w-full max-w-xs bg-gradient-to-b from-amber-500/10 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-6">
-          <p className="text-sm font-bold text-amber-400 mb-2">🇮🇳 Help 10 crore Indians!</p>
-          <p className="text-xs text-[#7a8fa6] mb-4">
-            Add this product to help others make healthier choices
-          </p>
-          <button 
-            onClick={() => router.push(`/contribute?barcode=${barcodeParam}`)}
-            className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-white font-bold rounded-xl transition-colors"
-          >
-            📝 Contribute Product
-          </button>
-        </div>
-        
-        {/* Also offer photo scan */}
-        <button 
-          onClick={() => router.push('/scan')}
-          className="text-sm text-emerald-400 font-bold"
-        >
-          Or scan with camera →
-        </button>
-      </div>
-    )
-  }
-
   // ── Empty state ───────────────────────────────────────────────────────────
 
   if (!payload) {
@@ -408,7 +265,24 @@ const apiPayload: ScanResultPayload = {
   }
 
   const { product, analysis, timestamp } = payload
-  const harmfulCount = analysis.harmful_ingredients?.filter(h => h.found_in_product !== false).length || 0
+  // Detect harmful ingredients from ingredients_text
+  const detectedHarmful = useMemo(() => {
+    if (!product.ingredients_text) return []
+    const text = product.ingredients_text.toLowerCase()
+    const harmful: {name: string, severity: string}[] = []
+    const list = ['sodium benzoate', 'sodium nitrite', 'sodium nitrate', 'bha', 'bht', 'tbhq', 
+      'tartrazine', 'sunset yellow', 'allura red', 'aspartame', 'acesulfame', 'sucralose', 
+      'carrageenan', 'polysorbate', 'msg', 'high fructose corn syrup', 'maltodextrin', 
+      'trans fat', 'hydrogenated', 'refined flour', 'palm oil']
+    list.forEach(name => {
+      if (text.includes(name)) {
+        harmful.push({ name: name.charAt(0).toUpperCase() + name.slice(1), severity: 'high' })
+      }
+    })
+    return harmful
+  }, [product.ingredients_text])
+
+  const harmfulCount = detectedHarmful.length || analysis.harmful_ingredients?.filter(h => h.found_in_product !== false).length || 0
   const highSevCount = analysis.harmful_ingredients?.filter(h => h.severity === 'high' && h.found_in_product !== false).length || 0
   const totalCals    = Math.round((product.nutrition?.calories || 0) * quantity / 100)
 
@@ -440,12 +314,6 @@ const apiPayload: ScanResultPayload = {
 
             {/* Alert badges */}
             <div className="flex flex-wrap gap-2 mt-3">
-              {/* Community/Unverified warning */}
-              {communityWarning && (
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
-                  ⚠️ Community - Not Verified
-                </span>
-              )}
               {highSevCount > 0 && (
                 <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-500/15 text-red-400 border border-red-500/20">
                   🚨 {highSevCount} High Risk
@@ -467,32 +335,6 @@ const apiPayload: ScanResultPayload = {
                 </span>
               )}
             </div>
-
-            {/* Ingredient preview - show immediately */}
-            {product.ingredients_text ? (
-              <div className="mt-3 p-3 bg-[#1a1f28] rounded-xl border border-[#2a3545]">
-                <p className="text-[10px] text-[#7a8fa6] font-bold uppercase mb-2">📋 Ingredients</p>
-                <IngredientList ingredients={product.ingredients_text} harmfulIngredients={analysis.harmful_ingredients || []} />
-              </div>
-            ) : (
-              <div className="mt-3 p-3 bg-[#1a1f28] rounded-xl border border-amber-500/30">
-                <div className="flex items-start gap-3">
-                  <div className="text-xl">📷</div>
-                  <div className="flex-1">
-                    <p className="text-[11px] font-bold text-amber-400 mb-1">Ingredients not available</p>
-                    <p className="text-[10px] text-[#7a8fa6] leading-relaxed">
-                      This product was found from database but lacks ingredient details. Use camera to scan the label directly for complete breakdown.
-                    </p>
-                    <button 
-                      onClick={() => router.push('/scan?mode=photo')}
-                      className="mt-2 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-[11px] font-bold rounded-lg transition-colors"
-                    >
-                      📷 Scan Label Now
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
           <div className="flex-shrink-0">
             <ScoreRing score={Number(analysis.health_score)} rating={analysis.health_rating} />
