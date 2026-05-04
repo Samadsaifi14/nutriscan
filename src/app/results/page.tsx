@@ -1,6 +1,6 @@
 // src/app/results/page.tsx
 "use client"
-import { useEffect, useState, useMemo }  from 'react'
+import { useEffect, useState }  from 'react'
 import { useRouter, useSearchParams }             from 'next/navigation'
 import { useSession }            from 'next-auth/react'
 import toast                     from 'react-hot-toast'
@@ -265,24 +265,22 @@ const apiPayload: ScanResultPayload = {
   }
 
   const { product, analysis, timestamp } = payload
+  
   // Detect harmful ingredients from ingredients_text
-  const detectedHarmful = useMemo(() => {
-    if (!product.ingredients_text) return []
+  let harmfulCount = 0
+  if (product.ingredients_text) {
     const text = product.ingredients_text.toLowerCase()
-    const harmful: {name: string, severity: string}[] = []
-    const list = ['sodium benzoate', 'sodium nitrite', 'sodium nitrate', 'bha', 'bht', 'tbhq', 
+    const harmful = ['sodium benzoate', 'sodium nitrite', 'sodium nitrate', 'bha', 'bht', 'tbhq', 
       'tartrazine', 'sunset yellow', 'allura red', 'aspartame', 'acesulfame', 'sucralose', 
       'carrageenan', 'polysorbate', 'msg', 'high fructose corn syrup', 'maltodextrin', 
       'trans fat', 'hydrogenated', 'refined flour', 'palm oil']
-    list.forEach(name => {
-      if (text.includes(name)) {
-        harmful.push({ name: name.charAt(0).toUpperCase() + name.slice(1), severity: 'high' })
-      }
+    harmful.forEach(name => {
+      if (text.includes(name)) harmfulCount++
     })
-    return harmful
-  }, [product.ingredients_text])
-
-  const harmfulCount = detectedHarmful.length || analysis.harmful_ingredients?.filter(h => h.found_in_product !== false).length || 0
+  }
+  
+  // Also include from analysis if available
+  harmfulCount = harmfulCount || analysis.harmful_ingredients?.filter(h => h.found_in_product !== false).length || 0
   const highSevCount = analysis.harmful_ingredients?.filter(h => h.severity === 'high' && h.found_in_product !== false).length || 0
   const totalCals    = Math.round((product.nutrition?.calories || 0) * quantity / 100)
 
