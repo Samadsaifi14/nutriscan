@@ -148,13 +148,38 @@ export default function ResultsPage() {
           if (json.success && json.data) {
             // Create payload from API data
             const product = json.data
+            
+            // Handle multiple nutrition formats:
+            // 1. Nested: { nutrition: { calories, protein, ... } }
+            // 2. Flat: { calories_per_100g, protein_per_100g, ... }
+            // 3. Community: { nutrition_per_100g: { calories, ... } }
+            let nutritionData: any = {}
+            
+            if (product.nutrition) {
+              // Nested format from main scan API
+              nutritionData = product.nutrition
+            } else if (product.nutrition_per_100g && typeof product.nutrition_per_100g === 'object') {
+              // Community format
+              nutritionData = product.nutrition_per_100g
+            } else {
+              // Flat format (legacy)
+              nutritionData = {
+                calories: product.calories_per_100g || 0,
+                protein: product.protein_per_100g || 0,
+                carbs: product.carbs_per_100g || 0,
+                fat: product.fat_per_100g || 0,
+                sugar: product.sugar_per_100g || 0,
+                sodium: product.sodium_per_100g || 0,
+              }
+            }
+            
             const nutrition = {
-              calories: product.calories_per_100g || 0,
-              protein: product.protein_per_100g || 0,
-              carbs: product.carbs_per_100g || 0,
-              fat: product.fat_per_100g || 0,
-              sugar: product.sugar_per_100g || 0,
-              sodium: product.sodium_per_100g || 0,
+              calories: nutritionData.calories ?? 0,
+              protein: nutritionData.protein ?? 0,
+              carbs: nutritionData.carbs ?? 0,
+              fat: nutritionData.fat ?? 0,
+              sugar: nutritionData.sugar ?? 0,
+              sodium: nutritionData.sodium ?? 0,
             }
             
             // Calculate health score
