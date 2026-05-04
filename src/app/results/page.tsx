@@ -1,12 +1,11 @@
 // src/app/results/page.tsx
 "use client"
 import { useEffect, useState }  from 'react'
-import { useRouter, useSearchParams }             from 'next/navigation'
+import { useRouter }             from 'next/navigation'
 import { useSession }            from 'next-auth/react'
 import toast                     from 'react-hot-toast'
-import { readScanResult, writeScanResult, ScanResultPayload } from '@/types/scanResult'
+import { readScanResult, ScanResultPayload } from '@/types/scanResult'
 import { event, AnalyticsEvents } from '@/lib/analytics'
-import { scoreProduct } from '@/lib/health-engine'
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
 
@@ -119,97 +118,13 @@ export default function ResultsPage() {
   const [quantity,   setQuantity]   = useState(100)
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
   const [logging,    setLogging]    = useState(false)
-  const searchParams = useSearchParams()
-  const barcodeParam = searchParams?.get('barcode')
 
-  // Fetch from API if barcode param exists, otherwise read from localStorage
   useEffect(() => {
-    async function fetchFromAPI() {
-      if (barcodeParam) {
-        try {
-          const res = await fetch(`/api/scan?barcode=${barcodeParam}`)
-          const json = await res.json()
-          
-          if (json.success && json.data) {
-            // Create payload from API data
-            const product = json.data
-            
-            // Handle multiple nutrition formats from different APIs
-            let nutritionData: any = {}
-            if (product.nutrition) {
-              nutritionData = product.nutrition
-            } else if (product.nutrition_per_100g) {
-              nutritionData = product.nutrition_per_100g
-            } else {
-              nutritionData = {
-                calories: product.calories_per_100g,
-                protein: product.protein_per_100g,
-                carbs: product.carbs_per_100g,
-                fat: product.fat_per_100g,
-                sugar: product.sugar_per_100g,
-                sodium: product.sodium_per_100g,
-              }
-            }
-            
-            const nutrition = {
-              calories: nutritionData.calories || 0,
-              protein: nutritionData.protein || 0,
-              carbs: nutritionData.carbs || 0,
-              fat: nutritionData.fat || 0,
-              sugar: nutritionData.sugar || 0,
-              sodium: nutritionData.sodium || 0,
-            }
-            
-            // Calculate health score
-            const scored = scoreProduct(nutrition, product.ingredients_text || '')
-            
-const apiPayload: ScanResultPayload = {
-              version: 1,
-              product: {
-                name: product.name,
-                barcode: product.barcode,
-                brand: product.brand,
-                image_url: product.image_url || null,
-                ingredients_text: product.ingredients_text,
-                nutrition,
-                additives: product.additives || [],
-                allergens: product.allergens || [],
-                source: json.source,
-              },
-              analysis: {
-                health_rating: (scored.grade === 'A' ? 'healthy' : scored.grade === 'C' ? 'unhealthy' : 'moderate') as any,
-                health_score: scored.score,
-                confidence: 'high' as const,
-                summary: scored.summary || 'Analyzed with local health engine',
-                analyzed_at: new Date().toISOString(),
-                personalized: false,
-              },
-              quantity: 100,
-              timestamp: new Date().toISOString(),
-            }
-            
-            setPayload(apiPayload)
-            // Also save to localStorage for future reference
-            writeScanResult(apiPayload)
-          }
-        } catch (err) {
-          console.error('Failed to fetch product:', err)
-        }
-      }
-    }
-    
-    // First try to read from localStorage
     const data = readScanResult()
     setPayload(data)
     if (data) setQuantity(data.quantity || 100)
-    
-    // Then try API if barcode param exists
-    if (barcodeParam) {
-      fetchFromAPI()
-    }
-    
     setHydrated(true)
-  }, [barcodeParam])
+  }, [])
 
   async function handleLogMeal(mealType: string) {
     if (!payload || isGuest || logging) return
@@ -265,22 +180,7 @@ const apiPayload: ScanResultPayload = {
   }
 
   const { product, analysis, timestamp } = payload
-  
-  // Detect harmful ingredients from ingredients_text
-  let harmfulCount = 0
-  if (product.ingredients_text) {
-    const text = product.ingredients_text.toLowerCase()
-    const harmful = ['sodium benzoate', 'sodium nitrite', 'sodium nitrate', 'bha', 'bht', 'tbhq', 
-      'tartrazine', 'sunset yellow', 'allura red', 'aspartame', 'acesulfame', 'sucralose', 
-      'carrageenan', 'polysorbate', 'msg', 'high fructose corn syrup', 'maltodextrin', 
-      'trans fat', 'hydrogenated', 'refined flour', 'palm oil']
-    harmful.forEach(name => {
-      if (text.includes(name)) harmfulCount++
-    })
-  }
-  
-  // Also include from analysis if available
-  harmfulCount = harmfulCount || analysis.harmful_ingredients?.filter(h => h.found_in_product !== false).length || 0
+  const harmfulCount = analysis.harmful_ingredients?.filter(h => h.found_in_product !== false).length || 0
   const highSevCount = analysis.harmful_ingredients?.filter(h => h.severity === 'high' && h.found_in_product !== false).length || 0
   const totalCals    = Math.round((product.nutrition?.calories || 0) * quantity / 100)
 
@@ -490,29 +390,6 @@ const apiPayload: ScanResultPayload = {
         ════════════════════════════════════════════════════════════════ */}
         {activeTab === 'Ingredients' && (
           <>
-            {/* Full ingredient list */}
-            {product.ingredients_text && (
-              <Section title="All Ingredients" icon="📝">
-                <div className="flex flex-wrap gap-2">
-                  {product.ingredients_text.split(',').map((ing: string, i: number) => {
-                    const ingLower = ing.trim().toLowerCase()
-                    const isHarmful = (analysis.harmful_ingredients || []).some(h => 
-                      ingLower.includes(h.name.toLowerCase()) || (h.also_known_as || []).some(a => ingLower.includes(a.toLowerCase()))
-                    )
-                    return (
-                      <span key={i} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                        isHarmful 
-                          ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-                          : 'bg-[#1e242d] text-[#7a8fa6] border border-[#2a3545]'
-                      }`}>
-                        {ing.trim()}
-                      </span>
-                    )
-                  })}
-                </div>
-              </Section>
-            )}
-
             {harmfulCount === 0 ? (
               <div className="flex flex-col items-center py-12 text-center">
                 <div className="text-5xl mb-4">✅</div>
