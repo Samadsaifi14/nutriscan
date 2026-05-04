@@ -490,6 +490,29 @@ const apiPayload: ScanResultPayload = {
         ════════════════════════════════════════════════════════════════ */}
         {activeTab === 'Ingredients' && (
           <>
+            {/* Full ingredient list */}
+            {product.ingredients_text && (
+              <Section title="All Ingredients" icon="📝">
+                <div className="flex flex-wrap gap-2">
+                  {product.ingredients_text.split(',').map((ing: string, i: number) => {
+                    const ingLower = ing.trim().toLowerCase()
+                    const isHarmful = (analysis.harmful_ingredients || []).some(h => 
+                      ingLower.includes(h.name.toLowerCase()) || (h.also_known_as || []).some(a => ingLower.includes(a.toLowerCase()))
+                    )
+                    return (
+                      <span key={i} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                        isHarmful 
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                          : 'bg-[#1e242d] text-[#7a8fa6] border border-[#2a3545]'
+                      }`}>
+                        {ing.trim()}
+                      </span>
+                    )
+                  })}
+                </div>
+              </Section>
+            )}
+
             {harmfulCount === 0 ? (
               <div className="flex flex-col items-center py-12 text-center">
                 <div className="text-5xl mb-4">✅</div>
