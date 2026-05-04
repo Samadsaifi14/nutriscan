@@ -133,13 +133,31 @@ export default function ResultsPage() {
           if (json.success && json.data) {
             // Create payload from API data
             const product = json.data
+            
+            // Handle multiple nutrition formats from different APIs
+            let nutritionData: any = {}
+            if (product.nutrition) {
+              nutritionData = product.nutrition
+            } else if (product.nutrition_per_100g) {
+              nutritionData = product.nutrition_per_100g
+            } else {
+              nutritionData = {
+                calories: product.calories_per_100g,
+                protein: product.protein_per_100g,
+                carbs: product.carbs_per_100g,
+                fat: product.fat_per_100g,
+                sugar: product.sugar_per_100g,
+                sodium: product.sodium_per_100g,
+              }
+            }
+            
             const nutrition = {
-              calories: product.calories_per_100g || 0,
-              protein: product.protein_per_100g || 0,
-              carbs: product.carbs_per_100g || 0,
-              fat: product.fat_per_100g || 0,
-              sugar: product.sugar_per_100g || 0,
-              sodium: product.sodium_per_100g || 0,
+              calories: nutritionData.calories || 0,
+              protein: nutritionData.protein || 0,
+              carbs: nutritionData.carbs || 0,
+              fat: nutritionData.fat || 0,
+              sugar: nutritionData.sugar || 0,
+              sodium: nutritionData.sodium || 0,
             }
             
             // Calculate health score
@@ -247,7 +265,22 @@ const apiPayload: ScanResultPayload = {
   }
 
   const { product, analysis, timestamp } = payload
-  const harmfulCount = analysis.harmful_ingredients?.filter(h => h.found_in_product !== false).length || 0
+  
+  // Detect harmful ingredients from ingredients_text
+  let harmfulCount = 0
+  if (product.ingredients_text) {
+    const text = product.ingredients_text.toLowerCase()
+    const harmful = ['sodium benzoate', 'sodium nitrite', 'sodium nitrate', 'bha', 'bht', 'tbhq', 
+      'tartrazine', 'sunset yellow', 'allura red', 'aspartame', 'acesulfame', 'sucralose', 
+      'carrageenan', 'polysorbate', 'msg', 'high fructose corn syrup', 'maltodextrin', 
+      'trans fat', 'hydrogenated', 'refined flour', 'palm oil']
+    harmful.forEach(name => {
+      if (text.includes(name)) harmfulCount++
+    })
+  }
+  
+  // Also include from analysis if available
+  harmfulCount = harmfulCount || analysis.harmful_ingredients?.filter(h => h.found_in_product !== false).length || 0
   const highSevCount = analysis.harmful_ingredients?.filter(h => h.severity === 'high' && h.found_in_product !== false).length || 0
   const totalCals    = Math.round((product.nutrition?.calories || 0) * quantity / 100)
 
