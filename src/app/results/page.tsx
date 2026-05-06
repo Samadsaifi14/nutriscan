@@ -5,6 +5,7 @@ import { useRouter }             from 'next/navigation'
 import { useSession }            from 'next-auth/react'
 import toast                     from 'react-hot-toast'
 import { readScanResult, ScanResultPayload } from '@/types/scanResult'
+import { IngredientChip } from '@/components/IngredientChip'
 import { event, AnalyticsEvents } from '@/lib/analytics'
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
@@ -113,6 +114,8 @@ export default function ResultsPage() {
   const isGuest       = status === 'unauthenticated'
 
   const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
+  const [ingredientList, setIngredientList] = useState<Array<{ name: string; status: 'harmful'|'safe'|'unknown' }>>([])
+  const [aiInsights, setAiInsights] = useState<Array<any>>([])
   const [hydrated,   setHydrated]   = useState(false)
   const [activeTab,  setActiveTab]  = useState<Tab>('Overview')
   const [quantity,   setQuantity]   = useState(100)
@@ -125,6 +128,35 @@ export default function ResultsPage() {
     if (data) setQuantity(data.quantity || 100)
     setHydrated(true)
   }, [])
+
+  // Build all-ingredients labelling from payload when available
+  useEffect(() => {
+    if (!payload) return
+    const ingText = payload.product?.ingredients_text || ''
+    const ings = ingText.split(',').map(s => s.trim()).filter(Boolean)
+    const harmfulSet = new Set<string>((payload.analysis.harmful_ingredients || []).filter(h => h.found_in_product !== false).map(h => (h.name || '').toLowerCase()))
+    const list = ings.map(name => {
+      const lower = name.toLowerCase()
+      const status: 'harmful'|'safe'|'unknown' = harmfulSet.has(lower) || Array.from(harmfulSet).some(h => lower.includes(h)) ? 'harmful' : 'safe'
+      return { name, status }
+    })
+    setIngredientList(list)
+  }, [payload])
+
+  // Lightweight AI-health insights for the ingredients via API
+  useEffect(() => {
+    if (!payload) return
+    const text = payload.product?.ingredients_text || ''
+    const ings = text.split(',').map(s => s.trim()).filter(Boolean)
+    if (ings.length === 0) return
+    const query = encodeURIComponent(ings.join(','))
+    fetch(`/api/ingredients-health?ingredients=${query}`)
+      .then(r => r.json())
+      .then((d) => {
+        if (d?.success) setAiInsights(d.data || [])
+      })
+      .catch(() => {})
+  }, [payload])
 
   async function handleLogMeal(mealType: string) {
     if (!payload || isGuest || logging) return
@@ -281,6 +313,24 @@ export default function ResultsPage() {
                 </div>
               )}
             </Section>
+
+            {/* AI Health Insights: lightweight heuristic-based insights on ingredients */}
+            {ingredientList && ingredientList.length > 0 && (
+              <Section title="AI Health Insights" icon="🤖">
+                <div className="space-y-2">
+                  {ingredientList.filter(i => i.status === 'harmful').slice(0, 5).map((it, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <span className="text-red-400">🚫</span>
+                      <span className="text-sm">{it.name} — flagged as potentially unhealthy</span>
+                    </div>
+                  ))}
+                  {ingredientList.filter(i => i.status === 'harmful').length === 0 && (
+                    <p className="text-sm text-[#7a8fa6]">No immediately flagged ingredients from AI heuristic.</p>
+                  )}
+                  <p className="text-[11px] text-[#7a8fa6] pt-2">Note: This is a lightweight heuristic and should be used as a guide, not a substitute for professional advice.</p>
+                </div>
+              </Section>
+            )}
 
             {/* Safe consumption */}
             {analysis.safe_consumption && (
@@ -488,6 +538,17 @@ export default function ResultsPage() {
                       </div>
                     )
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* All ingredients chips (labels for every ingredient) */}
+            {ingredientList && ingredientList.length > 0 && (
+              <div className="mt-3">
+                <div className="flex flex-wrap gap-2" aria-label="All ingredients">
+                  {ingredientList.map((it, idx) => (
+                    <IngredientChip key={idx} label={it.name} status={it.status} />
+                  ))}
                 </div>
               </div>
             )}

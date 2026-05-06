@@ -20,7 +20,12 @@ export async function POST(req: NextRequest) {
     weight_goal,
     is_diabetic,
     has_bp,
+    has_heart_disease,
+    has_cholesterol,
     is_vegetarian,
+    is_vegan,
+    is_jain,
+    allergies,
   } = await req.json()
 
   // ── Calculate BMI ──────────────────────────────────────────
@@ -78,7 +83,12 @@ export async function POST(req: NextRequest) {
       target_calories: dailyCalorieGoal,
       is_diabetic: is_diabetic || false,
       has_bp: has_bp || false,
+      has_heart_disease: has_heart_disease || false,
+      has_cholesterol: has_cholesterol || false,
       is_vegetarian: is_vegetarian || false,
+      is_vegan: is_vegan || false,
+      is_jain: is_jain || false,
+      allergies: allergies || [],
       profile_completed: true,
       updated_at: new Date().toISOString(),
     })

@@ -63,8 +63,31 @@ export default function ProfileSetupPage() {
     weight_goal: 'maintain',
     is_diabetic: false,
     has_bp: false,
+    has_heart_disease: false,
+    has_cholesterol: false,
     is_vegetarian: false,
+    is_vegan: false,
+    is_jain: false,
+    allergies: [] as string[],
   })
+
+  const allergyOptions = [
+    { value: 'nuts', label: 'Peanuts & Tree Nuts', icon: '🥜', desc: 'Peanuts, almonds, walnuts, cashews' },
+    { value: 'gluten', label: 'Gluten/Wheat', icon: '🌾', desc: 'Wheat, barley, rye' },
+    { value: 'dairy', label: 'Dairy', icon: '🥛', desc: 'Milk, cheese, butter, lactose' },
+    { value: 'soy', label: 'Soy', icon: '🫘', desc: 'Soybeans, tofu, soy milk' },
+    { value: 'shellfish', label: 'Shellfish', icon: '🦐', desc: 'Shrimp, crab, lobster, prawns' },
+    { value: 'eggs', label: 'Eggs', icon: '🥚', desc: 'Eggs and egg products' },
+  ]
+
+  const toggleAllergy = (value: string) => {
+    setForm(prev => ({
+      ...prev,
+      allergies: prev.allergies.includes(value)
+        ? prev.allergies.filter(a => a !== value)
+        : [...prev.allergies, value]
+    }))
+  }
 
   // Load existing profile data
   useEffect(() => {
@@ -89,7 +112,12 @@ export default function ProfileSetupPage() {
               weight_goal: d.weight_goal || 'maintain',
               is_diabetic: d.is_diabetic || false,
               has_bp: d.has_bp || false,
+              has_heart_disease: d.has_heart_disease || false,
+              has_cholesterol: d.has_cholesterol || false,
               is_vegetarian: d.is_vegetarian || false,
+              is_vegan: d.is_vegan || false,
+              is_jain: d.is_jain || false,
+              allergies: d.allergies || [],
             }))
           }
         }
@@ -146,7 +174,12 @@ export default function ProfileSetupPage() {
           weight_goal: form.weight_goal,
           is_diabetic: form.is_diabetic,
           has_bp: form.has_bp,
+          has_heart_disease: form.has_heart_disease,
+          has_cholesterol: form.has_cholesterol,
           is_vegetarian: form.is_vegetarian,
+          is_vegan: form.is_vegan,
+          is_jain: form.is_jain,
+          allergies: form.allergies,
         })
       })
       const json = await res.json()
@@ -450,7 +483,8 @@ export default function ProfileSetupPage() {
                 {[
                   { key: 'is_diabetic', label: '🩸 Diabetic', desc: 'We will flag high sugar products' },
                   { key: 'has_bp', label: '💊 High Blood Pressure', desc: 'We will flag high sodium products' },
-                  { key: 'is_vegetarian', label: '🥦 Vegetarian', desc: 'We will note non-veg ingredients' },
+                  { key: 'has_heart_disease', label: '❤️ Heart Disease', desc: 'We will flag high fat/cholesterol items' },
+                  { key: 'has_cholesterol', label: '🧬 High Cholesterol', desc: 'We will flag saturated fat content' },
                 ].map(item => (
                   <button
                     key={item.key}
@@ -478,6 +512,87 @@ export default function ProfileSetupPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Dietary Preferences */}
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-[var(--foreground)] mb-3">
+                Dietary Preferences{' '}
+                <span className="text-[var(--muted)] font-normal">(optional)</span>
+              </label>
+              <div className="space-y-2">
+                {[
+                  { key: 'is_vegetarian', label: '🥦 Vegetarian', desc: 'We will note non-veg ingredients' },
+                  { key: 'is_vegan', label: '🌱 Vegan', desc: 'We will flag all animal products' },
+                  { key: 'is_jain', label: '🕉️ Jain', desc: 'We will avoid roots & fermentation' },
+                ].map(item => (
+                  <button
+                    key={item.key}
+                    onClick={() => setForm({ ...form, [item.key]: !form[item.key as keyof typeof form] })}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all"
+                    style={{
+                      borderColor: form[item.key as keyof typeof form] ? '#059669' : 'var(--card-border)',
+                      background: form[item.key as keyof typeof form] ? 'rgba(5,150,105,0.05)' : 'transparent',
+                    }}
+                  >
+                    <div
+                      className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 text-white transition-all"
+                      style={{
+                        borderColor: form[item.key as keyof typeof form] ? '#059669' : 'var(--card-border)',
+                        background: form[item.key as keyof typeof form] ? '#059669' : 'transparent',
+                        fontSize: '11px',
+                      }}
+                    >
+                      {form[item.key as keyof typeof form] ? '✓' : ''}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-[var(--foreground)]">{item.label}</p>
+                      <p className="text-xs text-[var(--muted)]">{item.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Allergies */}
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-[var(--foreground)] mb-3">
+                Food Allergies{' '}
+                <span className="text-[var(--muted)] font-normal">(select all that apply)</span>
+              </label>
+              <div className="grid grid-cols-1 gap-2">
+                {allergyOptions.map(item => (
+                  <button
+                    key={item.value}
+                    onClick={() => toggleAllergy(item.value)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all"
+                    style={{
+                      borderColor: form.allergies.includes(item.value) ? '#dc2626' : 'var(--card-border)',
+                      background: form.allergies.includes(item.value) ? 'rgba(220,38,38,0.05)' : 'transparent',
+                    }}
+                  >
+                    <div
+                      className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 text-white transition-all"
+                      style={{
+                        borderColor: form.allergies.includes(item.value) ? '#dc2626' : 'var(--card-border)',
+                        background: form.allergies.includes(item.value) ? '#dc2626' : 'transparent',
+                        fontSize: '11px',
+                      }}
+                    >
+                      {form.allergies.includes(item.value) ? '✓' : ''}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-[var(--foreground)]">{item.icon} {item.label}</p>
+                      <p className="text-xs text-[var(--muted)]">{item.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {form.allergies.length > 0 && (
+                <p className="text-xs text-red-400 mt-2">
+                  ⚠️ We'll flag products containing: {form.allergies.join(', ')}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3">
