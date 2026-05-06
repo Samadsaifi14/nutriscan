@@ -113,9 +113,11 @@ export default function ResultsPage() {
   const { status }    = useSession()
   const isGuest       = status === 'unauthenticated'
 
-  const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
+const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
   const [ingredientList, setIngredientList] = useState<Array<{ name: string; status: 'harmful'|'safe'|'unknown' }>>([])
   const [aiInsights, setAiInsights] = useState<Array<any>>([])
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null)
+  const [aiLoading, setAiLoading] = useState(false)
   const [hydrated,   setHydrated]   = useState(false)
   const [activeTab,  setActiveTab]  = useState<Tab>('Overview')
   const [quantity,   setQuantity]   = useState(100)
@@ -143,7 +145,7 @@ export default function ResultsPage() {
     setIngredientList(list)
   }, [payload])
 
-  // Lightweight AI-health insights for the ingredients via API
+// Lightweight AI-health insights for the ingredients via API
   useEffect(() => {
     if (!payload) return
     const text = payload.product?.ingredients_text || ''
@@ -156,6 +158,32 @@ export default function ResultsPage() {
         if (d?.success) setAiInsights(d.data || [])
       })
       .catch(() => {})
+  }, [payload])
+
+  // Groq AI-powered analysis
+  useEffect(() => {
+    if (!payload) return
+    const ingredients = payload.product?.ingredients_text || ''
+    if (!ingredients) return
+    
+    setAiLoading(true)
+    fetch('/api/analyze-ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ingredients,
+        nutrition: payload.product?.nutrition,
+        barcode: payload.product?.barcode
+      })
+    })
+    .then(r => r.json())
+    .then((d) => {
+      if (d?.success && d.data) {
+        setAiAnalysis(d.data)
+      }
+    })
+    .catch(() => {})
+    .finally(() => setAiLoading(false))
   }, [payload])
 
   async function handleLogMeal(mealType: string) {
@@ -314,7 +342,7 @@ export default function ResultsPage() {
               )}
             </Section>
 
-            {/* AI Health Insights: lightweight heuristic-based insights on ingredients */}
+{/* AI Health Insights: lightweight heuristic-based insights on ingredients */}
             {ingredientList && ingredientList.length > 0 && (
               <Section title="AI Health Insights" icon="🤖">
                 <div className="space-y-2">
@@ -329,6 +357,85 @@ export default function ResultsPage() {
                   )}
                   <p className="text-[11px] text-[#7a8fa6] pt-2">Note: This is a lightweight heuristic and should be used as a guide, not a substitute for professional advice.</p>
                 </div>
+              </Section>
+            )}
+
+            {/* Groq AI Deep Analysis */}
+            {(aiLoading || aiAnalysis) && (
+              <Section title="AI Deep Analysis" icon="🧠">
+                {aiLoading && (
+                  <div className="flex items-center gap-3 py-4">
+                    <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm text-[#7a8fa6]">Analyzing with Groq AI...</p>
+                  </div>
+                )}
+                {aiAnalysis && !aiLoading && (
+                  <div className="space-y-4">
+                    {/* Overall Summary from AI */}
+                    {aiAnalysis.summary && (
+                      <div className="p-3 bg-gradient-to-r from-emerald-500/10 to-sky-500/10 rounded-xl border border-emerald-500/20">
+                        <p className="text-sm text-[#f0f4f8] leading-relaxed">{aiAnalysis.summary}</p>
+                      </div>
+                    )}
+
+                    {/* Personalized Warnings */}
+                    {aiAnalysis.personalizedWarnings && aiAnalysis.personalizedWarnings.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-amber-400 mb-2">⚠️ Personalized For You</p>
+                        <div className="space-y-2">
+                          {aiAnalysis.personalizedWarnings.map((warn: string, i: number) => (
+                            <div key={i} className="flex items-start gap-2 p-2 bg-amber-500/10 rounded-lg">
+                              <span className="text-amber-400">→</span>
+                              <span className="text-xs text-[#f0f4f8]">{warn}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Positives */}
+                    {aiAnalysis.positives && aiAnalysis.positives.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-emerald-400 mb-2">✅ Positives</p>
+                        <div className="space-y-1">
+                          {aiAnalysis.positives.slice(0, 3).map((pos: string, i: number) => (
+                            <p key={i} className="text-xs text-emerald-300">• {pos}</p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI Ingredient Analysis */}
+                    {aiAnalysis.ingredients && aiAnalysis.ingredients.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-[#7a8fa6] mb-2">🔬 Ingredient Breakdown</p>
+                        <div className="flex flex-wrap gap-2">
+                          {aiAnalysis.ingredients.slice(0, 8).map((ing: any, i: number) => (
+                            <span key={i} className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                              ing.status === 'harmful' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                              ing.status === 'concern' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                              'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                            }`}>
+                              {ing.ingredient}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {aiAnalysis.recommendations && aiAnalysis.recommendations.length > 0 && (
+                      <div className="pt-2 border-t border-[#2a3545]">
+                        <p className="text-xs font-bold text-sky-400 mb-2">💡 Recommendations</p>
+                        <div className="space-y-1">
+                          {aiAnalysis.recommendations.slice(0, 2).map((rec: string, i: number) => (
+                            <p key={i} className="text-xs text-[#7a8fa6]">• {rec}</p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </Section>
             )}
 
