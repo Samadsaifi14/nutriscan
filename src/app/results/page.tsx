@@ -6,6 +6,7 @@ import { useSession }            from 'next-auth/react'
 import toast                     from 'react-hot-toast'
 import { readScanResult, ScanResultPayload } from '@/types/scanResult'
 import { IngredientChip } from '@/components/IngredientChip'
+import { ShareButton } from '@/components/ShareButton'
 import { event, AnalyticsEvents } from '@/lib/analytics'
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
@@ -254,9 +255,16 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
             className="text-[#7a8fa6] hover:text-[#f0f4f8] text-sm transition-colors flex items-center gap-1">
             ← Scan again
           </button>
-          <span className="text-[11px] text-[#7a8fa6]">
-            {new Date(timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-          </span>
+          <div className="flex items-center gap-3">
+            <ShareButton 
+              productName={product.name} 
+              healthScore={Number(analysis.health_score)} 
+              healthRating={analysis.health_rating} 
+            />
+            <span className="text-[11px] text-[#7a8fa6]">
+              {new Date(timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+            </span>
+          </div>
         </div>
 
         {/* Product name + score ring */}
