@@ -70,7 +70,6 @@ export const KNOWN_INDIAN_BRANDS: Record<string, string> = {
   "8901069": "Britannia Bakery",
   "8901109": "Lakers",
   "8901333": "Sundrop",
-  "8901088": "Dabur Real",
   "8901222": "Raw Pressery",
   "8901419": "True Elements",
   "8901358": "24 Mantra",
