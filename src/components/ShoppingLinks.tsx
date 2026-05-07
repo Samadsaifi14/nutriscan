@@ -8,26 +8,28 @@ interface ShoppingLinksProps {
 }
 
 export function ShoppingLinks({ productName, brand }: ShoppingLinksProps) {
+  const searchTerm = `${brand || ''} ${productName}`.trim()
+  
   const links = [
     { 
       platform: 'amazon' as const, 
-      url: `https://www.amazon.in/s?k=${encodeURIComponent(productName)}${brand ? `+${encodeURIComponent(brand)}` : ''}&ref=as_li_ss_tl&tag=healthox-21` 
+      url: `https://www.amazon.in/s?k=${encodeURIComponent(searchTerm)}&ref=as_li_ss_tl&tag=healthox-21` 
     },
     { 
       platform: 'flipkart' as const, 
-      url: `https://www.flipkart.com/search?q=${encodeURIComponent(productName)}` 
+      url: `https://www.flipkart.com/search?q=${encodeURIComponent(searchTerm)}` 
     },
     { 
       platform: 'bigbasket' as const, 
-      url: `https://www.bigbasket.com/search/?q=${encodeURIComponent(productName)}` 
+      url: `https://www.bigbasket.com/pb/?q=${encodeURIComponent(searchTerm)}` 
     },
     { 
       platform: 'blinkit' as const, 
-      url: `https://blinkit.com/search?q=${encodeURIComponent(productName)}` 
+      url: `https://www.blinkit.com/s/${encodeURIComponent(searchTerm)}` 
     },
     { 
       platform: 'zepto' as const, 
-      url: `https://www.zepto.co.in/search?q=${encodeURIComponent(productName)}` 
+      url: `https://www.zepto.app/search?q=${encodeURIComponent(searchTerm)}` 
     },
   ]
 

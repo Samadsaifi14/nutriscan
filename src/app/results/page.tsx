@@ -355,25 +355,7 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
               )}
             </Section>
 
-{/* AI Health Insights: lightweight heuristic-based insights on ingredients */}
-            {ingredientList && ingredientList.length > 0 && (
-              <Section title="AI Health Insights" icon="🤖">
-                <div className="space-y-2">
-                  {ingredientList.filter(i => i.status === 'harmful').slice(0, 5).map((it, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <span className="text-red-400">🚫</span>
-                      <span className="text-sm">{it.name} — flagged as potentially unhealthy</span>
-                    </div>
-                  ))}
-                  {ingredientList.filter(i => i.status === 'harmful').length === 0 && (
-                    <p className="text-sm text-[#7a8fa6]">No immediately flagged ingredients from AI heuristic.</p>
-                  )}
-                  <p className="text-[11px] text-[#7a8fa6] pt-2">Note: This is a lightweight heuristic and should be used as a guide, not a substitute for professional advice.</p>
-                </div>
-              </Section>
-            )}
-
-            {/* Groq AI Deep Analysis */}
+{/* Groq AI Deep Analysis */}
             {(aiLoading || aiAnalysis) && (
               <Section title="AI Deep Analysis" icon="🧠">
                 {aiLoading && (
@@ -483,28 +465,7 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
               </Section>
             )}
 
-            {/* Suitability */}
-            <Section title="Who Should Be Careful" icon="👥">
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { key: 'diabetic_suitability',  label: '🩸 Diabetic'   },
-                  { key: 'bp_suitability',         label: '💊 High BP'    },
-                  { key: 'child_suitability',      label: '👶 Children'   },
-                  { key: 'pregnancy_suitability',  label: '🤰 Pregnancy'  },
-                ].map(({ key, label }) => {
-                  const val = analysis[key as keyof typeof analysis] as string | undefined
-                  if (!val) return null
-                  const style = suitabilityColor(val)
-                  const text  = val === 'suitable' ? 'Suitable' : val === 'consume_with_caution' ? 'With Caution' : 'Avoid'
-                  return (
-                    <div key={key} className={`${style.bg} rounded-xl p-3`}>
-                      <p className="text-xs text-[#7a8fa6] mb-1">{label}</p>
-                      <p className={`text-sm font-bold ${style.text}`}>{style.icon} {text}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </Section>
+            {/* Suitability - Removed as Personalized For You in AI Analysis covers this */}
 
             {/* Positives */}
             {analysis.positives && analysis.positives.length > 0 && (
@@ -638,6 +599,39 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
                       </div>
                     )
                   })}
+              </div>
+            )}
+
+            {/* All Ingredients List with Color Coding */}
+            {ingredientList && ingredientList.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-bold text-[#7a8fa6] mb-2">📋 All Ingredients</p>
+                <div className="flex flex-wrap gap-2">
+                  {ingredientList.map((ing, idx) => (
+                    <span 
+                      key={idx} 
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                        ing.status === 'harmful' 
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                          : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                      }`}
+                    >
+                      {ing.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Negatives Section */}
+            {(analysis.long_term_risks && analysis.long_term_risks.length > 0) && (
+              <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+                <p className="text-sm font-bold text-red-400 mb-2">⚠️ Negatives</p>
+                <div className="space-y-2">
+                  {analysis.long_term_risks.map((risk, i) => (
+                    <p key={i} className="text-xs text-[#7a8fa6]">• {risk}</p>
+                  ))}
+                </div>
               </div>
             )}
 
