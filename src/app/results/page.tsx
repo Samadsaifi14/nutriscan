@@ -122,6 +122,8 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
   const [aiAnalysis, setAiAnalysis] = useState<any>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [hydrated,   setHydrated]   = useState(false)
+  const [apiAlternatives, setApiAlternatives] = useState<any>(null)
+  const [altLoading, setAltLoading] = useState(false)
 
   // Offline support
   const { online, cacheProduct } = useOffline()
@@ -192,10 +194,42 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
     .finally(() => setAiLoading(false))
   }, [payload])
 
-  async function handleLogMeal(mealType: string) {
+  // Fetch alternatives from API when Alternatives tab is active
+  useEffect(() => {
+    if (activeTab !== 'Alternatives' || !payload || apiAlternatives) return
+    setAltLoading(true)
+    fetch('/api/alternatives', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: payload.product.name,
+        brand: payload.product.brand,
+        category: payload.product.category,
+        barcode: payload.product.barcode,
+        nutrition_per_100g: payload.product.nutrition,
+        ingredients_text: payload.product.ingredients_text,
+      }),
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d?.success && d?.data?.alternatives?.length > 0) {
+        setApiAlternatives(d.data.alternatives.map((a: any) => ({
+          name: a.name,
+          reason: d.data?.why_better?.[0]?.improvement || 'Healthier option',
+          availability: a.brand || 'Available online',
+          type: 'branded',
+        })))
+      }
+    })
+    .catch(() => {})
+    .finally(() => setAltLoading(false))
+  }, [activeTab, payload, apiAlternatives])
+
+async function handleLogMeal(mealType: string) {
     if (!payload || isGuest || logging) return
     setLogging(true)
-    const { product } = payload
+    const { product, analysis } = payload
+    const timestamp = new Date().toISOString()
     try {
       const res  = await fetch('/api/log', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -216,6 +250,12 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
         setLoggedMeal(mealType)
         toast.success(`✅ Logged ${quantity}g as ${mealType}!`)
         event(AnalyticsEvents.LOG_MEAL, { product_name: product.name, meal_type: mealType, quantity_g: quantity })
+        
+        // Save payload for history click viewing
+        const logId = json.data?.id || `meal_${timestamp}`
+        try {
+          localStorage.setItem(`meal_${logId}`, JSON.stringify(payload))
+        } catch {}
       } else {
         toast.error(json.error || 'Failed to log meal.')
       }
@@ -788,7 +828,38 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
         ════════════════════════════════════════════════════════════════ */}
         {activeTab === 'Alternatives' && (
           <>
-            {analysis.healthier_alternatives && analysis.healthier_alternatives.length > 0 ? (
+            {altLoading && (
+              <div className="flex items-center gap-3 py-8 justify-center">
+                <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-[#7a8fa6]">Finding healthier alternatives...</p>
+              </div>
+            )}
+            {(apiAlternatives && apiAlternatives.length > 0) ? (
+              <div className="space-y-3">
+                <p className="text-xs text-[#7a8fa6] px-1">Healthier alternatives found for you</p>
+                {apiAlternatives.map((alt: any, i: number) => (
+                  <div key={i} className="bg-[#161a20] border border-[#2a3545] hover:border-emerald-500/20 rounded-2xl p-4 transition-colors">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-base flex-shrink-0">
+                          ✅
+                        </div>
+                        <p className="text-sm font-bold text-[#f0f4f8]">{alt.name}</p>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 bg-[#252c38] border border-[#2a3545] text-[#7a8fa6] rounded-full flex-shrink-0">
+                        Branded
+                      </span>
+                    </div>
+                    {alt.reason && <p className="text-xs text-[#7a8fa6] leading-relaxed ml-11">{alt.reason}</p>}
+                    {alt.availability && (
+                      <p className="text-[11px] text-emerald-400 ml-11 mt-1.5">
+                        📍 {alt.availability.replace(/_/g, ' ')}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : analysis.healthier_alternatives && analysis.healthier_alternatives.length > 0 ? (
               <div className="space-y-3">
                 <p className="text-xs text-[#7a8fa6] px-1">Specific Indian alternatives that are better for your health</p>
                 {analysis.healthier_alternatives.map((alt, i) => {

@@ -143,28 +143,42 @@ export default function HistoryPage() {
                     <p className="text-xs font-bold text-[var(--brand)]">{Math.round(dayCalories)} kcal</p>
                   </div>
                   <div className="space-y-2">
-                    {dateLogs.map((log: any) => (
-                      <div
-                        key={log.id}
-                        className={`flex items-center gap-3 p-4 bg-[var(--card)] rounded-2xl border border-[var(--card-border)] hover:border-emerald-200 dark:hover:border-emerald-800 transition-all`}
-                      >
-                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl bg-gradient-to-br ${mealColors[log.meal_type] || 'from-gray-100 to-gray-50'} flex-shrink-0`}>
-                          {mealEmoji[log.meal_type] || '🍽️'}
+                    {dateLogs.map((log: any) => {
+                      const handleClick = () => {
+                        const stored = localStorage.getItem(`meal_${log.id}`)
+                        if (stored) {
+                          localStorage.setItem('hox_scan_result_v1', stored)
+                          router.push('/results')
+                        } else if (log.barcode) {
+                          router.push(`/scan?barcode=${log.barcode}`)
+                        } else {
+                          router.push('/scan')
+                        }
+                      }
+                      return (
+                        <div
+                          key={log.id}
+                          onClick={handleClick}
+                          className={`flex items-center gap-3 p-4 bg-[var(--card)] rounded-2xl border border-[var(--card-border)] hover:border-emerald-200 dark:hover:border-emerald-800 transition-all cursor-pointer`}
+                        >
+                          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl bg-gradient-to-br ${mealColors[log.meal_type] || 'from-gray-100 to-gray-50'} flex-shrink-0`}>
+                            {mealEmoji[log.meal_type] || '🍽️'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-[var(--foreground)] truncate">{log.product_name}</p>
+                            <p className="text-xs text-[var(--muted)] mt-0.5 capitalize">
+                              {log.quantity_g}g · {log.meal_type}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                              {Math.round(log.calories || 0)}
+                            </p>
+                            <p className="text-xs text-[var(--muted)]">kcal</p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-[var(--foreground)] truncate">{log.product_name}</p>
-                          <p className="text-xs text-[var(--muted)] mt-0.5 capitalize">
-                            {log.quantity_g}g · {log.meal_type}
-                          </p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                            {Math.round(log.calories || 0)}
-                          </p>
-                          <p className="text-xs text-[var(--muted)]">kcal</p>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )
