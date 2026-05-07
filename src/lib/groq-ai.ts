@@ -1,8 +1,6 @@
 // lib/groq-ai.ts
 // Groq AI client for intelligent ingredient analysis
 
-import { createClient } from 'groq'
-
 // Initialize Groq client with API key
 const groqApiKey = process.env.GROQ_API_KEY
 
