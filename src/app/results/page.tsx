@@ -836,7 +836,7 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
 
             {/* Shopping Links */}
             <div className="mt-6">
-              <ShoppingLinks productName={product.name} brand={product.brand} />
+              <ShoppingLinks productName={product.name} brand={product.brand || undefined} />
             </div>
           </>
         )}
