@@ -9,6 +9,7 @@ import { IngredientChip } from '@/components/IngredientChip'
 import { ShareButton } from '@/components/ShareButton'
 import { ShoppingLinks } from '@/components/ShoppingLinks'
 import { event, AnalyticsEvents } from '@/lib/analytics'
+import { useOffline } from '@/hooks/useOffline'
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
 
@@ -121,6 +122,9 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
   const [aiAnalysis, setAiAnalysis] = useState<any>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [hydrated,   setHydrated]   = useState(false)
+
+  // Offline support
+  const { online, cacheProduct } = useOffline()
   const [activeTab,  setActiveTab]  = useState<Tab>('Overview')
   const [quantity,   setQuantity]   = useState(100)
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
