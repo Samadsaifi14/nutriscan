@@ -7,6 +7,7 @@ import toast                     from 'react-hot-toast'
 import { readScanResult, ScanResultPayload } from '@/types/scanResult'
 import { IngredientChip } from '@/components/IngredientChip'
 import { ShareButton } from '@/components/ShareButton'
+import { ShoppingLinks } from '@/components/ShoppingLinks'
 import { event, AnalyticsEvents } from '@/lib/analytics'
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
@@ -828,6 +829,11 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
                 </p>
               </div>
             )}
+
+            {/* Shopping Links */}
+            <div className="mt-6">
+              <ShoppingLinks productName={product.name} brand={product.brand} />
+            </div>
           </>
         )}
 
