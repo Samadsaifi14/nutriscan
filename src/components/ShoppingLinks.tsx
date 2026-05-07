@@ -21,15 +21,19 @@ export function ShoppingLinks({ productName, brand }: ShoppingLinksProps) {
     },
     { 
       platform: 'bigbasket' as const, 
-      url: `https://www.bigbasket.com/pb/?q=${encodeURIComponent(searchTerm)}` 
+      url: `https://www.bigbasket.com/pc/?q=${encodeURIComponent(searchTerm)}` 
     },
     { 
       platform: 'blinkit' as const, 
-      url: `https://www.blinkit.com/s/${encodeURIComponent(searchTerm)}` 
+      url: `https://www.blinkit.com/search?q=${encodeURIComponent(searchTerm)}` 
     },
     { 
       platform: 'zepto' as const, 
       url: `https://www.zepto.app/search?q=${encodeURIComponent(searchTerm)}` 
+    },
+    { 
+      platform: 'instamart' as const, 
+      url: `https://www.swiggy.com/instamart/search?q=${encodeURIComponent(searchTerm)}` 
     },
   ]
 

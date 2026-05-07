@@ -5,7 +5,7 @@
 const AMAZON_AFFILIATE_ID = 'healthox-21'
 
 export interface ShoppingLink {
-  platform: 'amazon' | 'flipkart' | 'bigbasket' | 'blinkit' | 'zepto'
+  platform: 'amazon' | 'flipkart' | 'bigbasket' | 'blinkit' | 'zepto' | 'instamart'
   url: string
 }
 
@@ -14,7 +14,8 @@ const PLATFORM_SEARCH_URLS = {
   flipkart: 'https://www.flipkart.com',
   bigbasket: 'https://www.bigbasket.com',
   blinkit: 'https://www.blinkit.com',
-  zepto: 'https://www.zepto.co.in',
+  zepto: 'https://www.zepto.app',
+  instamart: 'https://www.swiggy.com/instamart',
 }
 
 export function getAmazonLink(productName: string, brand?: string): string {
@@ -30,12 +31,14 @@ export function getSearchLink(productName: string, platform: keyof typeof PLATFO
 }
 
 export function getAllShoppingLinks(productName: string, brand?: string): ShoppingLink[] {
+  const searchTerm = encodeURIComponent(`${brand || ''} ${productName}`.trim())
   return [
     { platform: 'amazon', url: getAmazonLink(productName, brand) },
-    { platform: 'flipkart', url: getSearchLink(productName, 'flipkart') },
-    { platform: 'bigbasket', url: getSearchLink(productName, 'bigbasket') },
-    { platform: 'blinkit', url: getSearchLink(productName, 'blinkit') },
-    { platform: 'zepto', url: getSearchLink(productName, 'zepto') },
+    { platform: 'flipkart', url: `https://www.flipkart.com/search?q=${searchTerm}` },
+    { platform: 'bigbasket', url: `https://www.bigbasket.com/pc/?q=${searchTerm}` },
+    { platform: 'blinkit', url: `https://www.blinkit.com/search?q=${searchTerm}` },
+    { platform: 'zepto', url: `https://www.zepto.app/search?q=${searchTerm}` },
+    { platform: 'instamart', url: `https://www.swiggy.com/instamart/search?q=${searchTerm}` },
   ]
 }
 
@@ -45,6 +48,7 @@ export const PLATFORM_INFO = {
   bigbasket: { name: 'BigBasket', icon: '🥬', color: '#84c225', affiliate: false },
   blinkit: { name: 'Blinkit', icon: '⚡', color: '#f43c1f', affiliate: false },
   zepto: { name: 'Zepto', icon: '⚡', color: '#6C63FF', affiliate: false },
+  instamart: { name: 'Instamart', icon: '🛍️', color: '#fc8019', affiliate: false },
 }
 
 export function getBuyButtonText(platform: string): string {
@@ -54,6 +58,7 @@ export function getBuyButtonText(platform: string): string {
     case 'bigbasket': return 'Find on BigBasket'
     case 'blinkit': return 'Order on Blinkit'
     case 'zepto': return 'Order on Zepto'
+    case 'instamart': return 'Order on Instamart'
     default: return 'Find Online'
   }
 }

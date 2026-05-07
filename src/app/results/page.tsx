@@ -434,6 +434,20 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
               </Section>
             )}
 
+            {/* Negatives Section in Overview */}
+            {analysis.long_term_risks && analysis.long_term_risks.length > 0 && (
+              <Section title="Negatives" icon="⚠️">
+                <div className="space-y-2">
+                  {analysis.long_term_risks.map((risk, i) => (
+                    <div key={i} className="flex items-start gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+                      <span className="text-red-400">•</span>
+                      <span className="text-sm text-[#f0f4f8]">{risk}</span>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
             {/* Safe consumption */}
             {analysis.safe_consumption && (
               <Section title="Safe Consumption" icon="✅">
@@ -656,16 +670,7 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
               </div>
             )}
 
-            {/* All ingredients chips (labels for every ingredient) */}
-            {ingredientList && ingredientList.length > 0 && (
-              <div className="mt-3">
-                <div className="flex flex-wrap gap-2" aria-label="All ingredients">
-                  {ingredientList.map((it, idx) => (
-                    <IngredientChip key={idx} label={it.name} status={it.status} />
-                  ))}
-                </div>
-              </div>
-            )}
+
 
             <div className="p-3 bg-[#161a20] border border-[#2a3545] rounded-xl text-[11px] text-[#7a8fa6] leading-relaxed">
               ℹ️ Based on WHO, FSSAI, ICMR and EFSA guidelines. Not medical advice.
