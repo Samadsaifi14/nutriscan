@@ -1,7 +1,7 @@
 // src/app/results/page.tsx
 "use client"
 import { useEffect, useState }  from 'react'
-import { useRouter }             from 'next/navigation'
+import { useRouter, useSearchParams }             from 'next/navigation'
 import { useSession }            from 'next-auth/react'
 import toast                     from 'react-hot-toast'
 import { readScanResult, ScanResultPayload } from '@/types/scanResult'
@@ -113,6 +113,7 @@ type Tab = typeof TABS[number]
 
 export default function ResultsPage() {
   const router        = useRouter()
+  const searchParams  = useSearchParams()
   const { status }    = useSession()
   const isGuest       = status === 'unauthenticated'
 
@@ -132,12 +133,75 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
   const [logging,    setLogging]    = useState(false)
 
-  useEffect(() => {
+useEffect(() => {
+    const barcode = searchParams?.get('barcode')
+    const mode = searchParams?.get('mode')
+    
+    // If there's a barcode in URL, fetch and save the product
+    if (barcode) {
+      setHydrated(true)
+      fetch(`/api/scan?barcode=${encodeURIComponent(barcode)}`)
+        .then(r => r.json())
+        .then(async (res) => {
+          if (res.success && res.data) {
+            const product = res.data.product || res.data
+            const analysis = res.data.analysis || { health_score: 5, health_rating: 'moderate', summary: 'Analyzed by HealthOX' }
+            
+            // Format for scan result payload
+            const payload: ScanResultPayload = {
+              version: 1,
+              timestamp: new Date().toISOString(),
+              product: {
+                name: product.name || 'Unknown',
+                brand: product.brand || null,
+                category: product.category || null,
+                barcode: product.barcode || barcode,
+                source: product.source || 'api',
+                nutrition: {
+                  calories: product.calories_per_100g || 0,
+                  protein: product.protein_per_100g || 0,
+                  carbs: product.carbs_per_100g || 0,
+                  fat: product.fat_per_100g || 0,
+                  sugar: product.sugar_per_100g || null,
+                  sodium: product.sodium_per_100g || null,
+                  fiber: product.fiber_per_100g || null,
+                },
+                serving_size_g: product.serving_size_g || null,
+                ingredients_text: product.ingredients_text || null,
+                allergens: product.allergens || [],
+                additives: product.additives || [],
+                image_url: product.image_url || null,
+              },
+              analysis: analysis,
+              quantity: 100,
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('hox_scan_result_v1', JSON.stringify(payload))
+            setPayload(payload)
+            setQuantity(100)
+          } else {
+            // If API fails, try to read from localStorage
+            const data = readScanResult()
+            setPayload(data)
+            if (data) setQuantity(data.quantity || 100)
+          }
+        })
+        .catch(() => {
+          // On error, fall back to localStorage
+          const data = readScanResult()
+          setPayload(data)
+          if (data) setQuantity(data.quantity || 100)
+        })
+      return
+    }
+    
+    // Default: read from localStorage
     const data = readScanResult()
     setPayload(data)
     if (data) setQuantity(data.quantity || 100)
     setHydrated(true)
-  }, [])
+  }, [searchParams])
 
   // Build all-ingredients labelling from payload when available
   useEffect(() => {
