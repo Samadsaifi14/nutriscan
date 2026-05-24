@@ -23,6 +23,10 @@ export function ShoppingLinks({ productName, brand }: ShoppingLinksProps) {
       platform: 'blinkit' as const, 
       url: `https://www.blinkit.com/search?q=${encodeURIComponent(searchTerm)}` 
     },
+    { 
+      platform: 'instamart' as const, 
+      url: `https://www.swiggy.com/instamart/search?q=${encodeURIComponent(searchTerm)}` 
+    },
   ]
 
   return (
