@@ -77,11 +77,13 @@ export default function DisclaimerPage() {
           </p>
         </Section>
 
-        <Section title="Reliance on Information">
+        <Section title="Reliance on Information & Limitation of Liability">
           <p>
             Reliance on any information provided by HealthOX is solely at your own 
-            risk. The app operator, Samad Saifi, and HealthOX disclaim all liability 
-            for any damages or losses resulting from use of the app.
+            risk. To the maximum extent permitted by applicable law, including the 
+            Information Technology Act, 2000, the app operator, Samad Saifi, and 
+            HealthOX disclaim all liability for any damages or losses resulting from 
+            use of the app.
           </p>
         </Section>
 

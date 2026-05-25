@@ -5,12 +5,19 @@ import { pageView } from '@/lib/analytics'
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
 
+function hasAnalyticsConsent(): boolean {
+  if (typeof window === 'undefined') return false
+  const consent = localStorage.getItem('hox_cookie_consent')
+  return consent === 'all'
+}
+
 export default function Analytics() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   useEffect(() => {
     if (!GA_MEASUREMENT_ID) return
+    if (!hasAnalyticsConsent()) return
 
     const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
 

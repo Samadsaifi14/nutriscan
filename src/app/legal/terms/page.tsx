@@ -18,6 +18,13 @@ export default function TermsPage() {
             operated by Samad Saifi from New Delhi, Delhi, India. By accessing or using HealthOX, 
             you agree to be bound by these terms.
           </p>
+          <p className="mt-2">
+            HealthOX is an intermediary within the meaning of the Information Technology Act, 2000 
+            and the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) 
+            Rules, 2021. As an intermediary, we provide a platform for scanning and analyzing food 
+            products and do not control or endorse the content of third-party product data sourced 
+            from Open Food Facts.
+          </p>
         </Section>
 
         <Section title="2. Acceptance of Terms">
@@ -42,6 +49,11 @@ export default function TermsPage() {
             maintaining the confidentiality of your account and for all activities that occur 
             under your account. You agree to notify us immediately of any unauthorized use 
             of your account at samadlylives00@gmail.com.
+          </p>
+          <p className="mt-2">
+            If you are under 18 years of age, you represent that you have obtained verifiable 
+            parental or guardian consent to use HealthOX. We collect age information during 
+            profile setup and require parental consent acknowledgment for users under 18.
           </p>
         </Section>
 
@@ -144,14 +156,20 @@ export default function TermsPage() {
           </p>
         </Section>
 
-        <Section title="14. Contact">
+        <Section title="14. Grievance Officer & Contact">
           <p>
-            For questions about these Terms of Service, please contact:
+            In compliance with the Information Technology Act, 2000 and the IT (Intermediary 
+            Guidelines) Rules, 2021, the Grievance Officer for HealthOX is:
           </p>
           <p className="mt-1 text-emerald-400">
             Samad Saifi<br />
             New Delhi, Delhi, India<br />
             samadlylives00@gmail.com
+          </p>
+          <p className="mt-1">
+            For questions about these Terms of Service or to report any grievances, please 
+            contact the Grievance Officer at the email above. Complaints will be acknowledged 
+            within 24 hours and resolved within 15 days.
           </p>
         </Section>
       </div>

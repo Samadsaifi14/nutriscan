@@ -123,16 +123,54 @@ export default function PrivacyPage() {
             <li><strong>Right to Access</strong> — Request a copy of your data</li>
             <li><strong>Right to Correction</strong> — Update inaccurate data</li>
             <li><strong>Right to Deletion</strong> — Request deletion of your data</li>
-            <li><strong>Right to Withdraw Consent</strong> — Opt out of data processing</li>
+            <li><strong>Right to Data Portability</strong> — Request a machine-readable export of your data via our{" "}
+              <a href="/api/profile/export" className="text-emerald-400 hover:text-emerald-300 underline">export API</a>
+            </li>
+            <li><strong>Right to Withdraw Consent</strong> — Opt out of data processing at any time</li>
+            <li><strong>Right to Nominate</strong> — Nominate a person to manage your data after your death or incapacity</li>
             <li><strong>Right to Grievance Redressal</strong> — File complaints about data handling</li>
           </ul>
           <p className="mt-2">
             To exercise these rights, contact us at samadlylives00@gmail.com. We will 
-            respond within 30 days as required by law.
+            acknowledge your request within 24 hours and resolve it within 15 days as required by law.
           </p>
         </Section>
 
-        <Section title="9. Email Communications">
+        <Section title="9. Cross-Border Data Transfers">
+          <p>
+            To provide our services, your personal data may be transferred to and processed in 
+            countries outside India where our service providers operate:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li><strong>Supabase</strong> — Database hosting (servers may be located in the US or EU)</li>
+            <li><strong>Groq</strong> — AI ingredient analysis (US-based)</li>
+            <li><strong>Google Analytics</strong> — Usage analytics (US-based)</li>
+            <li><strong>Resend</strong> — Email delivery (US-based)</li>
+          </ul>
+          <p className="mt-2">
+            We ensure appropriate safeguards are in place for such transfers, including 
+            contractual clauses and compliance with applicable data protection laws. By using 
+            HealthOX, you consent to such cross-border data transfers where necessary.
+          </p>
+        </Section>
+
+        <Section title="10. Data Breach Notification">
+          <p>
+            In the event of a data breach that poses a risk to your rights and freedoms, we will:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li>Notify the relevant Data Protection Board within 72 hours of becoming aware of the breach</li>
+            <li>Inform affected users within 72 hours via email</li>
+            <li>Provide details of the nature, scope, and impact of the breach</li>
+            <li>Outline the measures taken to address and mitigate the breach</li>
+          </ul>
+          <p className="mt-2">
+            We maintain internal breach detection, investigation, and reporting procedures 
+            to ensure compliance with these obligations.
+          </p>
+        </Section>
+
+        <Section title="11. Email Communications">
           <p>
             If you opt in, we send weekly nutrition reports via email. You can 
             unsubscribe at any time through your profile settings or via the 
@@ -140,7 +178,7 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <Section title="10. Cookies">
+        <Section title="12. Cookies">
           <p>
             We use essential cookies for authentication (NextAuth) and analytics cookies 
             (Google Analytics). For full details, see our 
@@ -148,15 +186,21 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <Section title="11. Children's Privacy">
+        <Section title="13. Children's Privacy">
           <p>
-            HealthOX is not intended for children under 13. We do not knowingly collect 
-            data from children under 13. If you believe a child has provided us with 
-            personal data, please contact us immediately.
+            In compliance with the DPDP Act 2023, users under 18 years of age require 
+            verifiable parental or guardian consent to use HealthOX. During profile setup, 
+            we collect age information and require a parental consent checkbox for users 
+            under 18. We do not knowingly process data of children under 18 without such consent.
+          </p>
+          <p className="mt-2">
+            If you believe a child under 18 has provided us with personal data without 
+            parental consent, please contact us immediately at samadlylives00@gmail.com 
+            and we will delete the data promptly.
           </p>
         </Section>
 
-        <Section title="12. Changes to This Policy">
+        <Section title="14. Changes to This Policy">
           <p>
             We may update this Privacy Policy periodically. Material changes will be 
             notified via email or through the app. We encourage you to review this 
@@ -164,7 +208,7 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <Section title="13. Grievance Officer">
+        <Section title="15. Grievance Officer">
           <p>
             In compliance with the Information Technology Act, 2000 and the DPDP Act, 2023, 
             the Grievance Officer for HealthOX is:
@@ -175,7 +219,7 @@ export default function PrivacyPage() {
             samadlylives00@gmail.com
           </p>
           <p className="mt-1">
-            Complaints will be acknowledged within 24 hours and resolved within 30 days.
+            Complaints will be acknowledged within 24 hours and resolved within 15 days as per IT (Intermediary Guidelines) Rules 2021.
           </p>
         </Section>
       </div>

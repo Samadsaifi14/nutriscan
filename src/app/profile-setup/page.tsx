@@ -49,6 +49,8 @@ export default function ProfileSetupPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [dataConsent, setDataConsent] = useState(false)
+  const [parentalConsent, setParentalConsent] = useState(false)
+  const [shownParentalConsent, setShownParentalConsent] = useState(false)
   const [savingPrefs, setSavingPrefs] = useState(false)
   const [emailPrefs, setEmailPrefs] = useState({
     weekly_report_email: true,
@@ -596,7 +598,7 @@ export default function ProfileSetupPage() {
               )}
             </div>
 
-            <label className="flex items-start gap-3 p-3 bg-[var(--card)] border border-[var(--card-border)] rounded-xl mb-4 cursor-pointer">
+            <label className="flex items-start gap-3 p-3 bg-[var(--card)] border border-[var(--card-border)] rounded-xl mb-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={dataConsent}
@@ -611,6 +613,30 @@ export default function ProfileSetupPage() {
                 </p>
               </div>
             </label>
+
+            {parseInt(form.age) > 0 && parseInt(form.age) < 18 && (
+              <label className="flex items-start gap-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl mb-4 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={parentalConsent}
+                  onChange={e => {
+                    setParentalConsent(e.target.checked)
+                    setShownParentalConsent(true)
+                  }}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-600 accent-amber-500 flex-shrink-0"
+                />
+                <div>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    I confirm that I have obtained verifiable parental/guardian consent to use HealthOX and for the processing of my personal data as described in the{" "}
+                    <a href="/legal/privacy" className="text-emerald-400 hover:text-emerald-300 underline">Privacy Policy</a>.
+                  </p>
+                </div>
+              </label>
+            )}
+            {shownParentalConsent && !parentalConsent && parseInt(form.age) > 0 && parseInt(form.age) < 18 && (
+              <p className="text-xs text-amber-400 mb-4 -mt-2">Parental/guardian consent is required for users under 18.</p>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
@@ -620,7 +646,11 @@ export default function ProfileSetupPage() {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={loading || !dataConsent}
+                disabled={
+                  loading ||
+                  !dataConsent ||
+                  (parseInt(form.age) > 0 && parseInt(form.age) < 18 && !parentalConsent)
+                }
                 className="flex-1 py-3.5 rounded-2xl text-white text-sm font-bold transition-all"
                 style={{
                   background: loading ? '#9ca3af' : 'linear-gradient(135deg, #059669, #0ea5e9)',
