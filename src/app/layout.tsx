@@ -6,6 +6,8 @@ import BottomNav from '@/components/BottomNav'
 import FloatingScanButton from '@/components/FloatingScanButton'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
+import { Footer } from '@/components/Footer'
+import { CookieBanner } from '@/components/CookieBanner'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
@@ -41,9 +43,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main className="pb-20 min-h-screen">
               {children}
             </main>
+            <Footer />
             <BottomNav />
             <FloatingScanButton />
             <ServiceWorkerRegister />
+            <CookieBanner />
           </ErrorBoundary>
         </Providers>
       </body>

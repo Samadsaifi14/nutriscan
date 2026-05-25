@@ -413,6 +413,7 @@ async function handleLogMeal(mealType: string) {
           </div>
           <div className="flex-shrink-0">
             <ScoreRing score={Number(analysis.health_score)} rating={analysis.health_rating} />
+            <p className="text-[10px] text-[#4a5a6a] text-center mt-2">* Score is algorithm-generated for informational purposes only.</p>
           </div>
         </div>
       </div>

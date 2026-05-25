@@ -129,9 +129,12 @@ export default function SignInPage() {
             </p>
           </div>
 
-          <p className="text-xs text-center text-[var(--muted)] mt-4">
-            By signing in you agree to our terms of service
-          </p>
+<p className="text-xs text-center text-[var(--muted)] mt-4">
+  By signing in you agree to our{" "}
+  <a href="/legal/terms" className="text-emerald-400 hover:text-emerald-300 underline">Terms of Service</a>{" "}
+  and{" "}
+  <a href="/legal/privacy" className="text-emerald-400 hover:text-emerald-300 underline">Privacy Policy</a>
+</p>
         </div>
 
         {/* Features grid */}

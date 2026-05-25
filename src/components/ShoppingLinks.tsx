@@ -52,6 +52,9 @@ export function ShoppingLinks({ productName, brand }: ShoppingLinksProps) {
           )
         })}
       </div>
+      <p className="text-[10px] text-[#4a5a6a] mt-2">
+        As an Amazon Associate, we earn from qualifying purchases.
+      </p>
     </div>
   )
 }

@@ -48,6 +48,7 @@ export default function ProfileSetupPage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
+  const [dataConsent, setDataConsent] = useState(false)
   const [savingPrefs, setSavingPrefs] = useState(false)
   const [emailPrefs, setEmailPrefs] = useState({
     weekly_report_email: true,
@@ -595,6 +596,21 @@ export default function ProfileSetupPage() {
               )}
             </div>
 
+            <label className="flex items-start gap-3 p-3 bg-[var(--card)] border border-[var(--card-border)] rounded-xl mb-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dataConsent}
+                onChange={e => setDataConsent(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-600 accent-emerald-500 flex-shrink-0"
+              />
+              <div>
+                <p className="text-xs text-[var(--muted)] leading-relaxed">
+                  I consent to HealthOX storing my health data (conditions, allergies, 
+                  diet preferences) to personalize food analysis. View our{" "}
+                  <a href="/legal/privacy" className="text-emerald-400 hover:text-emerald-300 underline">Privacy Policy</a>.
+                </p>
+              </div>
+            </label>
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
@@ -604,7 +620,7 @@ export default function ProfileSetupPage() {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || !dataConsent}
                 className="flex-1 py-3.5 rounded-2xl text-white text-sm font-bold transition-all"
                 style={{
                   background: loading ? '#9ca3af' : 'linear-gradient(135deg, #059669, #0ea5e9)',
