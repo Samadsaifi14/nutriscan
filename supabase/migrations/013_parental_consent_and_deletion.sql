@@ -12,4 +12,8 @@ ADD COLUMN IF NOT EXISTS parental_consent BOOLEAN DEFAULT false;
 ALTER TABLE user_profiles 
 ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMPTZ;
 
-SELECT 'Migration 013 complete: parental_consent and deletion columns added' as status;
+-- Add notifications column for in-app notification system
+ALTER TABLE user_profiles 
+ADD COLUMN IF NOT EXISTS notifications JSONB DEFAULT '[]'::jsonb;
+
+SELECT 'Migration 013 complete: parental_consent, deletion, and notification columns added' as status;

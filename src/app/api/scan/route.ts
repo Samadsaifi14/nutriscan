@@ -155,13 +155,57 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Layer 4/5 — Not found anywhere
+  // Layer 5 — Check community_products (approved ones)
+  try {
+    console.log('Trying community_products...')
+    const { data: community } = await supabaseAdmin
+      .from('community_products')
+      .select('*')
+      .eq('barcode', trimmedBarcode)
+      .eq('status', 'approved')
+      .single()
+
+    if (community) {
+      const nutrition = community.nutrition as Record<string, any> || {}
+      const product = {
+        barcode,
+        name: community.name || 'Unknown Product',
+        brand: community.brand || null,
+        category: null,
+        country_of_origin: 'India',
+        image_url: community.front_label_url || null,
+        calories_per_100g: parseFloat(nutrition.calories) || null,
+        protein_per_100g: parseFloat(nutrition.protein) || null,
+        carbs_per_100g: parseFloat(nutrition.carbs) || null,
+        fat_per_100g: parseFloat(nutrition.fat) || null,
+        sugar_per_100g: parseFloat(nutrition.sugar) || null,
+        sodium_per_100g: parseFloat(nutrition.sodium) || null,
+        fiber_per_100g: parseFloat(nutrition.fiber) || null,
+        serving_size_g: null,
+        ingredients_text: community.ingredients_text || null,
+        allergens: [],
+        additives: [],
+        source: 'community',
+      }
+      cacheProduct(product)
+      console.log('Found in community products:', product.name)
+      return NextResponse.json({
+        success: true,
+        source: 'community',
+        data: formatProduct(product),
+      })
+    }
+  } catch (e) {
+    console.log('Community products check failed:', e)
+  }
+
+  // Layer 6 — Not found anywhere
   console.log('Product not found for barcode:', barcode)
   return NextResponse.json({
     success: false,
     error: 'PRODUCT_NOT_FOUND',
     barcode,
-    message: 'This product is not in our database yet. Use photo mode to read the nutrition label directly.',
+    message: 'This product is not in our database yet. Contribute it and help others!',
   })
 }
 

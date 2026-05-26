@@ -190,6 +190,16 @@ export default function ContributePage() {
       // Update user stats
       await supabase.rpc('increment_contributions', { user_id: userId })
 
+      // Check for new badges
+      try {
+        const badgeRes = await fetch('/api/profile/badges', { method: 'POST' })
+        const badgeJson = await badgeRes.json()
+        if (badgeJson.newBadges?.length > 0) {
+          const badgeNames = badgeJson.newBadges.map((b: any) => `${b.emoji} ${b.name}`).join(', ')
+          setTimeout(() => toast.success(`🏅 New badge earned: ${badgeNames}`), 500)
+        }
+      } catch {}
+
       // Show impact immediately
       setStep('done')
       setLoading(false)

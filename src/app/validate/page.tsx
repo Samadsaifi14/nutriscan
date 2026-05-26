@@ -85,14 +85,19 @@ export default function ValidatePage() {
         .single()
 
       if (product?.approval_count >= 3) {
-        // Approve the product
-        await supabase.from('community_products').update({
-          status: 'approved',
-          verified_at: new Date().toISOString(),
-          verified_by: userId,
-        }).eq('id', productId)
+        // Promote to main products table
+        const promoteRes = await fetch('/api/community/promote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId }),
+        })
+        const promoteJson = await promoteRes.json()
         
-        toast.success('✅ Product approved!')
+        if (promoteJson.success) {
+          toast.success('✅ Product approved and added to database!')
+        } else {
+          toast.error('Product approved but promotion failed')
+        }
       } else if (product?.rejection_count >= 3) {
         // Reject the product
         await supabase.from('community_products').update({
@@ -101,6 +106,16 @@ export default function ValidatePage() {
         
         toast.error('Product rejected')
       }
+
+      // Check for new badges
+      try {
+        const badgeRes = await fetch('/api/profile/badges', { method: 'POST' })
+        const badgeJson = await badgeRes.json()
+        if (badgeJson.newBadges?.length > 0) {
+          const badgeNames = badgeJson.newBadges.map((b: any) => `${b.emoji} ${b.name}`).join(', ')
+          toast.success(`🏅 New badge earned: ${badgeNames}`)
+        }
+      } catch {}
 
       // Refresh list
       fetchPendingProducts()

@@ -118,6 +118,8 @@ export default function ResultsPage() {
   const isGuest       = status === 'unauthenticated'
 
 const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
+  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
+  const [scanFailed, setScanFailed] = useState(false)
   const [ingredientList, setIngredientList] = useState<Array<{ name: string; status: 'harmful'|'safe'|'unknown' }>>([])
   const [aiInsights, setAiInsights] = useState<Array<any>>([])
   const [aiAnalysis, setAiAnalysis] = useState<any>(null)
@@ -139,11 +141,13 @@ useEffect(() => {
     
     // If there's a barcode in URL, fetch and save the product
     if (barcode) {
+      setScannedBarcode(barcode)
       setHydrated(true)
       fetch(`/api/scan?barcode=${encodeURIComponent(barcode)}`)
         .then(r => r.json())
         .then(async (res) => {
           if (res.success && res.data) {
+            setScanFailed(false)
             const product = res.data.product || res.data
             const analysis = res.data.analysis || { health_score: 5, health_rating: 'moderate', summary: 'Analyzed by HealthOX' }
             
@@ -181,14 +185,15 @@ useEffect(() => {
             setPayload(payload)
             setQuantity(100)
           } else {
-            // If API fails, try to read from localStorage
+            // API returned no data — product not found
+            setScanFailed(true)
             const data = readScanResult()
             setPayload(data)
             if (data) setQuantity(data.quantity || 100)
           }
         })
         .catch(() => {
-          // On error, fall back to localStorage
+          setScanFailed(true)
           const data = readScanResult()
           setPayload(data)
           if (data) setQuantity(data.quantity || 100)
@@ -332,6 +337,32 @@ async function handleLogMeal(mealType: string) {
   // ── Empty state ───────────────────────────────────────────────────────────
 
   if (!payload) {
+    if (scanFailed && scannedBarcode) {
+      return (
+        <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
+          <div className="w-20 h-20 rounded-full bg-[#161a20] border border-[#2a3545] flex items-center justify-center mb-5 text-3xl">
+            📦
+          </div>
+          <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Product Not Found</h2>
+          <p className="text-sm text-[#7a8fa6] mb-2 leading-relaxed max-w-sm">
+            This product (barcode: {scannedBarcode}) isn't in our database yet.
+          </p>
+          <p className="text-xs text-[#4a5a6a] mb-6 leading-relaxed max-w-xs">
+            Help the community! Contribute this product's details so others can check its health score.
+          </p>
+          <div className="flex gap-3">
+            <button onClick={() => router.push(`/contribute?barcode=${scannedBarcode}`)}
+              className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-2xl text-sm transition-colors">
+              📸 Add This Product
+            </button>
+            <button onClick={() => router.push('/scan')}
+              className="px-6 py-3.5 bg-[#252c38] hover:bg-[#2a3545] text-[#c8d6e0] font-bold rounded-2xl text-sm transition-colors">
+              Scan Another
+            </button>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
         <div className="w-20 h-20 rounded-full bg-[#161a20] border border-[#2a3545] flex items-center justify-center mb-5 text-3xl">
