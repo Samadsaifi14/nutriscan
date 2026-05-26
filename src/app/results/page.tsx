@@ -149,33 +149,58 @@ useEffect(() => {
           if (res.success && res.data) {
             setScanFailed(false)
             const product = res.data.product || res.data
-            const analysis = res.data.analysis || { health_score: 5, health_rating: 'moderate', summary: 'Analyzed by HealthOX' }
+            
+            // Build product data (API nests nutrition under product.nutrition)
+            const productData = {
+              name: product.name || 'Unknown',
+              brand: product.brand || null,
+              category: product.category || null,
+              barcode: product.barcode || barcode,
+              source: product.source || 'api',
+              nutrition: {
+                calories: product.nutrition?.calories ?? product.calories_per_100g ?? 0,
+                protein: product.nutrition?.protein ?? product.protein_per_100g ?? 0,
+                carbs: product.nutrition?.carbs ?? product.carbs_per_100g ?? 0,
+                fat: product.nutrition?.fat ?? product.fat_per_100g ?? 0,
+                sugar: product.nutrition?.sugar ?? product.sugar_per_100g ?? null,
+                sodium: product.nutrition?.sodium ?? product.sodium_per_100g ?? null,
+                fiber: product.nutrition?.fiber ?? product.fiber_per_100g ?? null,
+              },
+              serving_size_g: product.serving_size_g || null,
+              ingredients_text: product.ingredients_text || null,
+              allergens: product.allergens || [],
+              additives: product.additives || [],
+              image_url: product.image_url || null,
+            }
+            
+            // Fetch full analysis from /api/analyze to get harmful_ingredients
+            let analysis: any = { health_score: 5, health_rating: 'moderate', summary: 'Analyzed by HealthOX', analyzed_at: new Date().toISOString(), harmful_ingredients: [] }
+            try {
+              const analyzeRes = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(productData),
+              })
+              const analyzeJson = await analyzeRes.json()
+              if (analyzeJson.success && analyzeJson.data) {
+                const a = analyzeJson.data
+                analysis = {
+                  health_score: a.health_score ?? a.score ?? 5,
+                  health_rating: a.health_rating ?? a.rating ?? 'moderate',
+                  summary: a.summary || 'Analyzed by HealthOX',
+                  analyzed_at: new Date().toISOString(),
+                  harmful_ingredients: a.harmful_ingredients || [],
+                  positives: a.positives || [],
+                  long_term_risks: a.long_term_risks || [],
+                }
+              }
+            } catch {}
             
             // Format for scan result payload
             const payload: ScanResultPayload = {
               version: 1,
               timestamp: new Date().toISOString(),
-              product: {
-                name: product.name || 'Unknown',
-                brand: product.brand || null,
-                category: product.category || null,
-                barcode: product.barcode || barcode,
-                source: product.source || 'api',
-                nutrition: {
-                  calories: product.calories_per_100g || 0,
-                  protein: product.protein_per_100g || 0,
-                  carbs: product.carbs_per_100g || 0,
-                  fat: product.fat_per_100g || 0,
-                  sugar: product.sugar_per_100g || null,
-                  sodium: product.sodium_per_100g || null,
-                  fiber: product.fiber_per_100g || null,
-                },
-                serving_size_g: product.serving_size_g || null,
-                ingredients_text: product.ingredients_text || null,
-                allergens: product.allergens || [],
-                additives: product.additives || [],
-                image_url: product.image_url || null,
-              },
+              product: productData,
               analysis: analysis,
               quantity: 100,
             }
