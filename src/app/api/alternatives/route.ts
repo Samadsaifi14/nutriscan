@@ -58,10 +58,12 @@ export async function POST(req: NextRequest) {
     // ── Tier 2: Curated Indian alternatives ────────────────────────────
     let curatedResult: CuratedAlternative[] = []
     try {
+      // Use score from dynamic results first, fall back to the score passed from frontend
+      const scoreForFallback = dynamicResult?.current_score ?? parsed.data.current_score
       curatedResult = findCuratedAlternatives(
         parsed.data.name,
         parsed.data.category,
-        dynamicResult?.current_score
+        scoreForFallback
       )
     } catch (err: any) {
       console.warn('Curated alternatives failed:', err.message)

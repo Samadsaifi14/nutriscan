@@ -128,6 +128,7 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
   const [hydrated,   setHydrated]   = useState(false)
   const [apiAlternatives, setApiAlternatives] = useState<any>(null)
   const [altLoading, setAltLoading] = useState(false)
+  const [altError, setAltError] = useState(false)
 
   // Offline support
   const { online, cacheProduct } = useOffline()
@@ -294,6 +295,7 @@ useEffect(() => {
   useEffect(() => {
     if (activeTab !== 'Alternatives' || !payload || apiAlternatives) return
     setAltLoading(true)
+    setAltError(false)
     fetch('/api/alternatives', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -309,14 +311,13 @@ useEffect(() => {
     })
     .then(r => r.json())
     .then(d => {
-      if (d?.success && d?.data?.alternatives?.length > 0) {
-        // Store full data including scores, nutrition, images
+      if (d?.success && d?.data) {
         setApiAlternatives(d.data)
-      } else if (d?.success && d?.data?.source === 'curated' && d?.data?.alternatives?.length > 0) {
-        setApiAlternatives(d.data)
+      } else {
+        setAltError(true)
       }
     })
-    .catch(() => {})
+    .catch(() => setAltError(true))
     .finally(() => setAltLoading(false))
   }, [activeTab, payload, apiAlternatives])
 
@@ -1134,10 +1135,28 @@ async function handleLogMeal(mealType: string) {
               </div>
             )}
 
-            {/* If alternatives is null/loading not yet started, show nothing (loading state above handles it) */}
-            {apiAlternatives === null && !altLoading && (
+            {/* Failed to load alternatives */}
+            {altError && (
               <div className="text-center py-8 text-[#7a8fa6]">
-                <p className="text-sm">Tap the tab again to load alternatives</p>
+                <p className="text-sm mb-3">Could not load alternatives</p>
+                <button onClick={() => { setApiAlternatives(null); setAltError(false) }}
+                  className="px-4 py-2 bg-[#252c38] hover:bg-[#2a3545] text-[#c8d6e0] font-bold rounded-xl text-sm transition-colors">
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* Alternatives returned but empty */}
+            {apiAlternatives && apiAlternatives?.alternatives?.length === 0 && (
+              <div className="text-center py-8 text-[#7a8fa6]">
+                <p className="text-sm">No specific alternatives found for this product</p>
+              </div>
+            )}
+
+            {/* If alternatives is null/loading not yet started, show nothing (loading state above handles it) */}
+            {apiAlternatives === null && !altLoading && !altError && (
+              <div className="text-center py-8 text-[#7a8fa6]">
+                <p className="text-sm">Loading alternatives...</p>
               </div>
             )}
 

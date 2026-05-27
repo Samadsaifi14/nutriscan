@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { callGemini, GeminiError } from '@/lib/gemini'
 import { generateSimpleSummary } from '@/lib/groq'
-import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
+import { scoreProduct, detectAdditives, type NutritionPer100g } from '@/lib/health-engine'
 import { findHealthierAlternatives } from '@/lib/alternatives'
 
 const ProductSchema = z.object({
@@ -87,41 +87,109 @@ export async function POST(req: NextRequest) {
       product.nutrition.fat,
     ].some(v => v !== undefined && v !== null && v > 0)
 
+    // Even if nutrition data is missing/estimated, we can still analyze ingredients
+    const harmfulFromIngredients = detectAdditives(product.ingredients_text || '')
+
     if (!hasRealNutrition) {
-      console.log(`⚠️ ${product.name} has no real nutrition data — returning moderate default`)
+      console.log(`⚠️ ${product.name} has no real nutrition data — returning ingredient-based analysis`)
+      
+      // Calculate scores based on available data
+      let nutritionScore = 5; // Default middle score when unknown
+      let additiveScore = 10;
+      if (harmfulFromIngredients.length > 0) {
+        // More harmful additives = lower score
+        additiveScore = Math.max(1, 10 - (harmfulFromIngredients.length * 2));
+      }
+      
+      // Overall score weights: 40% nutrition, 40% additives, 20% processing (estimated)
+      const overallScore = Math.round((nutritionScore * 0.4) + (additiveScore * 0.4) + (5 * 0.2)); // 5 = estimated processing score
+      
+      const localResult = {
+        score: overallScore,
+        grade: overallScore >= 8 ? 'A' : overallScore >= 6 ? 'B' : overallScore >= 4 ? 'C' : 'D',
+        label: overallScore >= 8 ? 'Healthy' : overallScore >= 6 ? 'Moderate' : overallScore >= 4 ? 'Unhealthy' : 'Poor',
+        nutrition_score: nutritionScore,
+        additive_score: additiveScore,
+        nova_score: 5, // Unknown processing
+        breakdown: [],
+        detected_additives: harmfulFromIngredients,
+        summary: `${product.name} has limited nutrition data available. Ingredient analysis shows ${harmfulFromIngredients.length} harmful additive(s) detected. Score based on ingredient safety only.`,
+      };
+
+      // Map local result to expected format
+      const localHealthScore = localResult.score
+      const localHealthRating = localResult.grade === 'A' ? 'healthy' : 
+                                localResult.grade === 'B' ? 'healthy' :
+                                localResult.grade === 'C' ? 'moderate' : 'unhealthy'
+      const localDetectedAdditives = localResult.detected_additives.map(a => ({
+        name: a.name,
+        also_known_as: a.aliases,
+        found_in_product: true,
+        concern: a.concern || a.description,
+        severity: a.risk === 'critical' ? 'high' : a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low',
+        scientific_source: 'WHO/FSSAI/EFSA',
+        source_url: '',
+        global_safe_limit: '',
+        amount_in_this_product: '',
+        personalized_safe_limit: '',
+        percentage_of_daily_limit: ''
+      }))
+
       return NextResponse.json({
         success: true,
         data: {
-          health_score: 5.0,
-          health_rating: 'moderate',
-          health_score_breakdown: { nutrition_score: 5, ingredient_safety_score: 5, processing_score: 5, overall: 5 },
-          summary: `${product.name} has limited nutrition data available. The information shown is AI-estimated and may not reflect the actual product. Please verify with the product label.`,
+          health_score: localHealthScore,
+          health_rating: localHealthRating,
+          health_score_breakdown: { 
+            nutrition_score: localResult.nutrition_score, 
+            ingredient_safety_score: localResult.additive_score, 
+            processing_score: localResult.nova_score, 
+            overall: localResult.score 
+          },
+          summary: localResult.summary,
           detailed_breakdown: {
-            calories: 'Estimate only',
-            protein: 'Estimate only',
-            sugar: 'Estimate only',
-            sodium: 'Estimate only',
-            fat: 'Estimate only',
-            fiber: 'Estimate only',
+            calories: 'Estimate only - verify label',
+            protein: 'Estimate only - verify label',
+            sugar: 'Estimate only - verify label',
+            sodium: 'Estimate only - verify label',
+            fat: 'Estimate only - verify label',
+            fiber: 'Estimate only - verify label',
             processing_level: 'unknown',
             overall_nutrient_density: 'unknown',
           },
           safe_consumption: {
             amount: null,
             frequency: 'Verify with label',
-            notes: 'Nutrition data is AI-estimated. Check the actual product label for accurate information.',
+            notes: 'Nutrition data is incomplete. Check the actual product label for accurate information.',
             personalized_for_user: null,
           },
-          harmful_ingredients: [],
-          ingredient_warnings: [],
-          positives: ['Nutrition data is being enriched in the background. Check back later for more accurate analysis.'],
-          long_term_risks: ['Unable to assess — nutrition data is AI-estimated and may not be accurate'],
-          healthier_alternatives: [],
-          fssai_compliance: 'unknown',
-          diabetic_suitability: 'consume_with_caution',
-          bp_suitability: 'consume_with_caution',
-          child_suitability: 'consume_with_caution',
-          pregnancy_suitability: 'consume_with_caution',
+          harmful_ingredients: localDetectedAdditives,
+          ingredient_warnings: localResult.detected_additives.map(a => ({
+            ingredient: a.name,
+            concern: a.concern || a.description,
+            severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
+          })),
+          positives: ['Ingredient analysis completed - see harmful ingredients above'],
+          long_term_risks: harmfulFromIngredients.length > 0 
+            ? [`Contains ${harmfulFromIngredients.length} harmful additive(s)`] 
+            : ['No harmful additives detected in ingredient list'],
+          fssai_compliance: harmfulFromIngredients.length > 0 ? 'concern' : 'unknown',
+          diabetic_suitability: harmfulFromIngredients.some(a => 
+            ['Monosodium Glutamate', 'Sodium Benzoate', 'Potassium Sorbate', 'TBHQ', 'BHA', 'BHT', 'Aspartame', 'Acesulfame K', 'Saccharin', 'Sucralose'].includes(a.name)) 
+            ? 'consume_with_caution' 
+            : 'suitable',
+          bp_suitability: harmfulFromIngredients.some(a => 
+            ['Sodium Benzoate', 'Sodium Nitrite', 'MSG/E621'].includes(a.name)) 
+            ? 'consume_with_caution' 
+            : 'suitable',
+          child_suitability: harmfulFromIngredients.some(a => 
+            ['Tartrazine', 'Sunset Yellow', 'Carmoisine', 'Ponceau 4R', 'Allura Red', 'Sodium Benzoate'].includes(a.name)) 
+            ? 'consume_with_caution' 
+            : 'suitable',
+          pregnancy_suitability: harmfulFromIngredients.some(a => 
+            ['Retinol/Vitamin A acetate', 'Tartrazine', 'Erythrosine/E127'].includes(a.name)) 
+            ? 'consume_with_caution' 
+            : 'suitable',
           analyzed_at: new Date().toISOString(),
           personalized: !!userProfile,
           scoring_method: 'estimated_only',
