@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { callGemini, GeminiError } from '@/lib/gemini'
-import { generateSimpleSummary } from '@/lib/groq'
+import { generateUnifiedAnalysis } from '@/lib/groq'
 import { scoreProduct, detectAdditives, getCategoryWarnings, type NutritionPer100g } from '@/lib/health-engine'
 import { findHealthierAlternatives } from '@/lib/alternatives'
 
@@ -182,6 +182,10 @@ export async function POST(req: NextRequest) {
           long_term_risks: activeWarnings.length > 0 
             ? [`Contains ${activeWarnings.length} harmful additive(s)`] 
             : ['No harmful additives detected in ingredient list'],
+          concerns: [],
+          recommendations: [],
+          personalizedWarnings: [],
+          ai_ingredients: [],
           fssai_compliance: activeWarnings.length > 0 ? 'concern' : 'unknown',
           diabetic_suitability: activeWarnings.some(a => 
             ['Monosodium Glutamate', 'Sodium Benzoate', 'Potassium Sorbate', 'TBHQ', 'BHA', 'BHT', 'Aspartame', 'Acesulfame K', 'Saccharin', 'Sucralose'].includes(a.name)) 
@@ -312,8 +316,12 @@ export async function POST(req: NextRequest) {
               severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
             })),
             summary: localResult.summary,
+            concerns: [],
+            recommendations: [],
+            personalizedWarnings: [],
+            ai_ingredients: [],
             analyzed_at: new Date().toISOString(),
-          personalized: !!userProfile,
+            personalized: !!userProfile,
             scoring_method: 'local_cached',
             _from_cache: true,
           }
@@ -344,6 +352,10 @@ export async function POST(req: NextRequest) {
               severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
             })),
             summary: cachedAnalysis.summary || localResult.summary,
+            concerns: cachedAnalysis.concerns || [],
+            recommendations: cachedAnalysis.recommendations || [],
+            personalizedWarnings: cachedAnalysis.personalizedWarnings || [],
+            ai_ingredients: cachedAnalysis.ai_ingredients || [],
             analyzed_at: new Date().toISOString(),
             personalized: false,
             scoring_method: 'hybrid_local_cache',
@@ -361,27 +373,42 @@ export async function POST(req: NextRequest) {
     let aiFailed = false
 
     try {
-      console.log(`🤖 Generating simple summary with Groq...`)
+      console.log(`🤖 Generating unified Groq analysis...`)
       
-      const groqResult = await generateSimpleSummary({
+      const groqResult = await generateUnifiedAnalysis({
         product_name: product.name,
         score: localResult.score,
         grade: localResult.grade,
         nutrition: {
           calories: product.nutrition.calories,
           protein: product.nutrition.protein,
+          carbs: product.nutrition.carbs,
+          fat: product.nutrition.fat,
           sugar: product.nutrition.sugar,
           sodium: product.nutrition.sodium,
+          fiber: product.nutrition.fiber,
         },
         additives_found: localResult.detected_additives.map(a => a.name),
         nova_group: localResult.nova_group,
+        ingredients_text: product.ingredients_text || '',
+        userProfile: profile ? {
+          is_diabetic: profile.is_diabetic,
+          has_bp: profile.has_bp,
+          is_vegetarian: profile.is_vegetarian,
+        } : undefined,
       })
 
       aiEnhancement = {
         summary: groqResult.summary,
         recommendation: groqResult.recommendation,
+        concerns: groqResult.concerns,
+        positives: groqResult.positives,
+        recommendations: groqResult.recommendations,
+        personalizedWarnings: groqResult.personalizedWarnings,
+        long_term_risks: groqResult.long_term_risks,
+        ai_ingredients: groqResult.ingredients,
       }
-      console.log(`✅ Groq summary generated`)
+      console.log(`✅ Unified Groq analysis generated`)
     } catch (aiErr: any) {
       console.warn('Groq failed, using template summary:', aiErr.message)
       aiFailed = true
@@ -424,6 +451,10 @@ export async function POST(req: NextRequest) {
       long_term_risks: aiEnhancement?.long_term_risks || (localDetectedAdditives.length > 0 ? 
         [`Contains ${localDetectedAdditives.length} potentially harmful additive(s)`] : 
         ['See score breakdown for details']),
+      concerns: aiEnhancement?.concerns || [],
+      recommendations: aiEnhancement?.recommendations || [],
+      personalizedWarnings: aiEnhancement?.personalizedWarnings || [],
+      ai_ingredients: aiEnhancement?.ai_ingredients || [],
       healthier_alternatives: aiEnhancement?.healthier_alternatives || [],
       fssai_compliance: aiEnhancement?.fssai_compliance || (localResult.score >= 7 ? 'compliant' : localResult.score >= 5 ? 'concern' : 'unknown'),
       diabetic_suitability: aiEnhancement?.diabetic_suitability || 

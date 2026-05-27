@@ -165,11 +165,10 @@ export default function ResultsPage() {
 const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
   const [scanFailed, setScanFailed] = useState(false)
+  const [scanLoading, setScanLoading] = useState(false)
   const [scanConfidence, setScanConfidence] = useState<string>('none')
   const [ingredientList, setIngredientList] = useState<Array<{ name: string; status: 'harmful'|'safe'|'unknown' }>>([])
   const [aiInsights, setAiInsights] = useState<Array<any>>([])
-  const [aiAnalysis, setAiAnalysis] = useState<any>(null)
-  const [aiLoading, setAiLoading] = useState(false)
   const [hydrated,   setHydrated]   = useState(false)
   const [apiAlternatives, setApiAlternatives] = useState<any>(null)
   const [altLoading, setAltLoading] = useState(false)
@@ -189,7 +188,7 @@ useEffect(() => {
     // If there's a barcode in URL, fetch and save the product
     if (barcode) {
       setScannedBarcode(barcode)
-      setHydrated(true)
+      setScanLoading(true)
       fetch(`/api/scan?barcode=${encodeURIComponent(barcode)}`)
         .then(r => r.json())
         .then(async (res) => {
@@ -253,7 +252,7 @@ useEffect(() => {
               quantity: 100,
             }
             
-            // Save to localStorage
+              // Save to localStorage
             localStorage.setItem('hox_scan_result_v1', JSON.stringify(payload))
             setPayload(payload)
             setQuantity(100)
@@ -264,9 +263,13 @@ useEffect(() => {
             setPayload(data)
             if (data) setQuantity(data.quantity || 100)
           }
+          setScanLoading(false)
+          setHydrated(true)
         })
         .catch(() => {
           setScanFailed(true)
+          setScanLoading(false)
+          setHydrated(true)
           const data = readScanResult()
           setPayload(data)
           if (data) setQuantity(data.quantity || 100)
@@ -308,32 +311,6 @@ useEffect(() => {
         if (d?.success) setAiInsights(d.data || [])
       })
       .catch(() => {})
-  }, [payload])
-
-  // Groq AI-powered analysis
-  useEffect(() => {
-    if (!payload) return
-    const ingredients = payload.product?.ingredients_text || ''
-    if (!ingredients) return
-    
-    setAiLoading(true)
-    fetch('/api/analyze-ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ingredients,
-        nutrition: payload.product?.nutrition,
-        barcode: payload.product?.barcode
-      })
-    })
-    .then(r => r.json())
-    .then((d) => {
-      if (d?.success && d.data) {
-        setAiAnalysis(d.data)
-      }
-    })
-    .catch(() => {})
-    .finally(() => setAiLoading(false))
   }, [payload])
 
   // Realtime subscription for enrich completion
@@ -426,7 +403,21 @@ async function handleLogMeal(mealType: string) {
     finally { setLogging(false) }
   }
 
-  if (!hydrated) return null
+  if (!hydrated && !scanLoading) return null
+
+  // ── Loading state ─────────────────────────────────────────────────────────
+
+  if (scanLoading) {
+    return (
+      <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
+        <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-6" />
+        <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Analyzing Product...</h2>
+        <p className="text-sm text-[#7a8fa6] mb-8 leading-relaxed max-w-xs">
+          Scanning databases and running health analysis
+        </p>
+      </div>
+    )
+  }
 
   // ── Empty state ───────────────────────────────────────────────────────────
 
@@ -477,6 +468,7 @@ async function handleLogMeal(mealType: string) {
   const { product, analysis, timestamp } = payload
   const harmfulCount = analysis.harmful_ingredients?.filter(h => h.found_in_product !== false).length || 0
   const highSevCount = analysis.harmful_ingredients?.filter(h => h.severity === 'high' && h.found_in_product !== false).length || 0
+
   const totalCals    = Math.round((product.nutrition?.calories || 0) * quantity / 100)
 
   // Tab metadata for graceful degradation
@@ -624,82 +616,67 @@ async function handleLogMeal(mealType: string) {
               )}
             </Section>
 
-{/* Groq AI Deep Analysis */}
-            {(aiLoading || aiAnalysis) && (
+{/* AI Deep Analysis (from unified Groq call) */}
+            {((analysis.personalizedWarnings?.length ?? 0) > 0 || (analysis.ai_ingredients?.length ?? 0) > 0 || (analysis.recommendations?.length ?? 0) > 0) && (
               <Section title="AI Deep Analysis" icon="🧠">
-                {aiLoading && (
-                  <div className="flex items-center gap-3 py-4">
-                    <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm text-[#7a8fa6]">Analyzing with Groq AI...</p>
-                  </div>
-                )}
-                {aiAnalysis && !aiLoading && (
-                  <div className="space-y-4">
-                    {/* Overall Summary from AI */}
-                    {aiAnalysis.summary && (
-                      <div className="p-3 bg-gradient-to-r from-emerald-500/10 to-sky-500/10 rounded-xl border border-emerald-500/20">
-                        <p className="text-sm text-[#f0f4f8] leading-relaxed">{aiAnalysis.summary}</p>
+                <div className="space-y-4">
+                  {/* Personalized Warnings */}
+                  {(analysis.personalizedWarnings?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs font-bold text-amber-400 mb-2">⚠️ Personalized For You</p>
+                      <div className="space-y-2">
+                        {analysis.personalizedWarnings!.map((warn: string, i: number) => (
+                          <div key={i} className="flex items-start gap-2 p-2 bg-amber-500/10 rounded-lg">
+                            <span className="text-amber-400">→</span>
+                            <span className="text-xs text-[#f0f4f8]">{warn}</span>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Personalized Warnings */}
-                    {aiAnalysis.personalizedWarnings && aiAnalysis.personalizedWarnings.length > 0 && (
-                      <div>
-                        <p className="text-xs font-bold text-amber-400 mb-2">⚠️ Personalized For You</p>
-                        <div className="space-y-2">
-                          {aiAnalysis.personalizedWarnings.map((warn: string, i: number) => (
-                            <div key={i} className="flex items-start gap-2 p-2 bg-amber-500/10 rounded-lg">
-                              <span className="text-amber-400">→</span>
-                              <span className="text-xs text-[#f0f4f8]">{warn}</span>
-                            </div>
-                          ))}
-                        </div>
+                  {/* Positives */}
+                  {(analysis.positives?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs font-bold text-emerald-400 mb-2">✅ Positives</p>
+                      <div className="space-y-1">
+                        {analysis.positives!.slice(0, 3).map((pos: string, i: number) => (
+                          <p key={i} className="text-xs text-emerald-300">• {pos}</p>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Positives */}
-                    {aiAnalysis.positives && aiAnalysis.positives.length > 0 && (
-                      <div>
-                        <p className="text-xs font-bold text-emerald-400 mb-2">✅ Positives</p>
-                        <div className="space-y-1">
-                          {aiAnalysis.positives.slice(0, 3).map((pos: string, i: number) => (
-                            <p key={i} className="text-xs text-emerald-300">• {pos}</p>
-                          ))}
-                        </div>
+                  {/* AI Ingredient Analysis */}
+                  {(analysis.ai_ingredients?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs font-bold text-[#7a8fa6] mb-2">🔬 Ingredient Breakdown</p>
+                      <div className="flex flex-wrap gap-2">
+                        {analysis.ai_ingredients!.slice(0, 8).map((ing: any, i: number) => (
+                          <span key={i} className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                            ing.status === 'harmful' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                            ing.status === 'concern' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                            'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                          }`}>
+                            {ing.ingredient}
+                          </span>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* AI Ingredient Analysis */}
-                    {aiAnalysis.ingredients && aiAnalysis.ingredients.length > 0 && (
-                      <div>
-                        <p className="text-xs font-bold text-[#7a8fa6] mb-2">🔬 Ingredient Breakdown</p>
-                        <div className="flex flex-wrap gap-2">
-                          {aiAnalysis.ingredients.slice(0, 8).map((ing: any, i: number) => (
-                            <span key={i} className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                              ing.status === 'harmful' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                              ing.status === 'concern' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                              'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                            }`}>
-                              {ing.ingredient}
-                            </span>
-                          ))}
-                        </div>
+                  {/* Recommendations */}
+                  {(analysis.recommendations?.length ?? 0) > 0 && (
+                    <div className="pt-2 border-t border-[#2a3545]">
+                      <p className="text-xs font-bold text-sky-400 mb-2">💡 Recommendations</p>
+                      <div className="space-y-1">
+                        {analysis.recommendations!.slice(0, 2).map((rec: string, i: number) => (
+                          <p key={i} className="text-xs text-[#7a8fa6]">• {rec}</p>
+                        ))}
                       </div>
-                    )}
-
-                    {/* Recommendations */}
-                    {aiAnalysis.recommendations && aiAnalysis.recommendations.length > 0 && (
-                      <div className="pt-2 border-t border-[#2a3545]">
-                        <p className="text-xs font-bold text-sky-400 mb-2">💡 Recommendations</p>
-                        <div className="space-y-1">
-                          {aiAnalysis.recommendations.slice(0, 2).map((rec: string, i: number) => (
-                            <p key={i} className="text-xs text-[#7a8fa6]">• {rec}</p>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </Section>
             )}
 

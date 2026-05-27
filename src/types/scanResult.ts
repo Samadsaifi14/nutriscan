@@ -96,6 +96,15 @@ export interface Analysis {
   pregnancy_suitability?:  string
   fssai_compliance?:       string
   unreadable_fields?:      string[]
+  concerns?:               string[]
+  recommendations?:        string[]
+  personalizedWarnings?:   string[]
+  ai_ingredients?:         Array<{
+    ingredient: string
+    status: 'safe' | 'concern' | 'harmful'
+    concern?: string
+    recommendation?: string
+  }>
 }
 
 // Payload stored after scan
