@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { callGemini, GeminiError } from '@/lib/gemini'
 import { generateSimpleSummary } from '@/lib/groq'
-import { scoreProduct, detectAdditives, type NutritionPer100g } from '@/lib/health-engine'
+import { scoreProduct, detectAdditives, getCategoryWarnings, type NutritionPer100g } from '@/lib/health-engine'
 import { findHealthierAlternatives } from '@/lib/alternatives'
 
 const ProductSchema = z.object({
@@ -89,6 +89,14 @@ export async function POST(req: NextRequest) {
 
     // Even if nutrition data is missing/estimated, we can still analyze ingredients
     const harmfulFromIngredients = detectAdditives(product.ingredients_text || '')
+    
+    // Supplement with category-based warnings when ingredient info is limited
+    const categoryWarnings = getCategoryWarnings(product.category || '')
+    const combinedHarmful = harmfulFromIngredients.length > 0
+      ? harmfulFromIngredients
+      : categoryWarnings.length > 0
+        ? categoryWarnings
+        : harmfulFromIngredients
 
     if (!hasRealNutrition) {
       console.log(`⚠️ ${product.name} has no real nutrition data — returning ingredient-based analysis`)
@@ -96,9 +104,10 @@ export async function POST(req: NextRequest) {
       // Calculate scores based on available data
       let nutritionScore = 5; // Default middle score when unknown
       let additiveScore = 10;
-      if (harmfulFromIngredients.length > 0) {
+      const activeWarnings = combinedHarmful.length > 0 ? combinedHarmful : harmfulFromIngredients
+      if (activeWarnings.length > 0) {
         // More harmful additives = lower score
-        additiveScore = Math.max(1, 10 - (harmfulFromIngredients.length * 2));
+        additiveScore = Math.max(1, 10 - (activeWarnings.length * 2));
       }
       
       // Overall score weights: 40% nutrition, 40% additives, 20% processing (estimated)
@@ -112,8 +121,8 @@ export async function POST(req: NextRequest) {
         additive_score: additiveScore,
         nova_score: 5, // Unknown processing
         breakdown: [],
-        detected_additives: harmfulFromIngredients,
-        summary: `${product.name} has limited nutrition data available. Ingredient analysis shows ${harmfulFromIngredients.length} harmful additive(s) detected. Score based on ingredient safety only.`,
+        detected_additives: activeWarnings,
+        summary: `${product.name} has limited nutrition data available. Ingredient analysis shows ${activeWarnings.length} harmful additive(s) detected. Score based on ingredient safety only.`,
       };
 
       // Map local result to expected format
@@ -164,29 +173,29 @@ export async function POST(req: NextRequest) {
             personalized_for_user: null,
           },
           harmful_ingredients: localDetectedAdditives,
-          ingredient_warnings: localResult.detected_additives.map(a => ({
+          ingredient_warnings: activeWarnings.map(a => ({
             ingredient: a.name,
             concern: a.concern || a.description,
             severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
           })),
           positives: ['Ingredient analysis completed - see harmful ingredients above'],
-          long_term_risks: harmfulFromIngredients.length > 0 
-            ? [`Contains ${harmfulFromIngredients.length} harmful additive(s)`] 
+          long_term_risks: activeWarnings.length > 0 
+            ? [`Contains ${activeWarnings.length} harmful additive(s)`] 
             : ['No harmful additives detected in ingredient list'],
-          fssai_compliance: harmfulFromIngredients.length > 0 ? 'concern' : 'unknown',
-          diabetic_suitability: harmfulFromIngredients.some(a => 
+          fssai_compliance: activeWarnings.length > 0 ? 'concern' : 'unknown',
+          diabetic_suitability: activeWarnings.some(a => 
             ['Monosodium Glutamate', 'Sodium Benzoate', 'Potassium Sorbate', 'TBHQ', 'BHA', 'BHT', 'Aspartame', 'Acesulfame K', 'Saccharin', 'Sucralose'].includes(a.name)) 
             ? 'consume_with_caution' 
             : 'suitable',
-          bp_suitability: harmfulFromIngredients.some(a => 
+          bp_suitability: activeWarnings.some(a => 
             ['Sodium Benzoate', 'Sodium Nitrite', 'MSG/E621'].includes(a.name)) 
             ? 'consume_with_caution' 
             : 'suitable',
-          child_suitability: harmfulFromIngredients.some(a => 
+          child_suitability: activeWarnings.some(a => 
             ['Tartrazine', 'Sunset Yellow', 'Carmoisine', 'Ponceau 4R', 'Allura Red', 'Sodium Benzoate'].includes(a.name)) 
             ? 'consume_with_caution' 
             : 'suitable',
-          pregnancy_suitability: harmfulFromIngredients.some(a => 
+          pregnancy_suitability: activeWarnings.some(a => 
             ['Retinol/Vitamin A acetate', 'Tartrazine', 'Erythrosine/E127'].includes(a.name)) 
             ? 'consume_with_caution' 
             : 'suitable',
@@ -218,12 +227,17 @@ export async function POST(req: NextRequest) {
     console.log(`   Additives found: ${localResult.detected_additives.length}`)
     console.log(`   NOVA: ${localResult.nova_group} (${localResult.nova_label})`)
 
+    // Supplement with category-based warnings when ingredient detection was sparse
+    const fullAnalysisWarnings = localResult.detected_additives.length === 0 && product.category
+      ? getCategoryWarnings(product.category)
+      : localResult.detected_additives
+
     // Map local result to expected format
     const localHealthScore = localResult.score
     const localHealthRating = localResult.grade === 'A' ? 'healthy' : 
                                localResult.grade === 'B' ? 'healthy' :
                                localResult.grade === 'C' ? 'moderate' : 'unhealthy'
-    const localDetectedAdditives = localResult.detected_additives.map(a => ({
+    const localDetectedAdditives = fullAnalysisWarnings.map(a => ({
       name: a.name,
       also_known_as: a.aliases,
       found_in_product: true,
@@ -401,7 +415,7 @@ export async function POST(req: NextRequest) {
         personalized_for_user: profile ? `Based on your profile` : null,
       },
       harmful_ingredients: localDetectedAdditives,
-      ingredient_warnings: localResult.detected_additives.map(a => ({
+      ingredient_warnings: fullAnalysisWarnings.map(a => ({
         ingredient: a.name,
         concern: a.concern || a.description,
         severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'

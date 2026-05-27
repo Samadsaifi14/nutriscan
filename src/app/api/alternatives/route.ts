@@ -35,14 +35,17 @@ export async function POST(req: NextRequest) {
 
     const hasNutrition = Object.values(parsed.data.nutrition_per_100g).some(v => v !== undefined && v !== null && v > 0)
 
-    // ── Tier 1: Dynamic alternatives from Open Food Facts ──────────────
-    // Only works when we have nutrition data and category
+    // ── Run Dynamic + Curated in parallel with Promise.allSettled ────
     let dynamicResult: any = null
-    if (hasNutrition) {
-      try {
+    let curatedResult: CuratedAlternative[] = []
+
+    const [dynamicSettled, curatedSettled] = await Promise.allSettled([
+      // Tier 1: Dynamic alternatives from Open Food Facts
+      (async () => {
+        if (!hasNutrition) return null
         const result = await findHealthierAlternatives(parsed.data)
         if (result.alternatives.length > 0) {
-          dynamicResult = {
+          return {
             alternatives: result.alternatives,
             why_better: result.why_better,
             current_score: result.current_score,
@@ -50,23 +53,29 @@ export async function POST(req: NextRequest) {
             source: 'dynamic',
           }
         }
-      } catch (err: any) {
-        console.warn('Dynamic alternatives failed:', err.message)
-      }
+        return null
+      })(),
+
+      // Tier 2: Curated Indian alternatives
+      (async () => {
+        return findCuratedAlternatives(
+          parsed.data.name,
+          parsed.data.category,
+          parsed.data.current_score
+        )
+      })(),
+    ])
+
+    if (dynamicSettled.status === 'fulfilled' && dynamicSettled.value) {
+      dynamicResult = dynamicSettled.value
+    } else if (dynamicSettled.status === 'rejected') {
+      console.warn('Dynamic alternatives failed:', dynamicSettled.reason.message)
     }
 
-    // ── Tier 2: Curated Indian alternatives ────────────────────────────
-    let curatedResult: CuratedAlternative[] = []
-    try {
-      // Use score from dynamic results first, fall back to the score passed from frontend
-      const scoreForFallback = dynamicResult?.current_score ?? parsed.data.current_score
-      curatedResult = findCuratedAlternatives(
-        parsed.data.name,
-        parsed.data.category,
-        scoreForFallback
-      )
-    } catch (err: any) {
-      console.warn('Curated alternatives failed:', err.message)
+    if (curatedSettled.status === 'fulfilled') {
+      curatedResult = curatedSettled.value
+    } else if (curatedSettled.status === 'rejected') {
+      console.warn('Curated alternatives failed:', curatedSettled.reason.message)
     }
 
     // ── Assemble response ──────────────────────────────────────────────

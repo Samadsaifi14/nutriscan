@@ -251,7 +251,7 @@ const curated: Record<string, CuratedAlternative[]> = {
 }
 
 // Universal fallback products for when category matching fails entirely
-const UNIVERSAL_FALLBACK: CuratedAlternative[] = [
+export const UNIVERSAL_FALLBACK: CuratedAlternative[] = [
   { name: 'Mixed nuts (almonds, walnuts, cashews)', reason: 'Healthy fats, protein, fiber, zero processing', availability: 'Everywhere', type: 'whole_food', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 550, protein: 18, carbs: 20, fat: 45, sugar: 5, sodium: 2, fiber: 10 } },
   { name: 'Fresh seasonal fruits', reason: 'Natural, vitamins, fiber, antioxidants', availability: 'Everywhere', type: 'whole_food', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 60, protein: 1, carbs: 14, fat: 0, sugar: 10, sodium: 1, fiber: 3 } },
   { name: 'Sprouts salad', reason: 'Highest nutrient density, live enzymes, complete protein', availability: 'Homemade', type: 'homemade', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 120, protein: 12, carbs: 18, fat: 2, sugar: 1, sodium: 5, fiber: 8 } },

@@ -5,6 +5,7 @@ export interface BarcodeAnalysis {
   isIndian: boolean
   isKnownBrand: boolean
   brand: string | null
+  category: string | null
   searchHint: string
 }
 
@@ -82,6 +83,108 @@ export const KNOWN_INDIAN_BRANDS: Record<string, string> = {
   "8901398": "Aromatic",
 }
 
+export const BRAND_CATEGORIES: Record<string, string> = {
+  "Britannia": "biscuits",
+  "Parle": "biscuits",
+  "ITC (Sunfeast/Bingo)": "biscuits",
+  "Nestlé India": "noodles",
+  "Haldiram's": "namkeen",
+  "Patanjali": "health_drink",
+  "Amul": "dairy",
+  "Dabur": "health_drink",
+  "Marico (Saffola)": "cooking_oil",
+  "Too Yumm": "chips",
+  "MTR Foods": "rice",
+  "Tata Consumer": "tea",
+  "HUL (Knorr/Kissan)": "sauce",
+  "Cadbury India": "chocolate",
+  "PepsiCo India (Lays/Kurkure)": "chips",
+  "McCain India": "pizza",
+  "Bajaj": "namkeen",
+  "Kellogg's India": "cereal",
+  "General Mills India": "cereal",
+  "Kissan": "jam",
+  "Knorr": "soup",
+  "Bingo!": "chips",
+  "Patanjali Ayurveda": "health_drink",
+  "Mohanlal Chikki": "chocolate",
+  "Gulab": "pickle",
+  "Lijjat": "namkeen",
+  "Madhur": "sugar",
+  "Kohinoor": "rice",
+  "Veeba": "sauce",
+  "Nandini": "dairy",
+  "Kwality": "dairy",
+  "Frooti": "juice",
+  "Maaza": "juice",
+  "Citra": "juice",
+  "Paper Boat": "juice",
+  "Bail Kolhu": "cooking_oil",
+  "Aashirvaad": "atta",
+  "Annapurna": "atta",
+  "Fortune": "cooking_oil",
+  "Madhura": "sugar",
+  "Saffola": "cooking_oil",
+  "Id": "bread",
+  "MTR": "rice",
+  "Rajah": "pickle",
+  "Priya": "pickle",
+  "Amrutanjan": "health_drink",
+  "Parle Premium": "biscuits",
+  "Britannia Bakery": "bread",
+  "Lakers": "biscuits",
+  "Sundrop": "cooking_oil",
+  "Raw Pressery": "juice",
+  "True Elements": "cereal",
+  "24 Mantra": "cereal",
+  "Sresta": "cereal",
+  "Organic India": "tea",
+  "Everest": "pickle",
+  "Catch": "sauce",
+  "Dish Dish": "sauce",
+  "Kitchen of India": "sauce",
+  "Aromatic": "rice",
+}
+
+export function inferCategory(brand: string | null, name: string): string | null {
+  if (brand && BRAND_CATEGORIES[brand]) {
+    return BRAND_CATEGORIES[brand]
+  }
+  const lower = name.toLowerCase()
+  if (/noodle|maggi|yippee|ramen/i.test(lower)) return 'noodles'
+  if (/biscuit|cookie|cracker|digestive|marie|glucose|cream biscuit/i.test(lower)) return 'biscuits'
+  if (/chips|kur|lay|pringle|wafers/i.test(lower)) return 'chips'
+  if (/namkeen|bhujia|chevda|mixture|sev/i.test(lower)) return 'namkeen'
+  if (/bread|brown bread|white bread|sandwich|toast/i.test(lower)) return 'bread'
+  if (/butter|cheese|paneer|dairy|amul|gouda|mozzarella|processed cheese/i.test(lower)) return 'dairy'
+  if (/yogurt|curd|dahi|lassi|chaas|buttermilk/i.test(lower)) return 'yogurt'
+  if (/ice.cream|frozen dessert|kulfi|cone/i.test(lower)) return 'ice_cream'
+  if (/chocolate|candy|toffee|lollipop|gummy|cadbury|dairy milk|kitkat|munch/i.test(lower)) return 'chocolate'
+  if (/cereal|muesli|granola|corn flakes|kellogg|oats|porridge/i.test(lower)) return 'cereal'
+  if (/pasta|macaroni|spaghetti|penne/i.test(lower)) return 'pasta'
+  if (/sauce|ketchup|mayonnaise|dip|chutney/i.test(lower)) return 'sauce'
+  if (/oil|cooking oil|refined|mustard oil|coconut oil|olive oil/i.test(lower)) return 'cooking_oil'
+  if (/tea|chai|green tea|lemon tea/i.test(lower)) return 'tea'
+  if (/coffee|nescafe|bru|instant coffee/i.test(lower)) return 'coffee'
+  if (/juice|fruit drink|paper boat|frooti|maaza|slice|real|b natural/i.test(lower)) return 'juice'
+  if (/cold drink|soda|coke|pepsi|sprite|fanta|thums up/i.test(lower)) return 'cold_drink'
+  if (/energy drink|monster|red bull|sting|glucose/i.test(lower)) return 'energy_drink'
+  if (/protein|whey|supplement|protein bar/i.test(lower)) return 'protein'
+  if (/pickle|achar|mango pickle|lime pickle/i.test(lower)) return 'pickle'
+  if (/jam|marmalade|kissan/i.test(lower)) return 'jam'
+  if (/cake|brownie|muffin|pastry|donut/i.test(lower)) return 'cake'
+  if (/pizza|frozen pizza|pizza base/i.test(lower)) return 'pizza'
+  if (/soup|instant soup|knorr/i.test(lower)) return 'soup'
+  if (/horlicks|bournvita|complan|boost|malt|health drink/i.test(lower)) return 'health_drink'
+  if (/rice|basmati|ponni|parboiled|biryani/i.test(lower)) return 'rice'
+  if (/dal|lentil|toor|moong|chana|masoor/i.test(lower)) return 'dal'
+  if (/atta|flour|maida|whole wheat|chapati/i.test(lower)) return 'flour'
+  if (/ghee|clarified butter/i.test(lower)) return 'ghee'
+  if (/honey/i.test(lower)) return 'honey'
+  if (/milk/i.test(lower)) return 'milk'
+  return null
+}
+
 export function analyzeBarcode(barcode: string): BarcodeAnalysis {
   const isIndian = INDIAN_PREFIXES.some(p => barcode.startsWith(p))
   
@@ -90,10 +193,13 @@ export function analyzeBarcode(barcode: string): BarcodeAnalysis {
   
   const brand = brandPrefix ? KNOWN_INDIAN_BRANDS[brandPrefix] : null
 
+  const category = brand ? inferCategory(brand, brand) : null
+
   return {
     isIndian,
     isKnownBrand: !!brand,
     brand,
+    category,
     searchHint: brand
       ? `${brand} product barcode ${barcode}`
       : isIndian 

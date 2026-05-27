@@ -8,8 +8,10 @@ import { readScanResult, ScanResultPayload } from '@/types/scanResult'
 import { IngredientChip } from '@/components/IngredientChip'
 import { ShareButton } from '@/components/ShareButton'
 import { ShoppingLinks } from '@/components/ShoppingLinks'
+import { UNIVERSAL_FALLBACK } from '@/lib/curated-alternatives'
 import { event, AnalyticsEvents } from '@/lib/analytics'
 import { useOffline } from '@/hooks/useOffline'
+import { supabase } from '@/lib/supabase'
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
 
@@ -90,6 +92,43 @@ function MiniBar({ label, score }: { label: string; score: number }) {
   )
 }
 
+// ── Skeleton components ───────────────────────────────────────────────────────
+
+function SkeletonBar({ className }: { className?: string }) {
+  return <div className={`h-4 rounded-full bg-[#1e2a35] animate-pulse ${className || ''}`} />
+}
+
+function SkeletonCard({ className }: { className?: string }) {
+  return (
+    <div className={`bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 ${className || ''}`}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-xl bg-[#1e2a35] animate-pulse" />
+        <div className="flex-1 space-y-2">
+          <SkeletonBar className="w-3/4" />
+          <SkeletonBar className="w-1/2" />
+        </div>
+      </div>
+      <div className="space-y-2 ml-12">
+        <SkeletonBar className="w-full" />
+        <SkeletonBar className="w-5/6" />
+      </div>
+    </div>
+  )
+}
+
+function MacroGridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {[1, 2, 3, 4].map(i => (
+        <div key={i} className="bg-[#1e242d] rounded-xl p-3 space-y-2">
+          <SkeletonBar className="w-12 h-6" />
+          <SkeletonBar className="w-16" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Section wrapper ───────────────────────────────────────────────────────────
 
 function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
@@ -108,6 +147,12 @@ function Section({ title, icon, children }: { title: string; icon: string; child
 
 const TABS = ['Overview', 'Ingredients', 'Nutrition', 'Alternatives'] as const
 type Tab = typeof TABS[number]
+
+interface TabMeta {
+  key: Tab
+  locked: boolean
+  reason: string
+}
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -291,6 +336,28 @@ useEffect(() => {
     .finally(() => setAiLoading(false))
   }, [payload])
 
+  // Realtime subscription for enrich completion
+  useEffect(() => {
+    if (!scannedBarcode) return
+
+    const channel = supabase
+      .channel(`product-updates-${scannedBarcode}`)
+      .on('postgres_changes' as any, {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'products',
+        filter: `barcode=eq.${scannedBarcode}`,
+      }, (payload: any) => {
+        const newData = payload.new as any
+        if (newData?.health_score != null && newData?.source !== 'ai_estimated') {
+          toast.success('✨ Product info updated! New nutrition data available.')
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [scannedBarcode])
+
   // Fetch alternatives from API when Alternatives tab is active
   useEffect(() => {
     if (activeTab !== 'Alternatives' || !payload || apiAlternatives) return
@@ -412,6 +479,19 @@ async function handleLogMeal(mealType: string) {
   const highSevCount = analysis.harmful_ingredients?.filter(h => h.severity === 'high' && h.found_in_product !== false).length || 0
   const totalCals    = Math.round((product.nutrition?.calories || 0) * quantity / 100)
 
+  // Tab metadata for graceful degradation
+  const tabsMeta: TabMeta[] = TABS.map(tab => {
+    if (tab === 'Ingredients') {
+      const locked = !product.ingredients_text && (!analysis.harmful_ingredients || analysis.harmful_ingredients.length === 0)
+      return { key: tab, locked, reason: 'No ingredient data — contribute to unlock' }
+    }
+    if (tab === 'Nutrition') {
+      const locked = !product.nutrition?.calories && !product.nutrition?.protein && !product.nutrition?.carbs
+      return { key: tab, locked, reason: 'No nutrition data — contribute to unlock' }
+    }
+    return { key: tab, locked: false, reason: '' }
+  })
+
   return (
     <div className="min-h-screen bg-[#0d0f12] text-[#f0f4f8] font-sans pb-28">
 
@@ -500,17 +580,31 @@ async function handleLogMeal(mealType: string) {
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-30 bg-[#0d0f12] border-b border-[#2a3545] px-4">
         <div className="flex gap-1 overflow-x-auto no-scrollbar py-2">
-          {TABS.map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
+          {tabsMeta.map(({ key, locked, reason }) => (
+            <button key={key} onClick={() => { if (!locked) setActiveTab(key) }}
               className={`flex-shrink-0 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === tab
+                activeTab === key
                   ? 'bg-emerald-500 text-white'
-                  : 'text-[#7a8fa6] hover:text-[#f0f4f8] bg-[#161a20]'
-              }`}>
-              {tab === 'Ingredients' && harmfulCount > 0 ? `Ingredients (${harmfulCount})` : tab}
+                  : locked
+                    ? 'text-[#4a5a6a] bg-[#161a20] cursor-not-allowed opacity-50'
+                    : 'text-[#7a8fa6] hover:text-[#f0f4f8] bg-[#161a20]'
+              }`}
+              title={locked ? reason : ''}>
+              {key === 'Ingredients' && harmfulCount > 0 ? `Ingredients (${harmfulCount})` : key}
+              {locked && <span className="ml-1 text-[10px]">🔒</span>}
             </button>
           ))}
         </div>
+        {/* Show lock reason bar when active tab is locked */}
+        {tabsMeta.find(t => t.key === activeTab)?.locked && (
+          <div className="bg-amber-500/10 border-t border-amber-500/20 px-4 py-2 text-center">
+            <p className="text-xs text-amber-400">
+              🔒 {tabsMeta.find(t => t.key === activeTab)?.reason}
+              <button onClick={() => router.push(`/contribute?barcode=${product.barcode || scannedBarcode || ''}`)}
+                className="ml-2 underline font-bold">Contribute now</button>
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="px-4 pt-4 space-y-4">
@@ -710,7 +804,12 @@ async function handleLogMeal(mealType: string) {
         ════════════════════════════════════════════════════════════════ */}
         {activeTab === 'Ingredients' && (
           <>
-            {harmfulCount === 0 ? (
+            {analysis.harmful_ingredients === undefined || analysis.harmful_ingredients === null ? (
+              <div className="space-y-3">
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            ) : harmfulCount === 0 ? (
               <div className="flex flex-col items-center py-12 text-center">
                 <div className="text-5xl mb-4">✅</div>
                 <p className="text-base font-bold text-emerald-400 mb-1">No harmful ingredients</p>
@@ -877,6 +976,9 @@ async function handleLogMeal(mealType: string) {
 
             {/* Macro grid */}
             <Section title="Macronutrients (per 100g)" icon="📊">
+              {(!product.nutrition?.calories && !product.nutrition?.protein && !product.nutrition?.carbs) ? (
+                <MacroGridSkeleton />
+              ) : (
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: 'Calories', value: product.nutrition?.calories, unit: 'kcal', color: 'text-orange-400' },
@@ -896,6 +998,7 @@ async function handleLogMeal(mealType: string) {
                   </div>
                 ))}
               </div>
+              )}
             </Section>
 
             {/* AI detailed breakdown */}
@@ -1159,6 +1262,25 @@ async function handleLogMeal(mealType: string) {
                 <p className="text-sm">Loading alternatives...</p>
               </div>
             )}
+
+            {/* Universal fallback — always visible */}
+            <div className="pt-2">
+              <p className="text-xs text-emerald-400 font-bold mb-2">🌿 Universal Healthy Options</p>
+              <p className="text-[10px] text-[#7a8fa6] mb-3">These whole food alternatives are always healthier choices:</p>
+              <div className="space-y-2">
+                {UNIVERSAL_FALLBACK.slice(0, 3).map((alt, i) => (
+                  <div key={i} className="bg-[#161a20] border border-[#2a3545] hover:border-emerald-500/20 rounded-xl p-3 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{i === 0 ? '🥜' : i === 1 ? '🍎' : '🌱'}</span>
+                      <div>
+                        <p className="text-sm font-bold text-[#f0f4f8]">{alt.name}</p>
+                        <p className="text-[11px] text-[#7a8fa6]">{alt.reason}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {analysis.health_rating !== 'healthy' && (
               <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-2xl mt-3">

@@ -25,6 +25,82 @@ export interface AlternativeProduct {
   detected_additives: string[]
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Search OFF by top ingredients (fallback when category search yields nothing)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function searchOFFByIngredients(
+  ingredientsText: string,
+  maxAlternatives: number = 5
+): Promise<AlternativeProduct[]> {
+  if (!ingredientsText) return []
+
+  // Extract top 3 ingredients (first items in comma-separated list)
+  const topIngredients = ingredientsText
+    .split(',')
+    .map(i => i.trim().toLowerCase())
+    .filter(i => i.length > 2 && !/water|salt|sugar|oil/i.test(i))
+    .slice(0, 3)
+
+  if (topIngredients.length === 0) return []
+
+  const searchQuery = topIngredients.join(' ')
+  console.log(`Searching OFF by ingredients: ${searchQuery}`)
+
+  try {
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=${maxAlternatives * 2}&tagtype_0=countries&tag_contains_0=contains&tag_0=india`
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'HealthOX/1.0' },
+    })
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+    const products: OpenFoodFactsProduct[] = data.products || []
+
+    return products
+      .filter(p => p.product_name && p.nutriments)
+      .map(p => {
+        const n = p.nutriments || {}
+        const nutrition: NutritionPer100g = {
+          calories: n['energy-kcal_100g'],
+          protein: n.proteins_100g,
+          carbohydrates: n.carbohydrates_100g,
+          total_fat: n.fat_100g,
+          sugar: n.sugars_100g,
+          sodium: n.sodium_100g ? n.sodium_100g * 1000 : undefined,
+          fiber: n.fiber_100g,
+        }
+        const scored = scoreProduct(nutrition, p.ingredients_text || '')
+        return {
+          barcode: p.code,
+          name: p.product_name || 'Unknown',
+          brand: p.brands || null,
+          category: p.categories?.split(',')[0] || null,
+          image_url: p.image_url || null,
+          nutrition_per_100g: {
+            calories: n['energy-kcal_100g'] || undefined,
+            protein: n.proteins_100g || undefined,
+            carbs: n.carbohydrates_100g || undefined,
+            fat: n.fat_100g || undefined,
+            sugar: n.sugars_100g || undefined,
+            sodium: n.sodium_100g ? n.sodium_100g * 1000 : undefined,
+            fiber: n.fiber_100g || undefined,
+          },
+          ingredients_text: p.ingredients_text || null,
+          score: scored.score,
+          grade: scored.grade,
+          nova_group: scored.nova_group,
+          detected_additives: scored.detected_additives.map(a => a.name),
+        }
+      })
+      .slice(0, maxAlternatives)
+  } catch (error: any) {
+    console.error('OFF by ingredients error:', error.message)
+    return []
+  }
+}
+
 export interface WhyBetter {
   metric: string
   current: string
@@ -296,7 +372,25 @@ export async function findHealthierAlternatives(
 
   // 2. Fetch similar products from Open Food Facts
   const searchCategory = currentProduct.category || currentProduct.name.split(' ')[0]
-  const fetchedProducts = await fetchFromOpenFoodFacts(searchCategory, 30)
+  let fetchedProducts = await fetchFromOpenFoodFacts(searchCategory, 30)
+
+  // 2b. Fallback: search by top ingredients when category search returns nothing
+  if (fetchedProducts.length === 0 && currentProduct.ingredients_text) {
+    console.log('Category search empty, trying ingredient-based search...')
+    const byIngredients = await searchOFFByIngredients(currentProduct.ingredients_text, 30)
+    if (byIngredients.length > 0) {
+      // Convert back to FetchedProduct format
+      fetchedProducts = byIngredients.map(a => ({
+        barcode: a.barcode,
+        name: a.name,
+        brand: a.brand,
+        category: a.category,
+        image_url: a.image_url,
+        nutrition_per_100g: a.nutrition_per_100g,
+        ingredients_text: a.ingredients_text,
+      }))
+    }
+  }
 
   if (fetchedProducts.length === 0) {
     return {

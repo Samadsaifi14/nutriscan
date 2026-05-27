@@ -1,7 +1,7 @@
 // HealthOX Health Engine - Public API
 
 export { scoreProduct, scoreNutrition, scoreAdditives, classifyNOVA } from "./scorer";
-export { detectAdditives, ADDITIVES_DB, getAdditivesByRisk, getAdditivesByCategory } from "./additives-db";
+export { detectAdditives, ADDITIVES_DB, getAdditivesByRisk, getAdditivesByCategory, getCategoryWarnings } from "./additives-db";
 export { findHealthierAlternatives, ALTERNATIVES_DB } from "./alternatives";
 
 export type {

@@ -430,3 +430,59 @@ export function getAdditivesByRisk(risk: RiskLevel): Additive[] {
 export function getAdditivesByCategory(category: Additive["category"]): Additive[] {
   return ADDITIVES_DB.filter(a => a.category === category);
 }
+
+// Category-based probable harmful ingredients
+// Maps product categories to commonly found harmful additives
+export const CATEGORY_WARNINGS: Record<string, string[]> = {
+  noodles: ["MSG (E621)", "TBHQ (E319)", "Palm Oil", "Refined Flour / Maida", "Sodium Benzoate (E211)"],
+  biscuits: ["Refined Flour / Maida", "Palm Oil", "High Fructose Corn Syrup", "Artificial Flavors", "Trans Fat"],
+  chips: ["Palm Oil", "Artificial Flavors", "MSG (E621)", "High Fructose Corn Syrup", "TBHQ (E319)", "Trans Fat"],
+  namkeen: ["Palm Oil", "MSG (E621)", "Artificial Flavors", "TBHQ (E319)", "Trans Fat"],
+  cold_drink: ["Phosphoric Acid (E338)", "Aspartame (E951)", "Acesulfame K (E950)", "Sodium Benzoate (E211)", "High Fructose Corn Syrup"],
+  juice: ["High Fructose Corn Syrup", "Sodium Benzoate (E211)", "Artificial Flavors", "Tartrazine (E102)"],
+  bread: ["Refined Flour / Maida", "Potassium Sorbate (E202)", "Calcium Propionate (E282)"],
+  dairy: ["Carrageenan (E407)", "Artificial Flavors", "Palm Oil"],
+  yogurt: ["Carrageenan (E407)", "Modified Corn Starch", "Artificial Flavors", "High Fructose Corn Syrup"],
+  ice_cream: ["Carrageenan (E407)", "High Fructose Corn Syrup", "Artificial Flavors", "Palm Oil"],
+  chocolate: ["Palm Oil", "Refined Flour / Maida", "Artificial Flavors", "Lecithin (E322)"],
+  cereal: ["High Fructose Corn Syrup", "BHT (E321)", "Artificial Flavors", "Maltodextrin"],
+  pasta: ["Refined Flour / Maida"],
+  sauce: ["Sodium Benzoate (E211)", "Potassium Sorbate (E202)", "High Fructose Corn Syrup", "Artificial Flavors", "MSG (E621)"],
+  cooking_oil: ["Palm Oil", "BHT (E321)", "TBHQ (E319)"],
+  tea: [],
+  coffee: [],
+  energy_drink: ["Phosphoric Acid (E338)", "Aspartame (E951)", "Acesulfame K (E950)", "Sodium Benzoate (E211)"],
+  protein: ["Artificial Flavors", "Sucralose (E955)", "Aspartame (E951)"],
+  pickle: ["Sodium Benzoate (E211)", "Potassium Sorbate (E202)", "Tartrazine (E102)"],
+  jam: ["High Fructose Corn Syrup", "Sodium Benzoate (E211)", "Artificial Flavors"],
+  cake: ["Refined Flour / Maida", "Palm Oil", "Artificial Flavors", "High Fructose Corn Syrup"],
+  pizza: ["Refined Flour / Maida", "Palm Oil", "Sodium Nitrite (E250)"],
+  soup: ["MSG (E621)", "Artificial Flavors", "High Fructose Corn Syrup"],
+  health_drink: ["High Fructose Corn Syrup", "Maltodextrin", "Palm Oil", "Artificial Flavors"],
+  paneer: [],
+  eggs: [],
+  rice: [],
+  dal: [],
+  flour: [],
+  ghee: [],
+  honey: [],
+  milk: [],
+  atta: [],
+  rusk: ["Refined Flour / Maida", "Palm Oil", "Artificial Flavors"],
+  sugar: [],
+}
+
+export function getCategoryWarnings(category: string): Additive[] {
+  const lower = category?.toLowerCase() || ""
+  const additiveNames = CATEGORY_WARNINGS[lower] || []
+  if (additiveNames.length === 0) return []
+
+  return ADDITIVES_DB.filter(a => {
+    const aLower = a.name.toLowerCase()
+    return additiveNames.some(warn => {
+      const wLower = warn.toLowerCase()
+      return aLower.includes(wLower) || wLower.includes(aLower) ||
+        a.aliases.some(alias => wLower.includes(alias))
+    })
+  })
+}

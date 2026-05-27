@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { analyzeBarcode } from '@/lib/barcode-intelligence'
+import { analyzeBarcode, inferCategory } from '@/lib/barcode-intelligence'
 import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
 import { lookupWithCache } from '@/lib/off-india-import'
 import { callGemini } from '@/lib/gemini'
@@ -93,7 +93,64 @@ export async function GET(req: NextRequest) {
     console.log('Open Food Facts failed:', e)
   }
 
-  // Layer 3 — UPC Item DB (for US products that may ship to India)
+  // Layer 3 — OFF keyword search by brand+category
+  try {
+    const barcodeAnalysis = analyzeBarcode(trimmedBarcode)
+    const searchBrand = barcodeAnalysis.brand
+    const searchCategory = barcodeAnalysis.category || (searchBrand ? inferCategory(searchBrand, searchBrand) : null)
+
+    if (searchBrand && searchCategory) {
+      console.log(`Trying OFF keyword search: ${searchBrand} ${searchCategory}`)
+      const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchBrand + ' ' + searchCategory)}&search_simple=1&action=process&json=1&page_size=5`
+      const offSearchRes = await fetch(searchUrl, {
+        headers: { 'User-Agent': 'HealthOX/1.0 (healthox@example.com)' },
+      })
+
+      if (offSearchRes.ok) {
+        const searchData = await offSearchRes.json()
+        const products: any[] = searchData.products || []
+
+        if (products.length > 0) {
+          const best = products[0]
+          const n = best.nutriments || {}
+
+          const product = {
+            barcode: trimmedBarcode,
+            name: best.product_name || best.product_name_en || `${searchBrand} ${searchCategory}`,
+            brand: best.brands || searchBrand,
+            category: best.categories || searchCategory,
+            country_of_origin: best.countries_tags?.[0]?.replace('en:', '') || null,
+            image_url: best.image_front_url || best.image_url || null,
+            calories_per_100g: parseNum(n['energy-kcal_100g'] || n['energy-kcal']),
+            protein_per_100g: parseNum(n.proteins_100g || n.proteins),
+            carbs_per_100g: parseNum(n.carbohydrates_100g || n.carbohydrates),
+            fat_per_100g: parseNum(n.fat_100g || n.fat),
+            sugar_per_100g: parseNum(n.sugars_100g || n.sugars),
+            sodium_per_100g: parseSodium(n.sodium_100g || n.sodium, n.salt_100g),
+            fiber_per_100g: parseNum(n.fiber_100g || n.fiber),
+            serving_size_g: parseNum(best.serving_quantity),
+            ingredients_text: best.ingredients_text || null,
+            allergens: parseList(best.allergens_tags),
+            additives: parseList(best.additives_tags),
+            source: 'open_food_facts_search',
+          }
+
+          cacheProduct(product)
+          console.log('Found via OFF keyword search:', product.name)
+          return NextResponse.json({
+            success: true,
+            source: 'open_food_facts_search',
+            confidence: 'high' as Confidence,
+            data: formatProduct(product),
+          })
+        }
+      }
+    }
+  } catch (e) {
+    console.log('OFF keyword search failed:', e)
+  }
+
+  // Layer 4 — UPC Item DB (for US products that may ship to India)
   try {
     console.log('Trying UPC Item DB...')
     const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${trimmedBarcode}`)
@@ -143,7 +200,7 @@ export async function GET(req: NextRequest) {
     console.log('UPC Item DB failed:', e)
   }
 
-  // Layer 4 — Indian products: detect and try web search
+  // Layer 5 — Indian products: detect and try web search
   const analysis = analyzeBarcode(trimmedBarcode)
   if (analysis.isIndian) {
     console.log('Detected Indian barcode, trying web search for:', analysis.searchHint)
@@ -160,7 +217,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Layer 5 — Check community_products (approved ones)
+  // Layer 6 — Check community_products (approved ones)
   try {
     console.log('Trying community_products...')
     const { data: community } = await supabaseAdmin
@@ -205,7 +262,77 @@ export async function GET(req: NextRequest) {
     console.log('Community products check failed:', e)
   }
 
-  // Layer 6 — AI estimation using Gemini
+  // Layer 7 — Groq category nutrition profile (free, fast fallback before Gemini)
+  try {
+    const analysis7 = analyzeBarcode(trimmedBarcode)
+    const cat = analysis7.category || (analysis7.brand ? inferCategory(analysis7.brand, analysis7.brand) : null)
+    if (cat) {
+      console.log(`Trying Groq category nutrition for: ${cat}`)
+      const groqResult = await getCategoryNutrition(cat, trimmedBarcode, analysis7.brand)
+      if (groqResult) {
+        await supabaseAdmin.from('products').upsert({
+          barcode: trimmedBarcode,
+          name: groqResult.name,
+          brand: groqResult.brand,
+          category: cat,
+          country_of_origin: analysis7.isIndian ? 'India' : null,
+          image_url: null,
+          calories: groqResult.nutrition.calories,
+          protein: groqResult.nutrition.protein,
+          fat: groqResult.nutrition.fat,
+          carbohydrates: groqResult.nutrition.carbs,
+          sugar: groqResult.nutrition.sugar,
+          fiber: groqResult.nutrition.fiber,
+          sodium: groqResult.nutrition.sodium,
+          ingredients_text: groqResult.ingredients_text,
+          health_score: null,
+          health_grade: null,
+          nova_group: 4,
+          source: 'groq_category_estimated',
+          last_updated: new Date().toISOString(),
+        }, { onConflict: 'barcode', ignoreDuplicates: false })
+
+        fetch(`${req.nextUrl.origin}/api/enrich`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ barcode: trimmedBarcode, name: groqResult.name, brand: groqResult.brand, confidence: 'estimated' }),
+        }).catch(() => {})
+
+        console.log('Groq category estimated:', groqResult.name)
+        return NextResponse.json({
+          success: true,
+          source: 'groq_category_estimated',
+          confidence: 'estimated' as Confidence,
+          data: {
+            barcode: trimmedBarcode,
+            name: groqResult.name,
+            brand: groqResult.brand,
+            category: cat,
+            country_of_origin: analysis7.isIndian ? 'India' : null,
+            image_url: null,
+            source: 'groq_category_estimated',
+            nutrition: {
+              calories: groqResult.nutrition.calories || 0,
+              protein: groqResult.nutrition.protein || 0,
+              carbs: groqResult.nutrition.carbs || 0,
+              fat: groqResult.nutrition.fat || 0,
+              sugar: groqResult.nutrition.sugar || null,
+              sodium: groqResult.nutrition.sodium || null,
+              fiber: groqResult.nutrition.fiber || null,
+            },
+            serving_size_g: null,
+            ingredients_text: groqResult.ingredients_text || null,
+            allergens: [],
+            additives: [],
+          },
+        })
+      }
+    }
+  } catch (e) {
+    console.log('Groq category nutrition failed:', e)
+  }
+
+  // Layer 8 — AI estimation using Gemini
   // This guarantees every barcode returns something useful
   console.log('Trying AI estimation for barcode:', trimmedBarcode)
   try {
@@ -284,6 +411,75 @@ export async function GET(req: NextRequest) {
     barcode,
     message: 'This product is not in our database yet. Contribute it and help others!',
   })
+}
+
+// ─── Groq Category Nutrition ────────────────────────────────────────────────
+
+async function getCategoryNutrition(category: string, barcode: string, brandHint: string | null): Promise<AIEstimate | null> {
+  const apiKey = process.env.GROQ_API_KEY
+  if (!apiKey) return null
+
+  try {
+    const prompt = `You are a food database. Give me typical nutrition for a ${category} product.
+Brand: ${brandHint || 'Unknown'}
+Return ONLY valid JSON (no markdown, no code fences):
+{
+  "name": "typical ${category} product name",
+  "brand": "${brandHint || 'null'}",
+  "nutrition": {
+    "calories": number per 100g,
+    "protein": number per 100g,
+    "carbs": number per 100g,
+    "fat": number per 100g,
+    "sugar": number per 100g or null,
+    "sodium": number mg per 100g or null,
+    "fiber": number per 100g or null
+  },
+  "ingredients_text": "typical comma-separated ingredients for this category or null"
+}`
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 500,
+      }),
+    })
+
+    if (!response.ok) return null
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content
+    if (!content) return null
+
+    const cleaned = content.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+    const parsed = JSON.parse(cleaned)
+
+    return {
+      name: parsed.name || `${category} product`,
+      brand: parsed.brand || brandHint,
+      isIndian: true,
+      nutrition: {
+        calories: parsed.nutrition?.calories ?? 0,
+        protein: parsed.nutrition?.protein ?? 0,
+        carbs: parsed.nutrition?.carbs ?? 0,
+        fat: parsed.nutrition?.fat ?? 0,
+        sugar: parsed.nutrition?.sugar ?? null,
+        sodium: parsed.nutrition?.sodium ?? null,
+        fiber: parsed.nutrition?.fiber ?? null,
+      },
+      category: category,
+      ingredients_text: parsed.ingredients_text || null,
+    }
+  } catch (err: any) {
+    console.log('Groq category nutrition error:', err.message)
+    return null
+  }
 }
 
 // ─── AI Estimation ──────────────────────────────────────────────────────────
