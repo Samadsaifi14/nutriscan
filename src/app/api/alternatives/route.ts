@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { findHealthierAlternatives } from '@/lib/alternatives'
+import { findCuratedAlternatives, type CuratedAlternative } from '@/lib/curated-alternatives'
 
 const RequestSchema = z.object({
   name: z.string().min(1),
@@ -19,15 +18,11 @@ const RequestSchema = z.object({
     fiber: z.number().optional(),
   }),
   ingredients_text: z.string().nullable(),
+  current_score: z.number().optional(),
 })
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await req.json()
     const parsed = RequestSchema.safeParse(body)
 
@@ -38,12 +33,68 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const result = await findHealthierAlternatives(parsed.data)
+    const hasNutrition = Object.values(parsed.data.nutrition_per_100g).some(v => v !== undefined && v !== null && v > 0)
 
-    return NextResponse.json({
+    // ── Tier 1: Dynamic alternatives from Open Food Facts ──────────────
+    // Only works when we have nutrition data and category
+    let dynamicResult: any = null
+    if (hasNutrition) {
+      try {
+        const result = await findHealthierAlternatives(parsed.data)
+        if (result.alternatives.length > 0) {
+          dynamicResult = {
+            alternatives: result.alternatives,
+            why_better: result.why_better,
+            current_score: result.current_score,
+            current_grade: result.current_grade,
+            source: 'dynamic',
+          }
+        }
+      } catch (err: any) {
+        console.warn('Dynamic alternatives failed:', err.message)
+      }
+    }
+
+    // ── Tier 2: Curated Indian alternatives ────────────────────────────
+    let curatedResult: CuratedAlternative[] = []
+    try {
+      curatedResult = findCuratedAlternatives(
+        parsed.data.name,
+        parsed.data.category,
+        dynamicResult?.current_score
+      )
+    } catch (err: any) {
+      console.warn('Curated alternatives failed:', err.message)
+    }
+
+    // ── Assemble response ──────────────────────────────────────────────
+    const response: any = {
       success: true,
-      data: result,
-    })
+      data: {
+        alternatives: [],
+        why_better: [],
+        current_score: dynamicResult?.current_score ?? null,
+        current_grade: dynamicResult?.current_grade ?? null,
+        source: 'none',
+      },
+    }
+
+    if (dynamicResult) {
+      response.data = {
+        ...dynamicResult,
+        curated_fallback: curatedResult.length > 0 ? curatedResult : undefined,
+      }
+    } else if (curatedResult.length > 0) {
+      response.data = {
+        alternatives: curatedResult,
+        why_better: [],
+        current_score: null,
+        current_grade: null,
+        source: 'curated',
+      }
+    }
+
+    return NextResponse.json(response)
   } catch (err: any) {
     console.error('Alternatives error:', err.message)
     return NextResponse.json(

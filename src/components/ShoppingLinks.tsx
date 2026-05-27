@@ -5,9 +5,10 @@ import { PLATFORM_INFO } from '@/lib/shopping-links'
 interface ShoppingLinksProps {
   productName: string
   brand?: string
+  compact?: boolean
 }
 
-export function ShoppingLinks({ productName, brand }: ShoppingLinksProps) {
+export function ShoppingLinks({ productName, brand, compact }: ShoppingLinksProps) {
   const searchTerm = `${brand || ''} ${productName}`.trim()
   
   const links = [
@@ -28,6 +29,28 @@ export function ShoppingLinks({ productName, brand }: ShoppingLinksProps) {
       url: `https://www.swiggy.com/instamart/search?q=${encodeURIComponent(searchTerm)}` 
     },
   ]
+
+  if (compact) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {links.map((link) => {
+          const info = PLATFORM_INFO[link.platform]
+          return (
+            <a
+              key={link.platform}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#1e242d] border border-[#2a3545] hover:border-emerald-500/30 transition-all text-[10px]"
+            >
+              <span>{info.icon}</span>
+              <span className="text-[#f0f4f8]">{info.name}</span>
+            </a>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-2">

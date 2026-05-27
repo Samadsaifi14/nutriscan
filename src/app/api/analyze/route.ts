@@ -79,6 +79,58 @@ export async function POST(req: NextRequest) {
 
     const { product, userProfile } = parsed.data
 
+    // Detect if this is AI-estimated / low-confidence data
+    const hasRealNutrition = [
+      product.nutrition.calories,
+      product.nutrition.protein,
+      product.nutrition.carbs,
+      product.nutrition.fat,
+    ].some(v => v !== undefined && v !== null && v > 0)
+
+    if (!hasRealNutrition) {
+      console.log(`⚠️ ${product.name} has no real nutrition data — returning moderate default`)
+      return NextResponse.json({
+        success: true,
+        data: {
+          health_score: 5.0,
+          health_rating: 'moderate',
+          health_score_breakdown: { nutrition_score: 5, ingredient_safety_score: 5, processing_score: 5, overall: 5 },
+          summary: `${product.name} has limited nutrition data available. The information shown is AI-estimated and may not reflect the actual product. Please verify with the product label.`,
+          detailed_breakdown: {
+            calories: 'Estimate only',
+            protein: 'Estimate only',
+            sugar: 'Estimate only',
+            sodium: 'Estimate only',
+            fat: 'Estimate only',
+            fiber: 'Estimate only',
+            processing_level: 'unknown',
+            overall_nutrient_density: 'unknown',
+          },
+          safe_consumption: {
+            amount: null,
+            frequency: 'Verify with label',
+            notes: 'Nutrition data is AI-estimated. Check the actual product label for accurate information.',
+            personalized_for_user: null,
+          },
+          harmful_ingredients: [],
+          ingredient_warnings: [],
+          positives: ['Nutrition data is being enriched in the background. Check back later for more accurate analysis.'],
+          long_term_risks: ['Unable to assess — nutrition data is AI-estimated and may not be accurate'],
+          healthier_alternatives: [],
+          fssai_compliance: 'unknown',
+          diabetic_suitability: 'consume_with_caution',
+          bp_suitability: 'consume_with_caution',
+          child_suitability: 'consume_with_caution',
+          pregnancy_suitability: 'consume_with_caution',
+          analyzed_at: new Date().toISOString(),
+          personalized: !!userProfile,
+          scoring_method: 'estimated_only',
+          data_quality: 'estimated',
+        },
+        estimated: true,
+      })
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // PHASE 1: Local deterministic scoring (primary)
     // ─────────────────────────────────────────────────────────────────────────
@@ -179,7 +231,7 @@ export async function POST(req: NextRequest) {
             })),
             summary: localResult.summary,
             analyzed_at: new Date().toISOString(),
-            personalized: !!profile,
+          personalized: !!userProfile,
             scoring_method: 'local_cached',
             _from_cache: true,
           }
@@ -304,6 +356,7 @@ export async function POST(req: NextRequest) {
       analyzed_at: new Date().toISOString(),
       personalized: !!profile,
       scoring_method: aiFailed ? 'local_only' : 'hybrid',
+      data_quality: 'verified',
     }
 
     // ─────────────────────────────────────────────────────────────────────────

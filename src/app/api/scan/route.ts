@@ -3,6 +3,9 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { analyzeBarcode } from '@/lib/barcode-intelligence'
 import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
 import { lookupWithCache } from '@/lib/off-india-import'
+import { callGemini } from '@/lib/gemini'
+
+type Confidence = 'exact' | 'high' | 'estimated' | 'low' | 'none'
 
 export async function GET(req: NextRequest) {
   const barcode = req.nextUrl.searchParams.get('barcode')
@@ -10,7 +13,7 @@ export async function GET(req: NextRequest) {
   const trimmedBarcode = barcode?.trim()
   if (!trimmedBarcode || trimmedBarcode.length < 6) {
     return NextResponse.json(
-      { success: false, error: 'Invalid barcode' },
+      { success: false, error: 'Invalid barcode', confidence: 'none' as Confidence },
       { status: 400 }
     )
   }
@@ -30,6 +33,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         success: true,
         source: 'cache',
+        confidence: 'exact' as Confidence,
         data: formatProduct(cached),
       })
     }
@@ -37,17 +41,16 @@ export async function GET(req: NextRequest) {
     console.log('Supabase check failed:', e)
   }
 
-  // Layer 2 — Open Food Facts
+  // Layer 2 — Open Food Facts exact barcode lookup
   try {
     console.log('Trying Open Food Facts...')
-      const offRes = await fetch(
+    const offRes = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${trimmedBarcode}.json`,
       { headers: { 'User-Agent': 'HealthOX/1.0 (healthox@example.com)' } }
     )
 
     if (offRes.ok) {
       const offData = await offRes.json()
-      console.log('OFF status:', offData.status)
 
       if (offData.status === 1 && offData.product) {
         const p = offData.product
@@ -81,6 +84,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
           success: true,
           source: 'open_food_facts',
+          confidence: 'high' as Confidence,
           data: formatProduct(product),
         })
       }
@@ -93,17 +97,16 @@ export async function GET(req: NextRequest) {
   try {
     console.log('Trying UPC Item DB...')
     const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${trimmedBarcode}`)
-    
+
     if (upcRes.ok) {
       const upcData = await upcRes.json()
-      
+
       if (upcData.items && upcData.items.length > 0) {
         const item = upcData.items[0]
-        
-        // Try to extract nutrition from description
+
         const desc = (item.description || '').toLowerCase()
         const nutrition = extractNutrition(desc)
-        
+
         const product = {
           barcode,
           name: item.title || 'Unknown Product',
@@ -124,13 +127,14 @@ export async function GET(req: NextRequest) {
           additives: [],
           source: 'upc_item_db',
         }
-        
+
         cacheProduct(product)
-        
+
         console.log('Found on UPC Item DB:', product.name)
         return NextResponse.json({
           success: true,
           source: 'upc_item_db',
+          confidence: 'estimated' as Confidence,
           data: formatProduct(product),
         })
       }
@@ -143,13 +147,14 @@ export async function GET(req: NextRequest) {
   const analysis = analyzeBarcode(trimmedBarcode)
   if (analysis.isIndian) {
     console.log('Detected Indian barcode, trying web search for:', analysis.searchHint)
-    
+
     const webResult = await searchIndianProductWeb(analysis.searchHint, analysis.brand)
     if (webResult) {
       cacheProduct(webResult)
       return NextResponse.json({
         success: true,
         source: 'web_search',
+        confidence: 'estimated' as Confidence,
         data: formatProduct(webResult),
       })
     }
@@ -192,6 +197,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         success: true,
         source: 'community',
+        confidence: 'high' as Confidence,
         data: formatProduct(product),
       })
     }
@@ -199,15 +205,166 @@ export async function GET(req: NextRequest) {
     console.log('Community products check failed:', e)
   }
 
-  // Layer 6 — Not found anywhere
+  // Layer 6 — AI estimation using Gemini
+  // This guarantees every barcode returns something useful
+  console.log('Trying AI estimation for barcode:', trimmedBarcode)
+  try {
+    const aiResult = await estimateProductWithAI(trimmedBarcode, analysis.brand, analysis.isIndian)
+
+    if (aiResult) {
+      // Cache the AI-estimated product for future lookups
+      await supabaseAdmin.from('products').upsert({
+        barcode: trimmedBarcode,
+        name: aiResult.name,
+        brand: aiResult.brand,
+        category: aiResult.category,
+        country_of_origin: aiResult.isIndian ? 'India' : null,
+        image_url: null,
+        calories: aiResult.nutrition.calories,
+        protein: aiResult.nutrition.protein,
+        fat: aiResult.nutrition.fat,
+        carbohydrates: aiResult.nutrition.carbs,
+        sugar: aiResult.nutrition.sugar,
+        fiber: aiResult.nutrition.fiber,
+        sodium: aiResult.nutrition.sodium,
+        ingredients_text: aiResult.ingredients_text,
+        health_score: null,
+        health_grade: null,
+        nova_group: 4,
+        source: 'ai_estimated',
+        last_updated: new Date().toISOString(),
+      }, { onConflict: 'barcode', ignoreDuplicates: false })
+
+      // Fire background enrichment
+      fetch(`${req.nextUrl.origin}/api/enrich`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcode: trimmedBarcode, name: aiResult.name, brand: aiResult.brand, confidence: 'low' }),
+      }).catch(() => {})
+
+      console.log('AI estimated product:', aiResult.name)
+      return NextResponse.json({
+        success: true,
+        source: 'ai_estimated',
+        confidence: 'low' as Confidence,
+        data: {
+          barcode: trimmedBarcode,
+          name: aiResult.name,
+          brand: aiResult.brand,
+          category: aiResult.category,
+          country_of_origin: aiResult.isIndian ? 'India' : null,
+          image_url: null,
+          source: 'ai_estimated',
+          nutrition: {
+            calories: aiResult.nutrition.calories || 0,
+            protein: aiResult.nutrition.protein || 0,
+            carbs: aiResult.nutrition.carbs || 0,
+            fat: aiResult.nutrition.fat || 0,
+            sugar: aiResult.nutrition.sugar || null,
+            sodium: aiResult.nutrition.sodium || null,
+            fiber: aiResult.nutrition.fiber || null,
+          },
+          serving_size_g: null,
+          ingredients_text: aiResult.ingredients_text || null,
+          allergens: [],
+          additives: [],
+        },
+      })
+    }
+  } catch (e) {
+    console.log('AI estimation failed:', e)
+  }
+
+  // Final — Not found anywhere
   console.log('Product not found for barcode:', barcode)
   return NextResponse.json({
     success: false,
     error: 'PRODUCT_NOT_FOUND',
+    confidence: 'none' as Confidence,
     barcode,
     message: 'This product is not in our database yet. Contribute it and help others!',
   })
 }
+
+// ─── AI Estimation ──────────────────────────────────────────────────────────
+
+interface AIEstimate {
+  name: string
+  brand: string | null
+  isIndian: boolean
+  nutrition: { calories: number; protein: number; carbs: number; fat: number; sugar: number | null; sodium: number | null; fiber: number | null }
+  category: string | null
+  ingredients_text: string | null
+}
+
+async function estimateProductWithAI(barcode: string, brandHint: string | null, isIndian: boolean): Promise<AIEstimate | null> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    console.log('No Gemini API key for AI estimation')
+    return null
+  }
+
+  try {
+    const prompt = `You are a food product database. A barcode was scanned and no database has information on it.
+
+Barcode: ${barcode}
+Brand hint: ${brandHint || 'Unknown'}
+Country prefix: ${isIndian ? '890 (India)' : 'International'}
+Barcode prefix analysis: ${barcode.substring(0, 4)}...
+
+Based on the barcode prefix pattern and country, estimate the MOST LIKELY product this could be.
+- If a brand is known from the barcode prefix, suggest their most common product
+- Be specific, not generic
+- Provide realistic nutrition estimates for this type of product
+- If this is an Indian 890 barcode with a known brand prefix, be confident in your estimate
+
+Return ONLY valid JSON (no markdown, no code fences):
+{
+  "name": "specific product name",
+  "brand": "brand name or null",
+  "isIndian": true,
+  "category": "product category like biscuits, noodles, chips, bread, etc.",
+  "nutrition": {
+    "calories": <number per 100g>,
+    "protein": <number per 100g>,
+    "carbs": <number per 100g>,
+    "fat": <number per 100g>,
+    "sugar": <number per 100g or null>,
+    "sodium": <number mg per 100g or null>,
+    "fiber": <number per 100g or null>
+  },
+  "ingredients_text": "comma-separated list of likely ingredients or null"
+}`
+
+    const result = await callGemini(prompt, undefined, { temperature: 0.2, maxTokens: 1000, timeoutMs: 20000, maxRetries: 0 })
+    if (!result?.text) return null
+
+    const cleaned = result.text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+    const parsed = JSON.parse(cleaned)
+
+    return {
+      name: parsed.name || 'Unknown Product',
+      brand: parsed.brand || brandHint,
+      isIndian: parsed.isIndian ?? isIndian,
+      nutrition: {
+        calories: parsed.nutrition?.calories ?? 0,
+        protein: parsed.nutrition?.protein ?? 0,
+        carbs: parsed.nutrition?.carbs ?? 0,
+        fat: parsed.nutrition?.fat ?? 0,
+        sugar: parsed.nutrition?.sugar ?? null,
+        sodium: parsed.nutrition?.sodium ?? null,
+        fiber: parsed.nutrition?.fiber ?? null,
+      },
+      category: parsed.category || null,
+      ingredients_text: parsed.ingredients_text || null,
+    }
+  } catch (err: any) {
+    console.log('AI estimation error:', err.message)
+    return null
+  }
+}
+
+// ─── Helper functions (unchanged from original) ─────────────────────────────
 
 function parseNum(val: any): number | null {
   if (val === undefined || val === null || val === '') return null
@@ -218,11 +375,11 @@ function parseNum(val: any): number | null {
 function parseSodium(sodiumVal: any, saltVal: any): number | null {
   if (sodiumVal !== undefined && sodiumVal !== null && sodiumVal !== '') {
     const n = parseFloat(String(sodiumVal))
-    if (!isNaN(n)) return Math.round(n * 1000) // convert g to mg
+    if (!isNaN(n)) return Math.round(n * 1000)
   }
   if (saltVal !== undefined && saltVal !== null && saltVal !== '') {
     const salt = parseFloat(String(saltVal))
-    if (!isNaN(salt)) return Math.round(salt * 1000 * 0.4) // salt (g) → sodium (mg): multiply by 0.4
+    if (!isNaN(salt)) return Math.round(salt * 1000 * 0.4)
   }
   return null
 }
@@ -239,29 +396,23 @@ function extractNutrition(desc: string): {
   fat: number | null
   sugar: number | null
 } {
-  const result: {
-    calories: number | null
-    protein: number | null
-    carbs: number | null
-    fat: number | null
-    sugar: number | null
-  } = { calories: null, protein: null, carbs: null, fat: null, sugar: null }
-  
+  const result: any = { calories: null, protein: null, carbs: null, fat: null, sugar: null }
+
   const energyMatch = desc.match(/energy\s*(\d+)\s*kcal/i)
   if (energyMatch) result.calories = parseInt(energyMatch[1], 10)
-  
+
   const proteinMatch = desc.match(/protein\s*(\d+(?:\.\d+)?)\s*g/i)
   if (proteinMatch) result.protein = parseFloat(proteinMatch[1])
-  
+
   const carbsMatch = desc.match(/carbohydrate[s]?\s*(\d+(?:\.\d+)?)\s*g/i)
   if (carbsMatch) result.carbs = parseFloat(carbsMatch[1])
-  
+
   const fatMatch = desc.match(/total\s*fat\s*(\d+(?:\.\d+)?)\s*g/i)
   if (fatMatch) result.fat = parseFloat(fatMatch[1])
-  
+
   const sugarMatch = desc.match(/sugar[s]?\s*(\d+(?:\.\d+)?)\s*g/i)
   if (sugarMatch) result.sugar = parseFloat(sugarMatch[1])
-  
+
   return result
 }
 
@@ -293,7 +444,6 @@ function formatProduct(p: any) {
 
 async function cacheProduct(product: any) {
   try {
-    // Compute health score
     const nutrition: NutritionPer100g = {
       calories: product.calories_per_100g || 0,
       protein: product.protein_per_100g || 0,
@@ -302,12 +452,10 @@ async function cacheProduct(product: any) {
       sugar: product.sugar_per_100g || 0,
       sodium: product.sodium_per_100g || 0,
     }
-    
+
     const result = scoreProduct(nutrition, product.ingredients_text || '')
-    
-    // Detect harmful additives
     const harmfulAdditives = detectHarmfulAdditives(product.ingredients_text || '')
-    
+
     await supabaseAdmin.from('products').upsert({
       barcode: product.barcode,
       name: product.name,
@@ -343,10 +491,10 @@ function detectHarmfulAdditives(ingredientsText: string): string[] {
     'bha', 'bht', 'tbhq', 'tartrazine', 'sunset yellow', 'allura red',
     'erythrosine', 'aspartame', 'acesulfame', 'sucralose',
     'carrageenan', 'polysorbate', 'msg', 'monosodium glutamate',
-    'high fructose corn syrup', 'maltodextrin', 'trans fat', 
+    'high fructose corn syrup', 'maltodextrin', 'trans fat',
     'hydrogenated oil', 'partially hydrogenated',
   ]
-  
+
   if (!ingredientsText) return []
   const lower = ingredientsText.toLowerCase()
   return harmful.filter(additive => lower.includes(additive))
@@ -354,25 +502,22 @@ function detectHarmfulAdditives(ingredientsText: string): string[] {
 
 async function searchIndianProductWeb(searchHint: string, brand: string | null): Promise<any | null> {
   const tavilyKey = process.env.TAVILY_API_KEY
-  
+
   if (!tavilyKey) {
     console.log('No Tavily API key')
     return null
   }
-  
+
   try {
-    // Search for product on Indian e-commerce sites
-    const searchQuery = brand 
+    const searchQuery = brand
       ? `${brand} ${searchHint.split(' ').slice(2).join(' ')} nutrition ingredients site:bigbasket.com OR site:blinkit.com`
       : `${searchHint} nutrition ingredients site:bigbasket.com OR site:blinkit.com`
-    
+
     console.log('Tavily search query:', searchQuery)
-    
+
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         api_key: tavilyKey,
         query: searchQuery,
@@ -381,31 +526,27 @@ async function searchIndianProductWeb(searchHint: string, brand: string | null):
         include_raw_content: false,
       }),
     })
-    
+
     if (!response.ok) {
       console.log('Tavily API error:', response.status)
       return null
     }
-    
+
     const data = await response.json()
-    
+
     if (!data.results || data.results.length === 0) {
       console.log('No web search results')
       return null
     }
-    
-    // Try to find a relevant result from Indian e-commerce
-    const relevantResult = data.results.find((r: any) => 
-      r.url?.includes('bigbasket') || 
+
+    const relevantResult = data.results.find((r: any) =>
+      r.url?.includes('bigbasket') ||
       r.url?.includes('blinkit') ||
       r.url?.includes('amazon.in')
     )
-    
+
     if (relevantResult) {
       console.log('Found web result:', relevantResult.title)
-      
-      // We can only get basic info from search - not full nutrition
-      // The user will need to use photo mode for exact nutrition
       return {
         barcode: '',
         name: relevantResult.title || searchHint,
@@ -428,7 +569,7 @@ async function searchIndianProductWeb(searchHint: string, brand: string | null):
         web_url: relevantResult.url,
       }
     }
-    
+
     return null
   } catch (err) {
     console.log('Web search error:', err)

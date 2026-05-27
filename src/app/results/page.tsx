@@ -120,6 +120,7 @@ export default function ResultsPage() {
 const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
   const [scanFailed, setScanFailed] = useState(false)
+  const [scanConfidence, setScanConfidence] = useState<string>('none')
   const [ingredientList, setIngredientList] = useState<Array<{ name: string; status: 'harmful'|'safe'|'unknown' }>>([])
   const [aiInsights, setAiInsights] = useState<Array<any>>([])
   const [aiAnalysis, setAiAnalysis] = useState<any>(null)
@@ -148,6 +149,7 @@ useEffect(() => {
         .then(async (res) => {
           if (res.success && res.data) {
             setScanFailed(false)
+            setScanConfidence(res.confidence || 'high')
             const product = res.data.product || res.data
             
             // Build product data (API nests nutrition under product.nutrition)
@@ -302,17 +304,16 @@ useEffect(() => {
         barcode: payload.product.barcode,
         nutrition_per_100g: payload.product.nutrition,
         ingredients_text: payload.product.ingredients_text,
+        current_score: payload.analysis?.health_score,
       }),
     })
     .then(r => r.json())
     .then(d => {
       if (d?.success && d?.data?.alternatives?.length > 0) {
-        setApiAlternatives(d.data.alternatives.map((a: any) => ({
-          name: a.name,
-          reason: d.data?.why_better?.[0]?.improvement || 'Healthier option',
-          availability: a.brand || 'Available online',
-          type: 'branded',
-        })))
+        // Store full data including scores, nutrition, images
+        setApiAlternatives(d.data)
+      } else if (d?.success && d?.data?.source === 'curated' && d?.data?.alternatives?.length > 0) {
+        setApiAlternatives(d.data)
       }
     })
     .catch(() => {})
@@ -436,12 +437,24 @@ async function handleLogMeal(mealType: string) {
         <div className="flex items-center gap-4">
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-[#7a8fa6] font-medium uppercase tracking-widest mb-1">
-              {product.source === 'gemini_photo' ? '📸 Photo scan' :
+              {product.source === 'ai_estimated' ? '🤖 AI Estimated' :
+               product.source === 'gemini_photo' ? '📸 Photo scan' :
                product.source === 'gemini_vision' ? '👁 Label scan' :
                product.source === 'open_food_facts' ? '🌐 Open Food Facts' : '✅ Database'}
             </p>
             <h1 className="text-xl font-black text-[#f0f4f8] leading-tight">{product.name}</h1>
             {product.brand && <p className="text-sm text-[#7a8fa6] mt-0.5">{product.brand}</p>}
+
+            {scanConfidence === 'low' && (
+              <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                <p className="text-xs font-bold text-amber-400 mb-1">🤖 AI-Estimated Data</p>
+                <p className="text-[11px] text-[#7a8fa6] leading-relaxed">
+                  This product wasn't found in any database. The name and nutrition shown were estimated by AI based on the barcode prefix.
+                  <button onClick={() => router.push(`/contribute?barcode=${product.barcode || scannedBarcode}`)}
+                    className="ml-1 text-amber-400 underline font-medium">Help improve it →</button>
+                </p>
+              </div>
+            )}
 
             {/* Alert badges */}
             <div className="flex flex-wrap gap-2 mt-3">
@@ -955,45 +968,137 @@ async function handleLogMeal(mealType: string) {
                 <p className="text-sm text-[#7a8fa6]">Finding healthier alternatives...</p>
               </div>
             )}
-            {(apiAlternatives && apiAlternatives.length > 0) ? (
+
+            {/* Score comparison bar (only when we have both scores) */}
+            {apiAlternatives?.current_score != null && apiAlternatives?.alternatives?.[0]?.score != null && (
+              <div className="mb-4 p-4 bg-[#161a20] border border-[#2a3545] rounded-2xl">
+                <p className="text-xs font-bold text-[#7a8fa6] mb-3">📊 Score Comparison</p>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-[11px] text-[#7a8fa6]">Current</span>
+                      <span className={`text-[11px] font-bold ${scoreColor(apiAlternatives.current_score) === '#ef4444' ? 'text-red-400' : scoreColor(apiAlternatives.current_score) === '#fb923c' ? 'text-orange-400' : scoreColor(apiAlternatives.current_score) === '#f59e0b' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {apiAlternatives.current_score}/10
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-[#1e2a35] overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${apiAlternatives.current_score * 10}%`, backgroundColor: scoreColor(apiAlternatives.current_score) }} />
+                    </div>
+                  </div>
+                  <span className="text-[#7a8fa6] text-lg">→</span>
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-[11px] text-emerald-400">Alternative</span>
+                      <span className="text-[11px] font-bold text-emerald-400">
+                        {Math.round(apiAlternatives.alternatives[0].score * 10) / 10}/10
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-[#1e2a35] overflow-hidden">
+                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(apiAlternatives.alternatives[0].score * 10, 100)}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic alternatives from API */}
+            {apiAlternatives?.alternatives?.length > 0 && apiAlternatives?.source !== 'curated' && (
               <div className="space-y-3">
                 <p className="text-xs text-[#7a8fa6] px-1">Healthier alternatives found for you</p>
-                {apiAlternatives.map((alt: any, i: number) => (
+                {apiAlternatives.alternatives.map((alt: any, i: number) => (
                   <div key={i} className="bg-[#161a20] border border-[#2a3545] hover:border-emerald-500/20 rounded-2xl p-4 transition-colors">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-base flex-shrink-0">
-                          ✅
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-base flex-shrink-0 overflow-hidden">
+                          {alt.image_url ? <img src={alt.image_url} alt="" className="w-full h-full object-cover" /> : '✅'}
                         </div>
-                        <p className="text-sm font-bold text-[#f0f4f8]">{alt.name}</p>
+                        <div>
+                          <p className="text-sm font-bold text-[#f0f4f8]">{alt.name}</p>
+                          {alt.score != null && (
+                            <p className="text-[11px]" style={{ color: scoreColor(alt.score) }}>
+                              Score: {Math.round(alt.score * 10) / 10}/10 · Grade: {alt.grade || scoreLabel(alt.score)}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <span className="text-[10px] px-2 py-0.5 bg-[#252c38] border border-[#2a3545] text-[#7a8fa6] rounded-full flex-shrink-0">
-                        Branded
+                        {alt.brand || 'Branded'}
                       </span>
                     </div>
-                    {alt.reason && <p className="text-xs text-[#7a8fa6] leading-relaxed ml-11">{alt.reason}</p>}
+
+                    {/* Nutrition comparison chips */}
+                    {alt.nutrition_per_100g && (
+                      <div className="flex flex-wrap gap-2 mt-2 ml-12">
+                        {alt.nutrition_per_100g.calories && (
+                          <span className="px-2 py-0.5 rounded-md bg-[#1e242d] text-[10px] text-[#7a8fa6]">🔥 {alt.nutrition_per_100g.calories} kcal</span>
+                        )}
+                        {alt.nutrition_per_100g.protein && (
+                          <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-[10px] text-blue-400">💪 {alt.nutrition_per_100g.protein}g protein</span>
+                        )}
+                        {alt.nutrition_per_100g.sugar != null && (
+                          <span className="px-2 py-0.5 rounded-md bg-pink-500/10 text-[10px] text-pink-400">🍬 {alt.nutrition_per_100g.sugar}g sugar</span>
+                        )}
+                        {alt.nutrition_per_100g.fiber && (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-[10px] text-emerald-400">🌾 {alt.nutrition_per_100g.fiber}g fiber</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Why better */}
+                    {alt.reason && <p className="text-xs text-[#7a8fa6] leading-relaxed mt-2 ml-12">{alt.reason}</p>}
+
+                    {/* Availability */}
                     {alt.availability && (
-                      <p className="text-[11px] text-emerald-400 ml-11 mt-1.5">
-                        📍 {alt.availability.replace(/_/g, ' ')}
-                      </p>
+                      <p className="text-[11px] text-emerald-400 mt-1.5 ml-12">📍 {alt.availability}</p>
+                    )}
+
+                    {/* Shopping link */}
+                    {alt.name && (
+                      <div className="mt-2 ml-12">
+                        <ShoppingLinks productName={alt.name} brand={alt.brand || undefined} compact />
+                      </div>
                     )}
                   </div>
                 ))}
+
+                {/* Why better detailed comparison */}
+                {apiAlternatives.why_better?.length > 0 && (
+                  <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-2xl">
+                    <p className="text-xs font-bold text-emerald-400 mb-2">📈 What makes them better</p>
+                    <div className="space-y-2">
+                      {apiAlternatives.why_better.map((w: any, i: number) => (
+                        <div key={i} className="flex items-start gap-2 text-[11px] text-[#7a8fa6]">
+                          <span className="text-emerald-400 mt-0.5">✓</span>
+                          <span>{w.metric}: <span className="text-red-400 line-through">{w.current}</span> → <span className="text-emerald-400">{w.alternative}</span> ({w.improvement})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : analysis.healthier_alternatives && analysis.healthier_alternatives.length > 0 ? (
+            )}
+
+            {/* Curated / fallback alternatives (always shown when no dynamic alternatives) */}
+            {(!apiAlternatives?.alternatives || apiAlternatives?.source === 'curated') && apiAlternatives?.alternatives?.length > 0 && (
               <div className="space-y-3">
-                <p className="text-xs text-[#7a8fa6] px-1">Specific Indian alternatives that are better for your health</p>
-                {analysis.healthier_alternatives.map((alt, i) => {
-                  const typeIcon:  Record<string, string> = { branded: '🏷️', homemade: '🏠', whole_food: '🌾' }
+                <p className="text-xs text-[#7a8fa6] px-1">🛒 Curated healthier options</p>
+                {apiAlternatives.alternatives.map((alt: any, i: number) => {
+                  const typeIcon: Record<string, string> = { branded: '🏷️', homemade: '🏠', whole_food: '🌾' }
                   const typeLabel: Record<string, string> = { branded: 'Branded', homemade: 'Homemade', whole_food: 'Whole food' }
+                  const altScore = alt.score
                   return (
                     <div key={i} className="bg-[#161a20] border border-[#2a3545] hover:border-emerald-500/20 rounded-2xl p-4 transition-colors">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-base flex-shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-base flex-shrink-0">
                             {alt.type ? (typeIcon[alt.type] || '✅') : '✅'}
                           </div>
-                          <p className="text-sm font-bold text-[#f0f4f8]">{alt.name}</p>
+                          <div>
+                            <p className="text-sm font-bold text-[#f0f4f8]">{alt.name}</p>
+                            {altScore != null && (
+                              <p className="text-[11px] text-emerald-400">Score: {Math.round(altScore * 10) / 10}/10</p>
+                            )}
+                          </div>
                         </div>
                         {alt.type && (
                           <span className="text-[10px] px-2 py-0.5 bg-[#252c38] border border-[#2a3545] text-[#7a8fa6] rounded-full flex-shrink-0">
@@ -1001,22 +1106,43 @@ async function handleLogMeal(mealType: string) {
                           </span>
                         )}
                       </div>
-                      {alt.reason && <p className="text-xs text-[#7a8fa6] leading-relaxed ml-11">{alt.reason}</p>}
+
+                      {/* Nutrition mini chips */}
+                      {alt.nutrition_per_100g && (
+                        <div className="flex flex-wrap gap-2 mt-2 ml-12">
+                          {alt.nutrition_per_100g.calories && <span className="px-2 py-0.5 rounded-md bg-[#1e242d] text-[10px] text-[#7a8fa6]">🔥 {alt.nutrition_per_100g.calories} kcal</span>}
+                          {alt.nutrition_per_100g.protein && <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-[10px] text-blue-400">💪 {alt.nutrition_per_100g.protein}g</span>}
+                          {alt.nutrition_per_100g.sugar != null && <span className="px-2 py-0.5 rounded-md bg-pink-500/10 text-[10px] text-pink-400">🍬 {alt.nutrition_per_100g.sugar}g</span>}
+                          {alt.nutrition_per_100g.fiber && <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-[10px] text-emerald-400">🌾 {alt.nutrition_per_100g.fiber}g</span>}
+                        </div>
+                      )}
+
+                      {alt.reason && <p className="text-xs text-[#7a8fa6] leading-relaxed mt-2 ml-12">{alt.reason}</p>}
                       {alt.availability && (
-                        <p className="text-[11px] text-emerald-400 ml-11 mt-1.5">
-                          📍 {alt.availability.replace(/_/g, ' ')}
-                        </p>
+                        <p className="text-[11px] text-emerald-400 mt-1.5 ml-12">📍 {alt.availability.replace(/_/g, ' ')}</p>
+                      )}
+
+                      {/* Shopping link for branded items */}
+                      {alt.type === 'branded' && alt.name && (
+                        <div className="mt-2 ml-12">
+                          <ShoppingLinks productName={alt.name} brand={alt.name.split(' ')[0]} compact />
+                        </div>
                       )}
                     </div>
                   )
                 })}
               </div>
-            ) : (
-              <div className="text-center py-12 text-[#7a8fa6]">No alternatives data available</div>
+            )}
+
+            {/* If alternatives is null/loading not yet started, show nothing (loading state above handles it) */}
+            {apiAlternatives === null && !altLoading && (
+              <div className="text-center py-8 text-[#7a8fa6]">
+                <p className="text-sm">Tap the tab again to load alternatives</p>
+              </div>
             )}
 
             {analysis.health_rating !== 'healthy' && (
-              <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-2xl">
+              <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-2xl mt-3">
                 <p className="text-xs font-bold text-emerald-400 mb-1">💚 Why switch?</p>
                 <p className="text-[11px] text-[#7a8fa6] leading-relaxed">
                   Switching to healthier alternatives even 2–3 times a week can significantly reduce your
