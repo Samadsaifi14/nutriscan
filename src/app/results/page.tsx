@@ -232,13 +232,14 @@ useEffect(() => {
               if (analyzeJson.success && analyzeJson.data) {
                 const a = analyzeJson.data
                 analysis = {
-                  health_score: a.health_score ?? a.score ?? 5,
-                  health_rating: a.health_rating ?? a.rating ?? 'moderate',
-                  summary: a.summary || 'Analyzed by HealthOX',
+                  health_score: 5,
+                  health_rating: 'moderate',
+                  summary: 'Analyzed by HealthOX',
                   analyzed_at: new Date().toISOString(),
-                  harmful_ingredients: a.harmful_ingredients || [],
-                  positives: a.positives || [],
-                  long_term_risks: a.long_term_risks || [],
+                  harmful_ingredients: [],
+                  positives: [],
+                  long_term_risks: [],
+                  ...a,
                 }
               }
             } catch {}
