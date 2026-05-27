@@ -1,6 +1,6 @@
 // src/app/results/page.tsx
 "use client"
-import { useEffect, useState }  from 'react'
+import { useEffect, useState, Suspense }  from 'react'
 import { useRouter, useSearchParams }             from 'next/navigation'
 import { useSession }            from 'next-auth/react'
 import toast                     from 'react-hot-toast'
@@ -156,7 +156,7 @@ interface TabMeta {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export default function ResultsPage() {
+function ResultsPageContent() {
   const router        = useRouter()
   const searchParams  = useSearchParams()
   const { status }    = useSession()
@@ -444,10 +444,11 @@ async function handleLogMeal(mealType: string) {
               className="px-6 py-3.5 bg-[#252c38] hover:bg-[#2a3545] text-[#c8d6e0] font-bold rounded-2xl text-sm transition-colors">
               Scan Another
             </button>
-          </div>
-        </div>
-      )
-    }
+      </div>
+    </div>
+  )
+}
+
     return (
       <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
         <div className="w-20 h-20 rounded-full bg-[#161a20] border border-[#2a3545] flex items-center justify-center mb-5 text-3xl">
@@ -1278,5 +1279,21 @@ async function handleLogMeal(mealType: string) {
 
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+}
+
+export default function ResultsPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ResultsPageContent />
+    </Suspense>
   )
 }

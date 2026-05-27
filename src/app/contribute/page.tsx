@@ -1,7 +1,7 @@
 // src/app/contribute/page.tsx
 "use client"
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import toast from 'react-hot-toast'
@@ -22,7 +22,7 @@ interface ParsedData {
   rawText: string
 }
 
-export default function ContributePage() {
+function ContributePageContent() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
@@ -507,5 +507,13 @@ function LoadingScreen() {
     <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
     </div>
+  )
+}
+
+export default function ContributePage() {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <ContributePageContent />
+    </Suspense>
   )
 }

@@ -125,7 +125,7 @@ export default function LeaderboardPage() {
             {/* 2nd */}
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-[#2a3545] mx-auto mb-2 flex items-center justify-center text-2xl">
-                {users[1].image ? <img src={users[1].image} className="w-full h-full rounded-full object-cover" /> : '🥈'}
+                {users[1].image ? <img src={users[1].image} alt={users[1].name} className="w-full h-full rounded-full object-cover" /> : '🥈'}
               </div>
               <p className="text-xs font-bold text-[#f0f4f8] truncate max-w-[80px] mx-auto">{users[1].name}</p>
               <p className="text-[10px] text-amber-400">{users[1].total_impact} impact</p>
@@ -134,7 +134,7 @@ export default function LeaderboardPage() {
             {/* 1st */}
             <div className="text-center">
               <div className="w-20 h-20 rounded-full bg-gradient-to-b from-amber-500/30 to-amber-500/10 mx-auto mb-2 flex items-center justify-center text-3xl border-2 border-amber-500">
-                {users[0].image ? <img src={users[0].image} className="w-full h-full rounded-full object-cover" /> : '🥇'}
+                {users[0].image ? <img src={users[0].image} alt={users[0].name} className="w-full h-full rounded-full object-cover" /> : '🥇'}
               </div>
               <p className="text-sm font-black text-[#f0f4f8] truncate max-w-[100px] mx-auto">{users[0].name}</p>
               <p className="text-[10px] text-amber-400">{users[0].total_impact} impact</p>
@@ -143,7 +143,7 @@ export default function LeaderboardPage() {
             {/* 3rd */}
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-[#2a3545] mx-auto mb-2 flex items-center justify-center text-2xl">
-                {users[2].image ? <img src={users[2].image} className="w-full h-full rounded-full object-cover" /> : '🥉'}
+                {users[2].image ? <img src={users[2].image} alt={users[2].name} className="w-full h-full rounded-full object-cover" /> : '🥉'}
               </div>
               <p className="text-xs font-bold text-[#f0f4f8] truncate max-w-[80px] mx-auto">{users[2].name}</p>
               <p className="text-[10px] text-amber-400">{users[2].total_impact} impact</p>
@@ -183,7 +183,7 @@ export default function LeaderboardPage() {
                 
                 <div className="w-10 h-10 rounded-full bg-[#2a3545] flex items-center justify-center overflow-hidden">
                   {user.image ? (
-                    <img src={user.image} className="w-full h-full object-cover" />
+                    <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-lg">👤</span>
                   )}

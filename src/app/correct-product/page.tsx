@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import toast from 'react-hot-toast'
@@ -23,7 +23,7 @@ interface Product {
   nutrition?: Nutrition
 }
 
-export default function CorrectProductPage() {
+function CorrectProductPageContent() {
   const router = useRouter()
   const { status } = useSession()
   const searchParams = useSearchParams()
@@ -298,5 +298,21 @@ export default function CorrectProductPage() {
         </AnimatePresence>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+}
+
+export default function CorrectProductPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CorrectProductPageContent />
+    </Suspense>
   )
 }
