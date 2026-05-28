@@ -1,4 +1,4 @@
-// HealthOX - Groq LLM for unified food analysis
+// BioYou - Groq LLM for unified food analysis
 // Combines summary + ingredient analysis + personalized warnings in one call
 
 export interface UnifiedAnalysisRequest {

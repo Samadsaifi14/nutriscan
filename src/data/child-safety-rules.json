@@ -1,5 +1,5 @@
 {
-  "_comment": "Child safety thresholds for HealthOX AI analysis. All nutrient limits are per 100g unless noted.",
+  "_comment": "Child safety thresholds for BioYou AI analysis. All nutrient limits are per 100g unless noted.",
   "version": 1,
 
   "age_groups": {

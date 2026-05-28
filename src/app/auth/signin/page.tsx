@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
+import Logo from '@/components/Logo'
 
 export default function SignInPage() {
   const { theme, setTheme } = useTheme()
@@ -38,26 +39,15 @@ export default function SignInPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-5 shadow-lg"
-            style={{
-              background: 'linear-gradient(135deg, #059669, #0ea5e9)',
-              boxShadow: '0 8px 32px rgba(5,150,105,0.35)',
-            }}
-          >
-            <span className="text-4xl">🥗</span>
+          <div className="inline-block mb-5 shadow-lg rounded-full" style={{ boxShadow: '0 8px 32px rgba(26,77,50,0.35)' }}>
+            <Logo size={96} priority />
           </div>
-          <h1 className="text-4xl font-black tracking-tight mb-2"
-            style={{
-              background: 'linear-gradient(135deg, #059669, #0ea5e9)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}>
-            HealthOX
+          <h1 className="text-4xl font-black tracking-tight mb-2 text-[#1a4d32] dark:text-emerald-100">
+            BioYou
           </h1>
           <p className="text-sm text-[var(--muted)] leading-relaxed">
-            Your AI-powered food health advisor.<br />
-            Know what you eat. Live better.
+            Scan. Know. Choose Better.<br />
+            Your AI-powered food health advisor for India.
           </p>
         </div>
 

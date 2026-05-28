@@ -1,4 +1,4 @@
-// HealthOX - Database helpers for products and additives tables
+// BioYou - Database helpers for products and additives tables
 
 import { supabaseAdmin } from './supabaseAdmin'
 

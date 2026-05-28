@@ -125,7 +125,7 @@ export async function callGemini(
   const model  = imageBase64 ? VISION_MODEL : (config?.model || TEXT_MODEL)
 
   return retryWithBackoff(async () => {
-    const url   = `${BASE_URL}/${model}:generateContent?key=${apiKey}`
+    const url   = `${BASE_URL}/${model}:generateContent`
     const parts: any[] = [{ text: prompt }]
     if (imageBase64) {
       parts.push({ inlineData: { mimeType: 'image/png', data: imageBase64 } })
@@ -138,7 +138,10 @@ export async function callGemini(
 
     const res  = await fetchWithTimeout(url, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
       body:    JSON.stringify({ contents: [{ parts }], generationConfig }),
     }, timeoutMs)
 
@@ -167,7 +170,7 @@ export async function callGeminiVision(
   const model  = VISION_MODEL
 
   return retryWithBackoff(async () => {
-    const url   = `${BASE_URL}/${model}:generateContent?key=${apiKey}`
+    const url   = `${BASE_URL}/${model}:generateContent`
     const parts: any[] = [
       { text: prompt },
       { inlineData: { mimeType: 'image/png', data: imageBase64 } },
@@ -175,7 +178,10 @@ export async function callGeminiVision(
 
     const res  = await fetchWithTimeout(url, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
       body:    JSON.stringify({
         contents:         [{ parts }],
         generationConfig: { temperature, maxOutputTokens: maxTokens },

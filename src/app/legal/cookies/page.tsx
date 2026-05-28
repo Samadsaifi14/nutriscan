@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Cookie Policy | HealthOX',
-  description: 'Cookie Policy for HealthOX - How we use cookies and your choices.',
+  title: 'Cookie Policy | BioYou',
+  description: 'Cookie Policy for BioYou - How we use cookies and your choices.',
 }
 
 export default function CookiesPage() {
@@ -63,7 +63,7 @@ export default function CookiesPage() {
 
         <Section title="Your Choices">
           <p>
-            When you first visit HealthOX, you will see a cookie banner asking for 
+            When you first visit BioYou, you will see a cookie banner asking for 
             your consent to analytics cookies. You can:
           </p>
           <ul className="list-disc pl-5 space-y-1 mt-2">
@@ -84,7 +84,7 @@ export default function CookiesPage() {
 
         <Section title="Do Not Track">
           <p>
-            Some browsers support a "Do Not Track" (DNT) feature. HealthOX does not 
+            Some browsers support a "Do Not Track" (DNT) feature. BioYou does not 
             currently respond to DNT signals. We will update this policy if this 
             changes in the future.
           </p>

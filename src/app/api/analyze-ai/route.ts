@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth, enforceRateLimit } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth()
+    if ('response' in auth) return auth.response
+
+    const rate = await enforceRateLimit(auth.userId, 'analyze_ai')
+    if ('response' in rate) return rate.response
+
     const body = await req.json()
     const { ingredients, nutrition, barcode, productName, category, brand } = body
 
@@ -180,6 +187,12 @@ Rules:
 
 // Simple GET for quick ingredient check
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth()
+  if ('response' in auth) return auth.response
+
+  const rate = await enforceRateLimit(auth.userId, 'analyze_ai')
+  if ('response' in rate) return rate.response
+
   const url = new URL(req.url)
   const ingredients = url.searchParams.get('ingredients')?.split(',') || []
 

@@ -476,7 +476,7 @@ function SuccessPage({ productName, onContributeMore, onGoHome }: { productName:
       
       <h1 className="text-2xl font-black mb-2">You're the First!</h1>
       <p className="text-[#7a8fa6] mb-6">
-        You added <span className="text-emerald-400 font-bold">{productName}</span> to HealthOX.
+        You added <span className="text-emerald-400 font-bold">{productName}</span> to BioYou.
       </p>
 
       <div className="bg-gradient-to-b from-amber-500/10 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-6">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { createUnsubscribeUrl } from '@/lib/unsubscribe-token'
 
 export async function GET(req: NextRequest) {
   // Security — only Vercel cron can call this
@@ -75,9 +76,9 @@ export async function GET(req: NextRequest) {
       const daysLogged = new Set(logs.map((l: any) => l.logged_at.split('T')[0])).size
       const firstName = user.name?.split(' ')[0] || 'there'
 
-      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-      const unsubscribeWeeklyUrl = `${baseUrl}/api/unsubscribe?userId=${user.user_id}&type=weekly`
-      const unsubscribeAllUrl = `${baseUrl}/api/unsubscribe?userId=${user.user_id}&type=all`
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+      const unsubscribeWeeklyUrl = createUnsubscribeUrl(user.user_id, 'weekly', baseUrl)
+      const unsubscribeAllUrl = createUnsubscribeUrl(user.user_id, 'all', baseUrl)
 
       const html = buildWeeklyHTML({
         firstName,
@@ -101,9 +102,9 @@ export async function GET(req: NextRequest) {
           'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
         },
         body: JSON.stringify({
-          from: 'HealthOX <onboarding@resend.dev>',
+          from: 'BioYou <onboarding@resend.dev>',
           to: [user.email],
-          subject: `${firstName}, here is your weekly HealthOX nutrition report 📊`,
+          subject: `${firstName}, here is your weekly BioYou nutrition report 📊`,
           html,
         })
       })
@@ -160,7 +161,7 @@ function buildWeeklyHTML(data: {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HealthOX Weekly Report</title>
+  <title>BioYou Weekly Report</title>
 </head>
 <body style="margin:0;padding:0;background:#f0fdf4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 
@@ -168,11 +169,9 @@ function buildWeeklyHTML(data: {
 
   <!-- Header -->
   <div style="text-align:center;margin-bottom:28px;">
-    <div style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#059669,#0ea5e9);margin-bottom:12px;box-shadow:0 6px 20px rgba(5,150,105,0.3);">
-      <span style="font-size:30px;">🥗</span>
-    </div>
-    <h1 style="font-size:28px;font-weight:900;margin:0 0 4px;background:linear-gradient(135deg,#059669,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">HealthOX</h1>
-    <p style="font-size:13px;color:#6b7280;margin:0;">Weekly Nutrition Report</p>
+    <img src="${data.baseUrl}/logo.png" alt="BioYou" width="80" height="80" style="border-radius:50%;margin-bottom:12px;" />
+    <h1 style="font-size:28px;font-weight:900;margin:0 0 4px;color:#1a4d32;">BioYou</h1>
+    <p style="font-size:13px;color:#6b7280;margin:0;">Weekly Nutrition Report · Scan. Know. Choose Better.</p>
   </div>
 
   <!-- Main Card -->
@@ -285,7 +284,7 @@ function buildWeeklyHTML(data: {
   <!-- Footer -->
   <div style="background:white;border-radius:20px;padding:20px 24px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.04);">
     <p style="font-size:13px;color:#374151;font-weight:600;margin:0 0 4px;">Made with 💚 for a healthier India</p>
-    <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">HealthOX — AI-Powered Food Health Advisor</p>
+    <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">BioYou — Scan. Know. Choose Better.</p>
     <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
       <a href="${data.unsubscribeWeeklyUrl}" style="font-size:11px;color:#9ca3af;text-decoration:underline;">
         Unsubscribe from weekly reports

@@ -14,7 +14,7 @@ export function ShoppingLinks({ productName, brand, compact }: ShoppingLinksProp
   const links = [
     { 
       platform: 'amazon' as const, 
-      url: `https://www.amazon.in/s?k=${encodeURIComponent(searchTerm)}&ref=as_li_ss_tl&tag=healthox-21` 
+      url: `https://www.amazon.in/s?k=${encodeURIComponent(searchTerm)}&ref=as_li_ss_tl&tag=BioYou-21` 
     },
     { 
       platform: 'flipkart' as const, 

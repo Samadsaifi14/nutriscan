@@ -222,7 +222,7 @@ useEffect(() => {
             }
             
             // Fetch full analysis from /api/analyze to get harmful_ingredients
-            let analysis: any = { health_score: 5, health_rating: 'moderate', summary: 'Analyzed by HealthOX', analyzed_at: new Date().toISOString(), harmful_ingredients: [] }
+            let analysis: any = { health_score: 5, health_rating: 'moderate', summary: 'Analyzed by BioYou', analyzed_at: new Date().toISOString(), harmful_ingredients: [] }
             try {
               const analyzeRes = await fetch('/api/analyze', {
                 method: 'POST',
@@ -235,7 +235,7 @@ useEffect(() => {
                 analysis = {
                   health_score: 5,
                   health_rating: 'moderate',
-                  summary: 'Analyzed by HealthOX',
+                  summary: 'Analyzed by BioYou',
                   analyzed_at: new Date().toISOString(),
                   harmful_ingredients: [],
                   positives: [],
@@ -405,6 +405,31 @@ async function handleLogMeal(mealType: string) {
     finally { setLogging(false) }
   }
 
+  async function handleSaveFavorite() {
+    if (!payload || isGuest) return
+    const { product } = payload
+    try {
+      const res = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_name: product.name,
+          barcode: product.barcode || undefined,
+          calories_per_100g: product.nutrition?.calories,
+          protein_per_100g: product.nutrition?.protein,
+          carbs_per_100g: product.nutrition?.carbs,
+          fat_per_100g: product.nutrition?.fat,
+          sodium_per_100g: product.nutrition?.sodium,
+        }),
+      })
+      const json = await res.json()
+      if (json.success) toast.success('Saved to favorites')
+      else toast.error(json.error || 'Could not save')
+    } catch {
+      toast.error('Network error')
+    }
+  }
+
   if (!hydrated && !scanLoading) return null
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -437,13 +462,17 @@ async function handleLogMeal(mealType: string) {
           <p className="text-xs text-[#4a5a6a] mb-6 leading-relaxed max-w-xs">
             Help the community! Contribute this product's details so others can check its health score.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 w-full max-w-xs">
             <button onClick={() => router.push(`/contribute?barcode=${scannedBarcode}`)}
               className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-2xl text-sm transition-colors">
               📸 Add This Product
             </button>
-            <button onClick={() => router.push('/scan')}
+            <button onClick={() => router.push(`/search?q=${encodeURIComponent(scannedBarcode)}`)}
               className="px-6 py-3.5 bg-[#252c38] hover:bg-[#2a3545] text-[#c8d6e0] font-bold rounded-2xl text-sm transition-colors">
+              Search by Name
+            </button>
+            <button onClick={() => router.push('/scan')}
+              className="px-6 py-3.5 border border-[#2a3545] text-[#c8d6e0] font-bold rounded-2xl text-sm transition-colors">
               Scan Another
             </button>
       </div>
@@ -847,6 +876,16 @@ async function handleLogMeal(mealType: string) {
 
             {/* Log meal */}
             <Section title="Log This Meal" icon="📝">
+              {!isGuest && (
+                <button
+                  type="button"
+                  onClick={handleSaveFavorite}
+                  className="w-full mb-3 py-2 rounded-xl text-xs font-bold border border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+                  aria-label="Save to meal favorites"
+                >
+                  ★ Save to favorites
+                </button>
+              )}
               {isGuest ? (
                 <p className="text-sm text-[#7a8fa6] text-center py-2">
                   <a href="/auth/signin" className="text-emerald-400 font-bold underline">Sign in</a> to log meals and track calories

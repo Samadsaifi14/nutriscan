@@ -1,6 +1,7 @@
 "use client"
 import { Component, ReactNode } from 'react'
 import { event, AnalyticsEvents } from '@/lib/analytics'
+import { captureException } from '@/lib/monitoring'
 
 interface Props {
   children: ReactNode
@@ -23,11 +24,11 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('React Error Boundary caught:', error, errorInfo)
-
-    // Send crash event to analytics
+    captureException(error, {
+      componentStack: (errorInfo.componentStack ?? '').slice(0, 200),
+    })
     event(AnalyticsEvents.SCAN_ERROR, {
-      error_message: error.message,
+      error_message: error.name,
       error_name: error.name,
     })
   }
@@ -44,7 +45,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               Something went wrong
             </h1>
             <p className="text-sm text-[var(--muted)] mb-2">
-              {this.state.error?.message || 'An unexpected error occurred'}
+              An unexpected error occurred. Please try again.
             </p>
             <p className="text-xs text-[var(--muted)] mb-6">
               This error has been reported. Try refreshing or go back.

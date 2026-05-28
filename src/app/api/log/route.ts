@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error('Get logs error:', error.message)
-      return NextResponse.json({ success: false, data: [] })
+      return NextResponse.json(
+        { success: false, error: 'Failed to load meal history' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ success: true, data: data || [] })

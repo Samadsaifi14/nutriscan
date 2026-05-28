@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | HealthOX',
-  description: 'Privacy Policy for HealthOX - How we collect, use, and protect your data in compliance with Indian law.',
+  title: 'Privacy Policy | BioYou',
+  description: 'Privacy Policy for BioYou - How we collect, use, and protect your data in compliance with Indian law.',
 }
 
 export default function PrivacyPage() {
@@ -19,7 +19,7 @@ export default function PrivacyPage() {
             samadlylives00@gmail.com
           </p>
           <p className="mt-2">
-            This Privacy Policy explains how HealthOX collects, uses, stores, and protects 
+            This Privacy Policy explains how BioYou collects, uses, stores, and protects 
             your personal data when you use our web application. It complies with the 
             Digital Personal Data Protection Act (DPDP), 2023 of India and the Information 
             Technology Act, 2000.
@@ -150,7 +150,7 @@ export default function PrivacyPage() {
           <p className="mt-2">
             We ensure appropriate safeguards are in place for such transfers, including 
             contractual clauses and compliance with applicable data protection laws. By using 
-            HealthOX, you consent to such cross-border data transfers where necessary.
+            BioYou, you consent to such cross-border data transfers where necessary.
           </p>
         </Section>
 
@@ -189,7 +189,7 @@ export default function PrivacyPage() {
         <Section title="13. Children's Privacy">
           <p>
             In compliance with the DPDP Act 2023, users under 18 years of age require 
-            verifiable parental or guardian consent to use HealthOX. During profile setup, 
+            verifiable parental or guardian consent to use BioYou. During profile setup, 
             we collect age information and require a parental consent checkbox for users 
             under 18. We do not knowingly process data of children under 18 without such consent.
           </p>
@@ -211,7 +211,7 @@ export default function PrivacyPage() {
         <Section title="15. Grievance Officer">
           <p>
             In compliance with the Information Technology Act, 2000 and the DPDP Act, 2023, 
-            the Grievance Officer for HealthOX is:
+            the Grievance Officer for BioYou is:
           </p>
           <p className="mt-1 text-emerald-400">
             Samad Saifi<br />

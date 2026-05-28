@@ -2,12 +2,28 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
-const PROTECTED = ['/scan', '/dashboard', '/results', '/history', '/profile', '/log']
+const AUTH_REQUIRED_PREFIXES = [
+  '/scan',
+  '/dashboard',
+  '/results',
+  '/history',
+  '/profile',
+  '/profile-setup',
+  '/log',
+  '/contribute',
+  '/validate',
+  '/correct-product',
+  '/scan-history',
+  '/admin',
+  '/insights',
+  '/search',
+  '/favorites',
+]
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  const isProtected = PROTECTED.some(path => pathname.startsWith(path))
+  const isProtected = AUTH_REQUIRED_PREFIXES.some((path) => pathname.startsWith(path))
   if (!isProtected) return NextResponse.next()
 
   const token = await getToken({
@@ -31,6 +47,15 @@ export const config = {
     '/results/:path*',
     '/history/:path*',
     '/profile/:path*',
+    '/profile-setup/:path*',
     '/log/:path*',
+    '/contribute/:path*',
+    '/validate/:path*',
+    '/correct-product/:path*',
+    '/scan-history/:path*',
+    '/admin/:path*',
+    '/insights/:path*',
+    '/search/:path*',
+    '/favorites/:path*',
   ],
 }

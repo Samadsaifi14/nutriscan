@@ -1,4 +1,4 @@
-// HealthOX — Curated Indian Product Alternatives
+// BioYou — Curated Indian Product Alternatives
 // Never-fail fallback for the Alternatives tab.
 // Maps common Indian product categories → healthier substitutes.
 
@@ -60,34 +60,34 @@ const CATEGORY_KEYWORDS: [RegExp, string][] = [
 
 const curated: Record<string, CuratedAlternative[]> = {
   noodles: [
-    { name: 'Yoga Atta Noodles', reason: '64% less fat than Maggi, no MSG, whole wheat', availability: 'Amazon, BigBasket, Blinkit', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 280, protein: 8, carbs: 52, fat: 4, sugar: 1, sodium: 350, fiber: 6 }, shopping_url: 'https://www.amazon.in/dp/B08XYZ?tag=healthox-21' },
+    { name: 'Yoga Atta Noodles', reason: '64% less fat than Maggi, no MSG, whole wheat', availability: 'Amazon, BigBasket, Blinkit', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 280, protein: 8, carbs: 52, fat: 4, sugar: 1, sodium: 350, fiber: 6 }, shopping_url: 'https://www.amazon.in/dp/B08XYZ?tag=BioYou-21' },
     { name: 'Whole wheat pasta (homemade)', reason: 'Zero preservatives, controlled sodium, high fiber', availability: 'Homemade', type: 'homemade', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 250, protein: 9, carbs: 45, fat: 3, sugar: 1, sodium: 100, fiber: 8 } },
-    { name: 'Schezwan noodles (Zero Noodle)', reason: 'Low carb, high protein, konjac-based', availability: 'Amazon, Blinkit', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 180, protein: 12, carbs: 8, fat: 2, sugar: 0, sodium: 200, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B09YYY?tag=healthox-21' },
+    { name: 'Schezwan noodles (Zero Noodle)', reason: 'Low carb, high protein, konjac-based', availability: 'Amazon, Blinkit', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 180, protein: 12, carbs: 8, fat: 2, sugar: 0, sodium: 200, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B09YYY?tag=BioYou-21' },
     { name: 'Brown rice noodles', reason: 'Gluten-free, low glycemic index', availability: 'Amazon', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 260, protein: 6, carbs: 50, fat: 2, sugar: 0, sodium: 50, fiber: 4 } },
   ],
   biscuits: [
-    { name: 'True Elements Digestive Biscuits', reason: 'No maida, no trans fat, whole wheat, high fiber', availability: 'Amazon, BigBasket, Blinkit', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 420, protein: 8, carbs: 65, fat: 14, sugar: 8, sodium: 300, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B07XYZ?tag=healthox-21' },
-    { name: 'Britannia NutriChoice Digestive', reason: 'Whole wheat, zero trans fat, 5g fiber per 100g', availability: 'Everywhere', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 460, protein: 7, carbs: 68, fat: 16, sugar: 7, sodium: 350, fiber: 5 }, shopping_url: 'https://www.amazon.in/dp/B08ABC?tag=healthox-21' },
+    { name: 'True Elements Digestive Biscuits', reason: 'No maida, no trans fat, whole wheat, high fiber', availability: 'Amazon, BigBasket, Blinkit', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 420, protein: 8, carbs: 65, fat: 14, sugar: 8, sodium: 300, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B07XYZ?tag=BioYou-21' },
+    { name: 'Britannia NutriChoice Digestive', reason: 'Whole wheat, zero trans fat, 5g fiber per 100g', availability: 'Everywhere', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 460, protein: 7, carbs: 68, fat: 16, sugar: 7, sodium: 350, fiber: 5 }, shopping_url: 'https://www.amazon.in/dp/B08ABC?tag=BioYou-21' },
     { name: 'Anmol Premium Lite Biscuit', reason: 'Low sugar, whole wheat option', availability: 'Amazon, BigBasket', type: 'branded', score: 6.5, grade: 'B', nutrition_per_100g: { calories: 440, protein: 6, carbs: 70, fat: 14, sugar: 5, sodium: 280, fiber: 4 } },
     { name: 'Almonds (handful)', reason: 'Natural, no processing, healthy fats', availability: 'All stores', type: 'whole_food', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 579, protein: 21, carbs: 22, fat: 50, sugar: 4, sodium: 1, fiber: 12 } },
     { name: 'Homemade oats cookies', reason: 'Zero preservatives, controlled sugar, whole grain', availability: 'Homemade', type: 'homemade', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 380, protein: 10, carbs: 55, fat: 12, sugar: 6, sodium: 100, fiber: 7 } },
   ],
   chips: [
-    { name: 'Baked snacks (Yoga/Terra)', reason: 'Baked not fried, 50% less fat', availability: 'Amazon, BigBasket', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 380, protein: 6, carbs: 60, fat: 12, sugar: 3, sodium: 350, fiber: 5 }, shopping_url: 'https://www.amazon.in/dp/B09ZZZ?tag=healthox-21' },
+    { name: 'Baked snacks (Yoga/Terra)', reason: 'Baked not fried, 50% less fat', availability: 'Amazon, BigBasket', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 380, protein: 6, carbs: 60, fat: 12, sugar: 3, sodium: 350, fiber: 5 }, shopping_url: 'https://www.amazon.in/dp/B09ZZZ?tag=BioYou-21' },
     { name: 'Makhana (fox nuts) — roasted', reason: 'Low calorie, high protein, mineral-rich', availability: 'All stores', type: 'whole_food', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 350, protein: 15, carbs: 58, fat: 5, sugar: 2, sodium: 2, fiber: 14 } },
     { name: 'Roasted chana (chickpeas)', reason: 'High protein, high fiber, zero oil', availability: 'All stores', type: 'whole_food', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 320, protein: 18, carbs: 52, fat: 5, sugar: 3, sodium: 10, fiber: 15 } },
     { name: 'Sprouts salad', reason: 'Highest nutrient density, raw enzymes', availability: 'Homemade', type: 'homemade', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 120, protein: 12, carbs: 18, fat: 2, sugar: 1, sodium: 5, fiber: 8 } },
     { name: 'Ragi chips (millets)', reason: 'Gluten-free, millet-based, low glycemic', availability: 'Amazon, organic stores', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 360, protein: 7, carbs: 62, fat: 10, sugar: 2, sodium: 300, fiber: 8 } },
   ],
   cold_drink: [
-    { name: 'Coconut water (Raw Pressery)', reason: 'Natural electrolytes, zero added sugar', availability: 'Amazon, Blinkit, BigBasket', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 19, protein: 0, carbs: 4, fat: 0, sugar: 3, sodium: 105, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B07ABC?tag=healthox-21' },
+    { name: 'Coconut water (Raw Pressery)', reason: 'Natural electrolytes, zero added sugar', availability: 'Amazon, Blinkit, BigBasket', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 19, protein: 0, carbs: 4, fat: 0, sugar: 3, sodium: 105, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B07ABC?tag=BioYou-21' },
     { name: 'Lemon water (homemade)', reason: 'Zero sugar, vitamin C, no preservatives', availability: 'Homemade', type: 'homemade', score: 9.5, grade: 'A', nutrition_per_100g: { calories: 2, protein: 0, carbs: 1, fat: 0, sugar: 0, sodium: 1, fiber: 0 } },
     { name: 'Nimbu paani (no sugar)', reason: 'Traditional, refreshing, zero processed ingredients', availability: 'Homemade', type: 'homemade', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 5, protein: 0, carbs: 1, fat: 0, sugar: 0, sodium: 2, fiber: 0 } },
     { name: 'Soda + fresh lime', reason: 'Zero calories, zero artificial sweeteners', availability: 'Homemade', type: 'homemade', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 1, protein: 0, carbs: 0, fat: 0, sugar: 0, sodium: 5, fiber: 0 } },
   ],
   juice: [
     { name: 'Whole fruit (fresh)', reason: 'Fiber intact, no added sugar, natural vitamins', availability: 'Everywhere', type: 'whole_food', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 60, protein: 1, carbs: 14, fat: 0, sugar: 10, sodium: 1, fiber: 3 } },
-    { name: 'Raw Pressery Cold Pressed juices', reason: 'No added sugar, cold-pressed, no preservatives', availability: 'Amazon, Blinkit', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 45, protein: 1, carbs: 10, fat: 0, sugar: 7, sodium: 5, fiber: 1 }, shopping_url: 'https://www.amazon.in/dp/B08GHI?tag=healthox-21' },
+    { name: 'Raw Pressery Cold Pressed juices', reason: 'No added sugar, cold-pressed, no preservatives', availability: 'Amazon, Blinkit', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 45, protein: 1, carbs: 10, fat: 0, sugar: 7, sodium: 5, fiber: 1 }, shopping_url: 'https://www.amazon.in/dp/B08GHI?tag=BioYou-21' },
     { name: 'Coconut water', reason: 'Natural isotonic, rich in potassium', availability: 'All stores', type: 'whole_food', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 19, protein: 0, carbs: 4, fat: 0, sugar: 3, sodium: 105, fiber: 0 } },
     { name: 'Vegetable juice (homemade)', reason: 'Low sugar, high micronutrients', availability: 'Homemade', type: 'homemade', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 30, protein: 2, carbs: 5, fat: 0, sugar: 3, sodium: 40, fiber: 2 } },
   ],
@@ -105,7 +105,7 @@ const curated: Record<string, CuratedAlternative[]> = {
   ],
   yogurt: [
     { name: 'Homemade curd (toned milk)', reason: 'Probiotics, no gelatin, no preservatives', availability: 'Homemade', type: 'homemade', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 65, protein: 5, carbs: 6, fat: 3, sugar: 4, sodium: 45, fiber: 0 } },
-    { name: 'Epigamia Greek Yogurt', reason: 'High protein, no artificial sweeteners', availability: 'Amazon, Blinkit', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 85, protein: 12, carbs: 6, fat: 1, sugar: 5, sodium: 50, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B07ZZZ?tag=healthox-21' },
+    { name: 'Epigamia Greek Yogurt', reason: 'High protein, no artificial sweeteners', availability: 'Amazon, Blinkit', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 85, protein: 12, carbs: 6, fat: 1, sugar: 5, sodium: 50, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B07ZZZ?tag=BioYou-21' },
     { name: 'Chaas / Buttermilk (homemade)', reason: 'Probiotics, low calorie, digestive aid', availability: 'Homemade', type: 'homemade', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 25, protein: 2, carbs: 3, fat: 0.5, sugar: 2, sodium: 60, fiber: 0 } },
     { name: 'Millet-based probiotic drink', reason: 'Traditional fermentation, gut health', availability: 'Homemade', type: 'homemade', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 35, protein: 2, carbs: 5, fat: 0.5, sugar: 2, sodium: 30, fiber: 1 } },
   ],
@@ -116,21 +116,21 @@ const curated: Record<string, CuratedAlternative[]> = {
     { name: 'Kulfi (homemade, low sugar)', reason: 'Traditional, controlled ingredients, no stabilizers', availability: 'Homemade', type: 'homemade', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 150, protein: 5, carbs: 22, fat: 5, sugar: 14, sodium: 35, fiber: 0 } },
   ],
   chocolate: [
-    { name: 'Dark chocolate (70%+ cocoa, Amul/Chokito)', reason: 'Antioxidants, less sugar, healthy fats', availability: 'Amazon, all stores', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 500, protein: 8, carbs: 35, fat: 38, sugar: 18, sodium: 5, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B07YYY?tag=healthox-21' },
+    { name: 'Dark chocolate (70%+ cocoa, Amul/Chokito)', reason: 'Antioxidants, less sugar, healthy fats', availability: 'Amazon, all stores', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 500, protein: 8, carbs: 35, fat: 38, sugar: 18, sodium: 5, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B07YYY?tag=BioYou-21' },
     { name: 'Dark chocolate (85%+ cocoa)', reason: 'Minimal sugar, maximum antioxidants, low glycemic', availability: 'Amazon, specialty stores', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 490, protein: 8, carbs: 25, fat: 40, sugar: 10, sodium: 3, fiber: 12 } },
     { name: 'Dates stuffed with almonds', reason: 'Natural sweetness, healthy fats, no additives', availability: 'Homemade', type: 'homemade', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 280, protein: 4, carbs: 65, fat: 8, sugar: 55, sodium: 2, fiber: 7 } },
     { name: 'Cocoa nibs', reason: 'Pure cocoa, no processing, antioxidant rich', availability: 'Amazon, organic stores', type: 'whole_food', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 480, protein: 8, carbs: 30, fat: 40, sugar: 2, sodium: 5, fiber: 15 } },
   ],
   cereal: [
-    { name: 'Kellogg\'s Oats (plain oats)', reason: 'No added sugar, high fiber, whole grain', availability: 'Everywhere', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 370, protein: 14, carbs: 63, fat: 6, sugar: 1, sodium: 5, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B07XXX?tag=healthox-21' },
-    { name: 'Steel-cut oats (Saffola / True Elements)', reason: 'Lowest glycemic, no sugar, highest fiber', availability: 'Amazon, BigBasket', type: 'branded', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 360, protein: 15, carbs: 60, fat: 5, sugar: 0, sodium: 3, fiber: 12 }, shopping_url: 'https://www.amazon.in/dp/B09ABC?tag=healthox-21' },
-    { name: 'Muesli (no sugar, True Elements)', reason: 'Whole grains, nuts, seeds, no added sugar', availability: 'Amazon, BigBasket', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 390, protein: 10, carbs: 65, fat: 10, sugar: 3, sodium: 20, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B08DEF?tag=healthox-21' },
+    { name: 'Kellogg\'s Oats (plain oats)', reason: 'No added sugar, high fiber, whole grain', availability: 'Everywhere', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 370, protein: 14, carbs: 63, fat: 6, sugar: 1, sodium: 5, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B07XXX?tag=BioYou-21' },
+    { name: 'Steel-cut oats (Saffola / True Elements)', reason: 'Lowest glycemic, no sugar, highest fiber', availability: 'Amazon, BigBasket', type: 'branded', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 360, protein: 15, carbs: 60, fat: 5, sugar: 0, sodium: 3, fiber: 12 }, shopping_url: 'https://www.amazon.in/dp/B09ABC?tag=BioYou-21' },
+    { name: 'Muesli (no sugar, True Elements)', reason: 'Whole grains, nuts, seeds, no added sugar', availability: 'Amazon, BigBasket', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 390, protein: 10, carbs: 65, fat: 10, sugar: 3, sodium: 20, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B08DEF?tag=BioYou-21' },
     { name: 'Daliya / Broken wheat porridge', reason: 'Traditional, low glycemic, mineral-rich', availability: 'Homemade', type: 'whole_food', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 320, protein: 11, carbs: 68, fat: 2, sugar: 0, sodium: 3, fiber: 9 } },
     { name: 'Ragi porridge (finger millet)', reason: 'Gluten-free, highest calcium, slow digesting', availability: 'Homemade', type: 'whole_food', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 340, protein: 8, carbs: 72, fat: 1, sugar: 0, sodium: 2, fiber: 11 } },
   ],
   pasta: [
-    { name: 'Whole wheat pasta (Yoga / Borges)', reason: 'High fiber, no maida, lower glycemic', availability: 'Amazon, BigBasket', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 260, protein: 9, carbs: 48, fat: 3, sugar: 2, sodium: 15, fiber: 8 }, shopping_url: 'https://www.amazon.in/dp/B07PQR?tag=healthox-21' },
-    { name: 'Red lentil pasta (Tolerant)', reason: 'High protein, gluten-free, legume-based', availability: 'Amazon', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 230, protein: 18, carbs: 42, fat: 1, sugar: 2, sodium: 10, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B08STU?tag=healthox-21' },
+    { name: 'Whole wheat pasta (Yoga / Borges)', reason: 'High fiber, no maida, lower glycemic', availability: 'Amazon, BigBasket', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 260, protein: 9, carbs: 48, fat: 3, sugar: 2, sodium: 15, fiber: 8 }, shopping_url: 'https://www.amazon.in/dp/B07PQR?tag=BioYou-21' },
+    { name: 'Red lentil pasta (Tolerant)', reason: 'High protein, gluten-free, legume-based', availability: 'Amazon', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 230, protein: 18, carbs: 42, fat: 1, sugar: 2, sodium: 10, fiber: 10 }, shopping_url: 'https://www.amazon.in/dp/B08STU?tag=BioYou-21' },
     { name: 'Zucchini noodles (zoodles)', reason: 'Zero carbs, fresh vegetable-based', availability: 'Homemade', type: 'homemade', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 17, protein: 1, carbs: 3, fat: 0, sugar: 2, sodium: 10, fiber: 1 } },
   ],
   sauce: [
@@ -140,8 +140,8 @@ const curated: Record<string, CuratedAlternative[]> = {
     { name: 'Green chutney (homemade)', reason: 'Fresh herbs, no processing, vitamin-rich', availability: 'Homemade', type: 'homemade', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 30, protein: 2, carbs: 5, fat: 1, sugar: 2, sodium: 15, fiber: 3 } },
   ],
   cooking_oil: [
-    { name: 'Saffola Gold (blended rice bran + sunflower)', reason: 'Heart-friendly, low cholesterol impact, high smoke point', availability: 'Everywhere', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B07KLM?tag=healthox-21' },
-    { name: 'Extra Virgin Olive Oil (Figaro/Borges)', reason: 'Monounsaturated fats, antioxidants, heart healthy', availability: 'Amazon, BigBasket', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B08NOP?tag=healthox-21' },
+    { name: 'Saffola Gold (blended rice bran + sunflower)', reason: 'Heart-friendly, low cholesterol impact, high smoke point', availability: 'Everywhere', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B07KLM?tag=BioYou-21' },
+    { name: 'Extra Virgin Olive Oil (Figaro/Borges)', reason: 'Monounsaturated fats, antioxidants, heart healthy', availability: 'Amazon, BigBasket', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B08NOP?tag=BioYou-21' },
     { name: 'Cold-pressed mustard oil', reason: 'Traditional, zero processing, anti-inflammatory', availability: 'Local stores', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 } },
     { name: 'Ghee (A2 / Amul)', reason: 'Traditional, stable at high heat, vitamin A/D/K2', availability: 'Everywhere', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 } },
   ],
@@ -162,7 +162,7 @@ const curated: Record<string, CuratedAlternative[]> = {
     { name: 'Aam Panna (raw mango drink)', reason: 'Natural, high in antioxidants, no caffeine', availability: 'Homemade', type: 'homemade', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 35, protein: 1, carbs: 7, fat: 0, sugar: 5, sodium: 10, fiber: 1 } },
   ],
   protein: [
-    { name: 'Whey Protein (Asitis / MuscleBlaze)', reason: 'Clean protein, no fillers, govt lab tested', availability: 'Amazon, Tata 1mg', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 380, protein: 80, carbs: 6, fat: 2, sugar: 1, sodium: 100, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B07LMN?tag=healthox-21' },
+    { name: 'Whey Protein (Asitis / MuscleBlaze)', reason: 'Clean protein, no fillers, govt lab tested', availability: 'Amazon, Tata 1mg', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 380, protein: 80, carbs: 6, fat: 2, sugar: 1, sodium: 100, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B07LMN?tag=BioYou-21' },
     { name: 'Sattu (roasted gram flour)', reason: 'Traditional, high protein, mineral-rich, no processing', availability: 'Local stores', type: 'whole_food', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 360, protein: 20, carbs: 60, fat: 5, sugar: 3, sodium: 20, fiber: 10 } },
     { name: 'Paneer / Cottage cheese', reason: 'High protein, calcium, satiating', availability: 'All stores', type: 'whole_food', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 270, protein: 18, carbs: 2, fat: 21, sugar: 1, sodium: 30, fiber: 0 } },
     { name: 'Sprouts salad', reason: 'Complete protein when combined with grains, enzyme-rich', availability: 'Homemade', type: 'homemade', score: 9.0, grade: 'A', nutrition_per_100g: { calories: 120, protein: 12, carbs: 18, fat: 2, sugar: 1, sodium: 5, fiber: 8 } },
@@ -180,11 +180,11 @@ const curated: Record<string, CuratedAlternative[]> = {
   rusk: [
     { name: 'Ragi rusk (millet-based)', reason: 'Gluten-free, millet nutrition, less processed', availability: 'Amazon, organic stores', type: 'branded', score: 6.5, grade: 'B', nutrition_per_100g: { calories: 400, protein: 8, carbs: 70, fat: 10, sugar: 5, sodium: 250, fiber: 6 } },
     { name: 'Whole wheat toast (homemade)', reason: 'Zero preservatives, controlled ingredients', availability: 'Homemade', type: 'homemade', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 350, protein: 10, carbs: 60, fat: 5, sugar: 3, sodium: 200, fiber: 7 } },
-    { name: 'Multigrain khakhra', reason: 'Roasted not fried, high fiber, no maida', availability: 'Amazon, BigBasket', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 360, protein: 10, carbs: 58, fat: 8, sugar: 2, sodium: 300, fiber: 8 }, shopping_url: 'https://www.amazon.in/dp/B0ABCD?tag=healthox-21' },
+    { name: 'Multigrain khakhra', reason: 'Roasted not fried, high fiber, no maida', availability: 'Amazon, BigBasket', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 360, protein: 10, carbs: 58, fat: 8, sugar: 2, sodium: 300, fiber: 8 }, shopping_url: 'https://www.amazon.in/dp/B0ABCD?tag=BioYou-21' },
   ],
   cake: [
     { name: 'Whole wheat banana cake (homemade)', reason: 'Natural sweetness, whole grain, no preservatives', availability: 'Homemade', type: 'homemade', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 280, protein: 6, carbs: 42, fat: 10, sugar: 14, sodium: 120, fiber: 4 } },
-    { name: 'Date and nut bar (Bites by True Elements)', reason: 'No refined sugar, whole ingredients', availability: 'Amazon, BigBasket', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 350, protein: 6, carbs: 58, fat: 12, sugar: 20, sodium: 50, fiber: 8 }, shopping_url: 'https://www.amazon.in/dp/B0BCDE?tag=healthox-21' },
+    { name: 'Date and nut bar (Bites by True Elements)', reason: 'No refined sugar, whole ingredients', availability: 'Amazon, BigBasket', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 350, protein: 6, carbs: 58, fat: 12, sugar: 20, sodium: 50, fiber: 8 }, shopping_url: 'https://www.amazon.in/dp/B0BCDE?tag=BioYou-21' },
     { name: 'Millet ladoo (ragi/bajra)', reason: 'Traditional, mineral-rich, natural sweetness', availability: 'Homemade', type: 'homemade', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 320, protein: 6, carbs: 50, fat: 12, sugar: 15, sodium: 10, fiber: 6 } },
   ],
   pizza: [
@@ -205,7 +205,7 @@ const curated: Record<string, CuratedAlternative[]> = {
   ],
   paneer: [
     { name: 'Homemade paneer (toned milk)', reason: 'No preservatives, no stabilizers, higher protein', availability: 'Homemade', type: 'homemade', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 260, protein: 18, carbs: 3, fat: 20, sugar: 1, sodium: 35, fiber: 0 } },
-    { name: 'Tofu (Nutri Soy)', reason: 'Plant protein, zero cholesterol, no animal fat', availability: 'Amazon, BigBasket', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 80, protein: 8, carbs: 2, fat: 4, sugar: 0, sodium: 5, fiber: 1 }, shopping_url: 'https://www.amazon.in/dp/B0CDEF?tag=healthox-21' },
+    { name: 'Tofu (Nutri Soy)', reason: 'Plant protein, zero cholesterol, no animal fat', availability: 'Amazon, BigBasket', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 80, protein: 8, carbs: 2, fat: 4, sugar: 0, sodium: 5, fiber: 1 }, shopping_url: 'https://www.amazon.in/dp/B0CDEF?tag=BioYou-21' },
     { name: 'Low-fat paneer (Amul Lite)', reason: '50% less fat, same protein, fits calorie budget', availability: 'Amul parlors, Amazon', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 140, protein: 18, carbs: 3, fat: 7, sugar: 1, sodium: 35, fiber: 0 } },
   ],
   eggs: [
@@ -233,8 +233,8 @@ const curated: Record<string, CuratedAlternative[]> = {
     { name: 'Almond flour (homemade)', reason: 'Low carb, high healthy fat, keto-friendly', availability: 'Homemade', type: 'homemade', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 580, protein: 21, carbs: 22, fat: 50, sugar: 4, sodium: 1, fiber: 12 } },
   ],
   ghee: [
-    { name: 'A2 Ghee (Pride of Cows / Amul)', reason: 'Easy to digest, higher nutritive value, pure', availability: 'Amazon, BigBasket', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B0EFGH?tag=healthox-21' },
-    { name: 'Organic ghee (24 Mantra)', reason: 'Organic, no additives, from pasture-raised cows', availability: 'Amazon, BigBasket', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B0FGHI?tag=healthox-21' },
+    { name: 'A2 Ghee (Pride of Cows / Amul)', reason: 'Easy to digest, higher nutritive value, pure', availability: 'Amazon, BigBasket', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B0EFGH?tag=BioYou-21' },
+    { name: 'Organic ghee (24 Mantra)', reason: 'Organic, no additives, from pasture-raised cows', availability: 'Amazon, BigBasket', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 }, shopping_url: 'https://www.amazon.in/dp/B0FGHI?tag=BioYou-21' },
     { name: 'Homemade ghee (from A2 milk)', reason: 'Purity guaranteed, no adulteration', availability: 'Homemade', type: 'homemade', score: 8.5, grade: 'A', nutrition_per_100g: { calories: 900, protein: 0, carbs: 0, fat: 100, sugar: 0, sodium: 0, fiber: 0 } },
   ],
   honey: [
@@ -246,7 +246,7 @@ const curated: Record<string, CuratedAlternative[]> = {
     { name: 'Amul Taaza (toned milk)', reason: 'Low fat, high protein, fortified with vitamin D', availability: 'Everywhere', type: 'branded', score: 8.0, grade: 'A', nutrition_per_100g: { calories: 45, protein: 3.5, carbs: 4.8, fat: 1.5, sugar: 4.8, sodium: 50, fiber: 0 } },
     { name: 'Buffalo milk (local dairy)', reason: 'Higher fat, creamier, traditional choice', availability: 'Local dairy', type: 'whole_food', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 100, protein: 4, carbs: 5, fat: 7, sugar: 5, sodium: 70, fiber: 0 } },
     { name: 'Almond milk (unsweetened, So Good)', reason: 'Lowest calories, lactose-free, vitamin E', availability: 'Amazon, BigBasket', type: 'branded', score: 7.5, grade: 'A', nutrition_per_100g: { calories: 24, protein: 0.6, carbs: 1.5, fat: 2, sugar: 0, sodium: 60, fiber: 0 } },
-    { name: 'Oat milk (unsweetened)', reason: 'Creamy, high fiber, lactose-free', availability: 'Amazon, Blinkit', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 50, protein: 1, carbs: 8, fat: 1, sugar: 3, sodium: 45, fiber: 1 }, shopping_url: 'https://www.amazon.in/dp/B0GHIJ?tag=healthox-21' },
+    { name: 'Oat milk (unsweetened)', reason: 'Creamy, high fiber, lactose-free', availability: 'Amazon, Blinkit', type: 'branded', score: 7.0, grade: 'B', nutrition_per_100g: { calories: 50, protein: 1, carbs: 8, fat: 1, sugar: 3, sodium: 45, fiber: 1 }, shopping_url: 'https://www.amazon.in/dp/B0GHIJ?tag=BioYou-21' },
   ],
 }
 

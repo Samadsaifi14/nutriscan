@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
+import { requireAuth, enforceRateLimit } from '@/lib/api-auth'
 
 // Background enrichment pipeline for low-confidence products.
 // Called fire-and-forget after AI estimation or partial data returns.
@@ -9,7 +10,7 @@ async function tryOpenFoodFacts(barcode: string): Promise<any | null> {
   try {
     const res = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
-      { headers: { 'User-Agent': 'HealthOX/1.0 (enrichment)' }, signal: AbortSignal.timeout(10000) }
+      { headers: { 'User-Agent': 'BioYou/1.0 (enrichment)' }, signal: AbortSignal.timeout(10000) }
     )
     if (!res.ok) return null
     const data = await res.json()
@@ -39,6 +40,12 @@ async function tryOpenFoodFacts(barcode: string): Promise<any | null> {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth()
+    if ('response' in auth) return auth.response
+
+    const rate = await enforceRateLimit(auth.userId, 'enrich')
+    if ('response' in rate) return rate.response
+
     const { barcode, name, brand, confidence } = await req.json()
 
     if (!barcode) {

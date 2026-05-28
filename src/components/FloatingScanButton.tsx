@@ -90,7 +90,10 @@ export default function FloatingScanButton() {
 
         {/* Main Button */}
         <button
+          type="button"
           onClick={() => setShowMenu(!showMenu)}
+          aria-label={showMenu ? 'Close scan menu' : 'Open scan menu'}
+          aria-expanded={showMenu}
           className="relative w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 shadow-xl shadow-emerald-500/30 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
           style={{
             backdropFilter: 'blur(10px)',
@@ -205,7 +208,7 @@ function LabelScanner({ onCapture, onClose }: { onCapture: (data: string) => voi
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/50">
-        <button onClick={onClose} className="text-white font-bold">
+        <button type="button" onClick={onClose} className="text-white font-bold" aria-label="Close camera">
           ✕ Close
         </button>
         <p className="text-white text-sm font-bold">📷 Scan Nutrition Label</p>

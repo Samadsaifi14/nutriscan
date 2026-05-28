@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | HealthOX',
-  description: 'Terms of Service for HealthOX - Your food health analysis platform.',
+  title: 'Terms of Service | BioYou',
+  description: 'Terms of Service for BioYou - Your food health analysis platform.',
 }
 
 export default function TermsPage() {
@@ -14,12 +14,12 @@ export default function TermsPage() {
       <div className="space-y-6 text-sm text-[#c8d6e0] leading-relaxed">
         <Section title="1. Introduction">
           <p>
-            Welcome to HealthOX. These Terms of Service govern your use of the HealthOX web application, 
-            operated by Samad Saifi from New Delhi, Delhi, India. By accessing or using HealthOX, 
+            Welcome to BioYou. These Terms of Service govern your use of the BioYou web application, 
+            operated by Samad Saifi from New Delhi, Delhi, India. By accessing or using BioYou, 
             you agree to be bound by these terms.
           </p>
           <p className="mt-2">
-            HealthOX is an intermediary within the meaning of the Information Technology Act, 2000 
+            BioYou is an intermediary within the meaning of the Information Technology Act, 2000 
             and the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) 
             Rules, 2021. As an intermediary, we provide a platform for scanning and analyzing food 
             products and do not control or endorse the content of third-party product data sourced 
@@ -29,7 +29,7 @@ export default function TermsPage() {
 
         <Section title="2. Acceptance of Terms">
           <p>
-            By creating an account, scanning a product, or accessing any part of HealthOX, 
+            By creating an account, scanning a product, or accessing any part of BioYou, 
             you confirm that you have read, understood, and agree to these Terms of Service 
             and our Privacy Policy. If you do not agree, you must not use the app.
           </p>
@@ -37,7 +37,7 @@ export default function TermsPage() {
 
         <Section title="3. Eligibility">
           <p>
-            You must be at least 13 years of age to use HealthOX. By using the app, 
+            You must be at least 13 years of age to use BioYou. By using the app, 
             you represent that you meet this requirement. If you are under 18, 
             you represent that you have obtained consent from a parent or guardian.
           </p>
@@ -52,14 +52,14 @@ export default function TermsPage() {
           </p>
           <p className="mt-2">
             If you are under 18 years of age, you represent that you have obtained verifiable 
-            parental or guardian consent to use HealthOX. We collect age information during 
+            parental or guardian consent to use BioYou. We collect age information during 
             profile setup and require parental consent acknowledgment for users under 18.
           </p>
         </Section>
 
         <Section title="5. Description of Services">
           <p>
-            HealthOX provides the following services:
+            BioYou provides the following services:
           </p>
           <ul className="list-disc pl-5 space-y-1 mt-2">
             <li>Barcode scanning and product identification</li>
@@ -73,7 +73,7 @@ export default function TermsPage() {
 
         <Section title="6. Medical Disclaimer">
           <p className="font-bold text-amber-400">
-            HealthOX does not provide medical advice. All health scores, ingredient analyses, 
+            BioYou does not provide medical advice. All health scores, ingredient analyses, 
             and recommendations are algorithm-generated for informational and educational 
             purposes only. They are not a substitute for professional medical advice, 
             diagnosis, or treatment.
@@ -89,7 +89,7 @@ export default function TermsPage() {
         <Section title="7. User Content">
           <p>
             You may submit product corrections, contributions, and feedback through the app. 
-            By submitting content, you grant HealthOX a non-exclusive, royalty-free, 
+            By submitting content, you grant BioYou a non-exclusive, royalty-free, 
             worldwide license to use, store, and display such content to improve the service. 
             You represent that your submissions are accurate and not misleading.
           </p>
@@ -108,7 +108,7 @@ export default function TermsPage() {
 
         <Section title="9. Intellectual Property">
           <p>
-            The HealthOX name, logo, and app content (excluding data sourced from 
+            The BioYou name, logo, and app content (excluding data sourced from 
             Open Food Facts) are owned by Samad Saifi. You may not reproduce, distribute, 
             or create derivative works without prior written permission. Product data 
             sourced from Open Food Facts is used under the Open Database License (ODbL).
@@ -117,7 +117,7 @@ export default function TermsPage() {
 
         <Section title="10. Third-Party Services">
           <p>
-            HealthOX integrates with third-party services including:
+            BioYou integrates with third-party services including:
           </p>
           <ul className="list-disc pl-5 space-y-1 mt-2">
             <li>Open Food Facts — for product data</li>
@@ -133,7 +133,7 @@ export default function TermsPage() {
 
         <Section title="11. Limitation of Liability">
           <p>
-            To the maximum extent permitted by applicable law, HealthOX and its operator 
+            To the maximum extent permitted by applicable law, BioYou and its operator 
             shall not be liable for any indirect, incidental, special, consequential, 
             or punitive damages arising from your use of the app. The app is provided 
             &ldquo;as is&rdquo; without warranties of any kind, express or implied.
@@ -159,7 +159,7 @@ export default function TermsPage() {
         <Section title="14. Grievance Officer & Contact">
           <p>
             In compliance with the Information Technology Act, 2000 and the IT (Intermediary 
-            Guidelines) Rules, 2021, the Grievance Officer for HealthOX is:
+            Guidelines) Rules, 2021, the Grievance Officer for BioYou is:
           </p>
           <p className="mt-1 text-emerald-400">
             Samad Saifi<br />

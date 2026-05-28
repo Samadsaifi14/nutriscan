@@ -1,4 +1,4 @@
-// HealthOX Health Engine - Public API
+// BioYou Health Engine - Public API
 
 export { scoreProduct, scoreNutrition, scoreAdditives, classifyNOVA } from "./scorer";
 export { detectAdditives, ADDITIVES_DB, getAdditivesByRisk, getAdditivesByCategory, getCategoryWarnings } from "./additives-db";

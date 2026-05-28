@@ -4,10 +4,17 @@ import { analyzeBarcode, inferCategory } from '@/lib/barcode-intelligence'
 import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine'
 import { lookupWithCache } from '@/lib/off-india-import'
 import { callGemini } from '@/lib/gemini'
+import { requireAuth, enforceRateLimit } from '@/lib/api-auth'
 
 type Confidence = 'exact' | 'high' | 'estimated' | 'low' | 'none'
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth()
+  if ('response' in auth) return auth.response
+
+  const rate = await enforceRateLimit(auth.userId, 'scan')
+  if ('response' in rate) return rate.response
+
   const barcode = req.nextUrl.searchParams.get('barcode')
 
   const trimmedBarcode = barcode?.trim()
@@ -46,7 +53,7 @@ export async function GET(req: NextRequest) {
     console.log('Trying Open Food Facts...')
     const offRes = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${trimmedBarcode}.json`,
-      { headers: { 'User-Agent': 'HealthOX/1.0 (healthox@example.com)' } }
+      { headers: { 'User-Agent': 'BioYou/1.0 (BioYou@example.com)' } }
     )
 
     if (offRes.ok) {
@@ -103,7 +110,7 @@ export async function GET(req: NextRequest) {
       console.log(`Trying OFF keyword search: ${searchBrand} ${searchCategory}`)
       const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchBrand + ' ' + searchCategory)}&search_simple=1&action=process&json=1&page_size=5`
       const offSearchRes = await fetch(searchUrl, {
-        headers: { 'User-Agent': 'HealthOX/1.0 (healthox@example.com)' },
+        headers: { 'User-Agent': 'BioYou/1.0 (BioYou@example.com)' },
       })
 
       if (offSearchRes.ok) {

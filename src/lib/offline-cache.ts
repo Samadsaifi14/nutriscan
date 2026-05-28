@@ -1,7 +1,7 @@
 // lib/offline-cache.ts
-// Offline functionality for HealthOX
+// Offline functionality for BioYou
 
-const DB_NAME = 'healthox-offline'
+const DB_NAME = 'BioYou-offline'
 const DB_VERSION = 1
 
 interface CachedProduct {

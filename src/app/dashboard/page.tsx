@@ -1,5 +1,6 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import RouteErrorBoundary from '@/components/RouteErrorBoundary'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -100,6 +101,12 @@ export default function DashboardPage() {
     if (userId) event(AnalyticsEvents.VIEW_ANALYSIS, { page: 'dashboard', user_id: userId })
   }, [userId])
 
+  useEffect(() => {
+    if (data?.profile && !data.profile.profile_completed) {
+      router.replace('/profile-setup')
+    }
+  }, [data, router])
+
   if (status === 'loading' || isLoading) return <SkeletonDashboard />
 
   const userName   = session?.user?.name?.split(' ')[0] || 'there'
@@ -116,6 +123,7 @@ export default function DashboardPage() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   return (
+    <RouteErrorBoundary>
     <div className="min-h-screen bg-[var(--background)]">
 
       {/* ── Header — matches skeleton gradient ──────────────────── */}
@@ -138,10 +146,17 @@ export default function DashboardPage() {
                 </p>
               )}
             </div>
-            <button onClick={() => refetch()} disabled={isRefetching}
-              className="mt-1 p-2 rounded-xl bg-white/15 hover:bg-white/25 transition-colors text-white disabled:opacity-50">
-              <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex gap-2 mt-1">
+              <button type="button" onClick={() => router.push('/insights')}
+                className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold">
+                Insights
+              </button>
+              <button type="button" onClick={() => refetch()} disabled={isRefetching}
+                aria-label="Refresh dashboard"
+                className="p-2 rounded-xl bg-white/15 hover:bg-white/25 transition-colors text-white disabled:opacity-50">
+                <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {/* Profile CTA — matches skeleton's h-16 block */}
@@ -347,5 +362,6 @@ export default function DashboardPage() {
 
       </div>
     </div>
+    </RouteErrorBoundary>
   )
 }

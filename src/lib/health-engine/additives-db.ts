@@ -1,4 +1,4 @@
-// HealthOX Health Engine - Additive Database
+// BioYou Health Engine - Additive Database
 // 50+ harmful additives with INS codes, risk levels, and scientific concerns
 
 export type RiskLevel = "safe" | "low" | "medium" | "high" | "critical";

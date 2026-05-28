@@ -32,14 +32,21 @@ export default function AdminPendingPage() {
   const [filter, setFilter] = useState<'pending' | 'unverified' | 'all'>('all')
   const [selectedProduct, setSelectedProduct] = useState<PendingProduct | null>(null)
 
-  // Check if admin (you can modify this check)
-  const isAdmin = (session?.user as any)?.email === 'samadhealthox@gmail.com' || (session?.user as any)?.email === 'samadsaifi14@gmail.com'
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (status !== 'authenticated') return
+    fetch('/api/admin/check')
+      .then((r) => r.json())
+      .then((data) => setIsAdmin(!!data.isAdmin))
+      .catch(() => setIsAdmin(false))
+  }, [status])
+
+  useEffect(() => {
+    if (status === 'authenticated' && isAdmin) {
       fetchProducts()
     }
-  }, [status, filter])
+  }, [status, filter, isAdmin])
 
   async function fetchProducts() {
     setLoading(true)

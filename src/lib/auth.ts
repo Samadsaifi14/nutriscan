@@ -5,14 +5,6 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 declare module "next-auth" {
   interface Session {
     userId: string
-    googleAccessToken?: string
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    googleAccessToken?: string
-    googleTokenExpiry?: number
   }
 }
 
@@ -58,10 +50,14 @@ export const authOptions: NextAuthOptions = {
         }
         if (isNewUser) {
           const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+          const internalSecret = process.env.INTERNAL_API_SECRET || process.env.CRON_SECRET
           fetch(`${baseUrl}/api/welcome-email`, {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ userId: user.id, email: user.email, name: user.name })
+            headers: {
+              'Content-Type': 'application/json',
+              ...(internalSecret ? { 'x-internal-secret': internalSecret } : {}),
+            },
+            body: JSON.stringify({ userId: user.id, email: user.email, name: user.name }),
           }).catch(err => console.log('Welcome email error:', err.message))
         }
         return true
@@ -73,17 +69,14 @@ export const authOptions: NextAuthOptions = {
 
     async jwt({ token, account }) {
       if (account) {
-        token.provider          = account.provider
-        token.googleAccessToken = account.access_token
-        token.googleTokenExpiry = account.expires_at
+        token.provider = account.provider
       }
       return token
     },
 
     async session({ session, token }) {
       if (session.user) {
-        session.userId            = token.sub ?? ""
-        session.googleAccessToken = token.googleAccessToken
+        session.userId = token.sub ?? ""
       }
       return session
     },

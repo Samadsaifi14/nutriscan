@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { scoreProduct, type NutritionPer100g } from '@/lib/health-engine/scorer'
+import { getAuthSession, getUserId } from '@/lib/api-auth'
+import { requireAdmin } from '@/lib/admin'
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  const userId = (session as any)?.userId
+  const session = await getAuthSession()
+  const userId = getUserId(session)
 
   if (!userId) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const adminCheck = requireAdmin(session)
+  if (!adminCheck.ok) {
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
   }
 
   const { productId } = await req.json()

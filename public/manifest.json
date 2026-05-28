@@ -1,17 +1,17 @@
 {
-  "name": "NutriScan — AI Food Health Advisor",
-  "short_name": "NutriScan",
+  "name": "BioYou — Scan. Know. Choose Better",
+  "short_name": "BioYou",
   "description": "Scan any packaged food and get an instant AI health rating",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#f0fdf4",
-  "theme_color": "#059669",
+  "theme_color": "#1a4d32",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "maskable any"
     }
   ],

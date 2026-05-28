@@ -13,10 +13,14 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
   title: {
-    default: 'HealthOX — AI Food Health Advisor',
-    template: '%s | HealthOX',
+    default: 'BioYou — Scan. Know. Choose Better',
+    template: '%s | BioYou',
   },
   description: 'Scan packaged foods to analyze ingredients, detect harmful additives, and get health scores. Made for India.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
   robots: {
     index: true,
     follow: true,
@@ -24,10 +28,9 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#059669',
+  themeColor: '#1a4d32',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

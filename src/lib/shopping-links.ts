@@ -2,7 +2,7 @@
 // Generate shopping links for alternatives
 
 // Your Amazon Associates Store ID
-const AMAZON_AFFILIATE_ID = 'healthox-21'
+const AMAZON_AFFILIATE_ID = 'BioYou-21'
 
 export interface ShoppingLink {
   platform: 'amazon' | 'flipkart' | 'bigbasket' | 'blinkit' | 'zepto' | 'instamart'

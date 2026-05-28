@@ -15,6 +15,7 @@ const nextConfig = {experimental: {
       { protocol: 'https', hostname: 'static.openfoodfacts.org' },
       { protocol: 'https', hostname: 'world.openfoodfacts.org' },
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: '**.vercel.app' },
     ],
   },
   async headers() {
@@ -37,7 +38,7 @@ const nextConfig = {experimental: {
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
-              "connect-src 'self' https://generativelanguage.googleapis.com https://www.google-analytics.com https://analytics.google.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://api.groq.com https://world.openfoodfacts.org https://www.google-analytics.com https://analytics.google.com",
               "img-src 'self' data: https: blob:",
               "font-src 'self'",
               "style-src 'self' 'unsafe-inline'",

@@ -15,11 +15,12 @@ export function generateShareContent(
   const scoreEmoji = healthScore >= 7.5 ? '✅' : healthScore >= 5.5 ? '⚠️' : '❌'
   const ratingText = healthRating === 'healthy' ? 'Healthy' : healthRating === 'moderate' ? 'Moderate' : 'Unhealthy'
   
-  const text = `${scoreEmoji} Scanned "${productName}" on HealthOX\n📊 Health Score: ${healthScore}/10 (${ratingText})\n🔍 Check your food's health score!\n\n📱 Download: https://nutriscan-theta.vercel.app/`
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://BioYou.app'
+  const text = `${scoreEmoji} Scanned "${productName}" on BioYou\n📊 Health Score: ${healthScore}/10 (${ratingText})\n🔍 Check your food's health score!\n\n📱 ${appUrl}`
   
   return {
     title: `${productName} - Health Score: ${healthScore}/10`,
     text,
-    url: 'https://nutriscan-theta.vercel.app/'
+    url: appUrl,
   }
 }

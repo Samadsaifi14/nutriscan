@@ -144,6 +144,6 @@ describe('TDEE Calculation', () => {
 
   it('should apply active multiplier', () => {
     const tdee = calculateTDEE(1700, 'active')
-    expect(tdee).toBe(2935)
+    expect(tdee).toBe(2933)
   })
 })

@@ -21,7 +21,7 @@ export function Footer() {
           </Link>
         </div>
         <p className="text-[10px] text-[#4a5a6a]">
-          &copy; {new Date().getFullYear()} HealthOX. All rights reserved.
+          &copy; {new Date().getFullYear()} BioYou. All rights reserved.
         </p>
         <p className="text-[10px] text-[#4a5a6a] mt-1">
           As an Amazon Associate, we earn from qualifying purchases.

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import toast from 'react-hot-toast'
+import Logo from '@/components/Logo'
 
 const activityOptions = [
   { value: 'sedentary', label: 'Sedentary', desc: 'Little or no exercise', icon: '🪑' },
@@ -242,13 +243,10 @@ export default function ProfileSetupPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 shadow-lg"
-            style={gradientStyle}
-          >
-            <span className="text-2xl">🥗</span>
+          <div className="inline-block mb-4">
+            <Logo size={56} />
           </div>
-          <h1 className="text-2xl font-black mb-1" style={textGradientStyle}>HealthOX</h1>
+          <h1 className="text-2xl font-black mb-1 text-[#1a4d32] dark:text-emerald-100">BioYou</h1>
           <p className="text-sm text-[var(--muted)]">
             {step === 4 ? 'Your profile is ready!' : `Step ${step} of 3`}
           </p>
@@ -607,7 +605,7 @@ export default function ProfileSetupPage() {
               />
               <div>
                 <p className="text-xs text-[var(--muted)] leading-relaxed">
-                  I consent to HealthOX storing my health data (conditions, allergies, 
+                  I consent to BioYou storing my health data (conditions, allergies, 
                   diet preferences) to personalize food analysis. View our{" "}
                   <a href="/legal/privacy" className="text-emerald-400 hover:text-emerald-300 underline">Privacy Policy</a>.
                 </p>
@@ -627,7 +625,7 @@ export default function ProfileSetupPage() {
                 />
                 <div>
                   <p className="text-xs text-[var(--muted)] leading-relaxed">
-                    I confirm that I have obtained verifiable parental/guardian consent to use HealthOX and for the processing of my personal data as described in the{" "}
+                    I confirm that I have obtained verifiable parental/guardian consent to use BioYou and for the processing of my personal data as described in the{" "}
                     <a href="/legal/privacy" className="text-emerald-400 hover:text-emerald-300 underline">Privacy Policy</a>.
                   </p>
                 </div>
@@ -772,7 +770,7 @@ export default function ProfileSetupPage() {
               className="w-full py-4 rounded-2xl text-white text-sm font-bold"
               style={{ ...gradientStyle, boxShadow: '0 8px 24px rgba(5,150,105,0.3)' }}
             >
-              Start Tracking with HealthOX →
+              Start Tracking with BioYou →
             </button>
           </div>
         )}
@@ -853,7 +851,7 @@ export default function ProfileSetupPage() {
               <div className="flex-1">
                 <p className="text-sm font-bold text-[var(--foreground)] mb-1">🚫 Unsubscribe from All Emails</p>
                 <p className="text-xs text-[var(--muted)] leading-relaxed">
-                  Stop all HealthOX emails. You can re-enable anytime by toggling this off.
+                  Stop all BioYou emails. You can re-enable anytime by toggling this off.
                 </p>
               </div>
               <button
@@ -881,7 +879,7 @@ export default function ProfileSetupPage() {
               <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
                 <span className="flex-shrink-0">⚠️</span>
                 <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed">
-                  You are unsubscribed from all HealthOX emails. Toggle off above to re-enable.
+                  You are unsubscribed from all BioYou emails. Toggle off above to re-enable.
                 </p>
               </div>
             )}
