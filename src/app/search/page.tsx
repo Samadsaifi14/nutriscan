@@ -28,6 +28,35 @@ function SearchPageContent() {
     if (q && q.length >= 2) setQuery(q)
   }, [searchParams])
 
+  // Debounced auto-search: as soon as the user pauses typing for 250ms (and
+  // the query is >=2 chars), fire the request. The submit button is still
+  // available for an explicit refresh.
+  useEffect(() => {
+    const trimmed = query.trim()
+    if (trimmed.length < 2) {
+      setProducts([])
+      setCommunity([])
+      return
+    }
+    setLoading(true)
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`)
+        const data = await res.json()
+        if (data.success) {
+          setProducts(data.data.products || [])
+          setCommunity(data.data.community || [])
+        } else {
+          setProducts([])
+          setCommunity([])
+        }
+      } finally {
+        setLoading(false)
+      }
+    }, 250)
+    return () => clearTimeout(handle)
+  }, [query])
+
   async function handleSearch(e?: React.FormEvent) {
     e?.preventDefault()
     if (query.trim().length < 2) return

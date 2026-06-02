@@ -115,6 +115,14 @@ export interface ScanResultPayload {
   analysis:  Analysis
   quantity:  number
   timestamp: string
+  // Pre-fetched alternatives so the Alternatives tab opens with results in one go
+  alternatives?: {
+    alternatives: any[]
+    why_better?: any[]
+    current_score?: number | null
+    current_grade?: string | null
+    source: 'dynamic' | 'curated' | 'groq_ai' | 'none'
+  } | null
 }
 
 export const SCAN_RESULT_KEY = 'hox_scan_result_v1'

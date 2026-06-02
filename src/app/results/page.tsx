@@ -185,7 +185,7 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
 useEffect(() => {
     const barcode = searchParams?.get('barcode')
     const mode = searchParams?.get('mode')
-    
+
     // If there's a barcode in URL, fetch and save the product
     if (barcode) {
       setScannedBarcode(barcode)
@@ -197,7 +197,7 @@ useEffect(() => {
             setScanFailed(false)
             setScanConfidence(res.confidence || 'high')
             const product = res.data.product || res.data
-            
+
             // Build product data (API nests nutrition under product.nutrition)
             const productData = {
               name: product.name || 'Unknown',
@@ -220,31 +220,64 @@ useEffect(() => {
               additives: product.additives || [],
               image_url: product.image_url || null,
             }
-            
-            // Fetch full analysis from /api/analyze to get harmful_ingredients
-            let analysis: any = { health_score: 5, health_rating: 'moderate', summary: 'Analyzed by BioYou', analyzed_at: new Date().toISOString(), harmful_ingredients: [] }
-            try {
-              const analyzeRes = await fetch('/api/analyze', {
+
+            // Fetch analysis + alternatives in parallel so the page is fully
+            // populated in one go — the Alternatives tab won't have to wait
+            // for its own network round-trip.
+            const [analyzeJson, altJson] = await Promise.all([
+              fetch('/api/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(productData),
-              })
-              const analyzeJson = await analyzeRes.json()
-              if (analyzeJson.success && analyzeJson.data) {
-                const a = analyzeJson.data
-                analysis = {
-                  health_score: 5,
-                  health_rating: 'moderate',
-                  summary: 'Analyzed by BioYou',
-                  analyzed_at: new Date().toISOString(),
-                  harmful_ingredients: [],
-                  positives: [],
-                  long_term_risks: [],
-                  ...a,
-                }
-              }
-            } catch {}
-            
+              }).then(r => r.json()).catch(() => null),
+              fetch('/api/alternatives', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: productData.name,
+                  brand: productData.brand,
+                  category: productData.category,
+                  barcode: productData.barcode,
+                  nutrition_per_100g: productData.nutrition,
+                  ingredients_text: productData.ingredients_text,
+                }),
+              }).then(r => r.json()).catch(() => null),
+            ])
+
+            // Build a richer default summary that the user can see immediately,
+            // before /api/analyze completes. The /api/analyze call will then
+            // override it with the AI-generated one.
+            const quickSummary = (() => {
+              const n = productData.nutrition || {}
+              const cal = Math.round(n.calories || 0)
+              const pro = Math.round(n.protein || 0)
+              const sugar = n.sugar
+              const sodium = n.sodium
+              const bits: string[] = []
+              if (cal) bits.push(`${cal} kcal/100g`)
+              if (pro) bits.push(`${pro}g protein`)
+              if (sugar != null) bits.push(`${sugar}g sugar`)
+              if (sodium != null) bits.push(`${sodium}mg sodium`)
+              const header = `${productData.name} — quick snapshot${bits.length ? ' (' + bits.join(', ') + ')' : ''}.`
+              const tail = 'Full AI breakdown is generating below — see score, ingredients, and safer alternatives.'
+              return `${header} ${tail}`
+            })()
+
+            let analysis: any = {
+              health_score: 5,
+              health_rating: 'moderate',
+              summary: quickSummary,
+              analyzed_at: new Date().toISOString(),
+              harmful_ingredients: [],
+              positives: [],
+              long_term_risks: [],
+            }
+            if (analyzeJson?.success && analyzeJson.data) {
+              analysis = { ...analysis, ...analyzeJson.data }
+            }
+
+            const preFetchedAlternatives = altJson?.success && altJson.data ? altJson.data : null
+
             // Format for scan result payload
             const payload: ScanResultPayload = {
               version: 1,
@@ -252,18 +285,21 @@ useEffect(() => {
               product: productData,
               analysis: analysis,
               quantity: 100,
+              alternatives: preFetchedAlternatives,
             }
-            
-              // Save to localStorage
+
+            // Save to localStorage
             localStorage.setItem('hox_scan_result_v1', JSON.stringify(payload))
             setPayload(payload)
             setQuantity(100)
+            if (preFetchedAlternatives) setApiAlternatives(preFetchedAlternatives)
           } else {
             // API returned no data — product not found
             setScanFailed(true)
             const data = readScanResult()
             setPayload(data)
             if (data) setQuantity(data.quantity || 100)
+            if (data?.alternatives) setApiAlternatives(data.alternatives)
           }
           setScanLoading(false)
           setHydrated(true)
@@ -275,14 +311,16 @@ useEffect(() => {
           const data = readScanResult()
           setPayload(data)
           if (data) setQuantity(data.quantity || 100)
+          if (data?.alternatives) setApiAlternatives(data.alternatives)
         })
       return
     }
-    
+
     // Default: read from localStorage
     const data = readScanResult()
     setPayload(data)
     if (data) setQuantity(data.quantity || 100)
+    if (data?.alternatives) setApiAlternatives(data.alternatives)
     setHydrated(true)
   }, [searchParams])
 
@@ -348,7 +386,8 @@ useEffect(() => {
     return () => { supabase.removeChannel(channel) }
   }, [scannedBarcode])
 
-  // Fetch alternatives from API when Alternatives tab is active
+  // Fetch alternatives from API when Alternatives tab is active — but only
+  // if we don't already have them from the pre-fetch above.
   useEffect(() => {
     if (activeTab !== 'Alternatives' || !payload || apiAlternatives) return
     setAltLoading(true)

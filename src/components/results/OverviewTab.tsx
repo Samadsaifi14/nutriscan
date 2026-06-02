@@ -23,7 +23,21 @@ export default function OverviewTab({ analysis }: Props) {
   return (
     <div className="space-y-4">
       <Panel title="AI Summary" icon="🤖">
-        <p className="text-sm text-[#f0f4f8] leading-relaxed">{(s as any).summary || 'Analysis complete — see details below.'}</p>
+        {(s as any).summary ? (
+          <p className="text-sm text-[#f0f4f8] leading-relaxed">{(s as any).summary}</p>
+        ) : (
+          <div className="space-y-2">
+            <div className="h-3 bg-[#1e242d] rounded animate-pulse w-full" />
+            <div className="h-3 bg-[#1e242d] rounded animate-pulse w-11/12" />
+            <div className="h-3 bg-[#1e242d] rounded animate-pulse w-3/4" />
+          </div>
+        )}
+        {(s as any).recommendation && (
+          <div className="mt-3 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+            <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-wide mb-1">Verdict</p>
+            <p className="text-sm text-[#f0f4f8]">{(s as any).recommendation}</p>
+          </div>
+        )}
         {(s as any).confidence && (s as any).confidence !== 'high' && (
           <div className="mt-3 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
             <p className="text-[11px] text-amber-400">

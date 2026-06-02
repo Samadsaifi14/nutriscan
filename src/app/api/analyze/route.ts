@@ -375,8 +375,9 @@ export async function POST(req: NextRequest) {
 
     try {
       console.log(`🤖 Generating unified Groq analysis...`)
-      
-      const groqResult = await generateUnifiedAnalysis({
+
+      const groqResult = await Promise.race([
+        generateUnifiedAnalysis({
         product_name: product.name,
         score: localResult.score,
         grade: localResult.grade,
@@ -398,7 +399,9 @@ export async function POST(req: NextRequest) {
           has_bp: profile.has_bp,
           is_vegetarian: profile.is_vegetarian,
         } : undefined,
-      })
+      }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('groq timeout')), 6000)),
+      ])
 
       aiEnhancement = {
         summary: groqResult.summary,
@@ -412,7 +415,7 @@ export async function POST(req: NextRequest) {
       }
       console.log(`✅ Unified Groq analysis generated`)
     } catch (aiErr: any) {
-      console.warn('Groq failed, using template summary:', aiErr.message)
+      console.warn('Groq failed/timed out, using local summary:', aiErr.message)
       aiFailed = true
     }
 
@@ -426,7 +429,7 @@ export async function POST(req: NextRequest) {
         processing_score: localResult.nova_score,
         overall: localResult.score,
       },
-      summary: aiEnhancement?.summary || localResult.summary,
+      summary: (aiEnhancement?.summary && String(aiEnhancement.summary).trim()) || localResult.summary || `${product.name} scored ${Math.round(localResult.score * 10) / 10}/10 (${localResult.label}).`,
       detailed_breakdown: {
         calories: aiEnhancement?.detailed_breakdown?.calories || `(${localResult.breakdown.find(b => b.factor === 'calories')?.detail || 'see score'})`,
         protein: aiEnhancement?.detailed_breakdown?.protein || `(${localResult.breakdown.find(b => b.factor === 'protein')?.detail || 'see score'})`,
@@ -476,18 +479,22 @@ export async function POST(req: NextRequest) {
 
     // ─────────────────────────────────────────────────────────────────────────
     // PHASE 3: Find dynamic healthier alternatives from Open Food Facts
+    // (non-blocking with timeout — the response ships even if OFF is slow)
     // ─────────────────────────────────────────────────────────────────────────
     let dynamicAlternatives: any = null
     try {
-      const altResult = await findHealthierAlternatives({
-        name: product.name,
-        brand: product.brand || null,
-        category: product.category || null,
-        barcode: product.barcode || null,
-        nutrition_per_100g: product.nutrition,
-        ingredients_text: product.ingredients_text || null,
-      })
-      
+      const altResult = await Promise.race([
+        findHealthierAlternatives({
+          name: product.name,
+          brand: product.brand || null,
+          category: product.category || null,
+          barcode: product.barcode || null,
+          nutrition_per_100g: product.nutrition,
+          ingredients_text: product.ingredients_text || null,
+        }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('alternatives timeout')), 4000)),
+      ])
+
       if (altResult.alternatives.length > 0) {
         dynamicAlternatives = {
           products: altResult.alternatives.map(p => ({
@@ -506,7 +513,7 @@ export async function POST(req: NextRequest) {
         console.log(`🔄 Found ${altResult.alternatives.length} dynamic alternatives`)
       }
     } catch (altErr: any) {
-      console.warn('Dynamic alternatives failed:', altErr.message)
+      console.warn('Dynamic alternatives skipped:', altErr.message)
     }
 
     // Add dynamic alternatives to analysis
