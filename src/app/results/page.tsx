@@ -436,10 +436,10 @@ async function handleLogMeal(mealType: string) {
 
   if (scanLoading) {
     return (
-      <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
+      <div className="min-h-[100svh] flex flex-col items-center justify-center px-6 text-center pb-24">
         <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-6" />
-        <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Analyzing Product...</h2>
-        <p className="text-sm text-[#7a8fa6] mb-8 leading-relaxed max-w-xs">
+        <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Analyzing Product...</h2>
+        <p className="text-sm text-[var(--muted)] mb-8 leading-relaxed max-w-xs">
           Scanning databases and running health analysis
         </p>
       </div>
@@ -451,15 +451,15 @@ async function handleLogMeal(mealType: string) {
   if (!payload) {
     if (scanFailed && scannedBarcode) {
       return (
-        <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
-          <div className="w-20 h-20 rounded-full bg-[#161a20] border border-[#2a3545] flex items-center justify-center mb-5 text-3xl">
+        <div className="min-h-[100svh] flex flex-col items-center justify-center px-6 text-center pb-24">
+          <div className="w-20 h-20 rounded-full bg-[var(--card)] border border-[var(--card-border)] flex items-center justify-center mb-5 text-3xl">
             📦
           </div>
-          <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Product Not Found</h2>
-          <p className="text-sm text-[#7a8fa6] mb-2 leading-relaxed max-w-sm">
+          <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Product Not Found</h2>
+          <p className="text-sm text-[var(--muted)] mb-2 leading-relaxed max-w-sm">
             This product (barcode: {scannedBarcode}) isn't in our database yet.
           </p>
-          <p className="text-xs text-[#4a5a6a] mb-6 leading-relaxed max-w-xs">
+          <p className="text-xs text-[var(--muted-2)] mb-6 leading-relaxed max-w-xs">
             Help the community! Contribute this product's details so others can check its health score.
           </p>
           <div className="flex flex-col gap-3 w-full max-w-xs">
@@ -468,11 +468,11 @@ async function handleLogMeal(mealType: string) {
               📸 Add This Product
             </button>
             <button onClick={() => router.push(`/search?q=${encodeURIComponent(scannedBarcode)}`)}
-              className="px-6 py-3.5 bg-[#252c38] hover:bg-[#2a3545] text-[#c8d6e0] font-bold rounded-2xl text-sm transition-colors">
+              className="px-6 py-3.5 bg-[color-mix(in_oklab,var(--card),black_5%)] hover:bg-[color-mix(in_oklab,var(--card),black_10%)] text-[var(--foreground)] font-bold rounded-2xl text-sm transition-colors border border-[var(--card-border)]">
               Search by Name
             </button>
             <button onClick={() => router.push('/scan')}
-              className="px-6 py-3.5 border border-[#2a3545] text-[#c8d6e0] font-bold rounded-2xl text-sm transition-colors">
+              className="px-6 py-3.5 border border-[var(--card-border)] text-[var(--foreground)] font-bold rounded-2xl text-sm transition-colors bg-transparent hover:bg-[color-mix(in_oklab,var(--card),transparent_60%)]">
               Scan Another
             </button>
       </div>
@@ -481,12 +481,12 @@ async function handleLogMeal(mealType: string) {
 }
 
     return (
-      <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center pb-24">
-        <div className="w-20 h-20 rounded-full bg-[#161a20] border border-[#2a3545] flex items-center justify-center mb-5 text-3xl">
+      <div className="min-h-[100svh] flex flex-col items-center justify-center px-6 text-center pb-24">
+        <div className="w-20 h-20 rounded-full bg-[var(--card)] border border-[var(--card-border)] flex items-center justify-center mb-5 text-3xl">
           🔍
         </div>
-        <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">No scan result yet</h2>
-        <p className="text-sm text-[#7a8fa6] mb-8 leading-relaxed max-w-xs">
+        <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">No scan result yet</h2>
+        <p className="text-sm text-[var(--muted)] mb-8 leading-relaxed max-w-xs">
           Scan a product to see its full health analysis, ingredient breakdown, and personalised advice here.
         </p>
         <button onClick={() => router.push('/scan')}
@@ -517,13 +517,13 @@ async function handleLogMeal(mealType: string) {
   })
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-[#f0f4f8] font-sans pb-28">
+    <div className="min-h-[100svh] text-[var(--foreground)] font-sans pb-28">
 
       {/* ── Hero header ───────────────────────────────────────────────────── */}
       <div className={`bg-gradient-to-b ${scoreBg(analysis.health_rating)} px-5 pt-14 pb-6`}>
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => router.push('/scan')}
-            className="text-[#7a8fa6] hover:text-[#f0f4f8] text-sm transition-colors flex items-center gap-1">
+            className="text-[var(--muted)] hover:text-[var(--foreground)] text-sm transition-colors flex items-center gap-1">
             ← Scan again
           </button>
           <div className="flex items-center gap-3">
@@ -532,7 +532,7 @@ async function handleLogMeal(mealType: string) {
               healthScore={Number(analysis.health_score)} 
               healthRating={analysis.health_rating} 
             />
-            <span className="text-[11px] text-[#7a8fa6]">
+            <span className="text-[11px] text-[var(--muted)]">
               {new Date(timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
             </span>
           </div>
@@ -547,13 +547,13 @@ async function handleLogMeal(mealType: string) {
                product.source === 'gemini_vision' ? '👁 Label scan' :
                product.source === 'open_food_facts' ? '🌐 Open Food Facts' : '✅ Database'}
             </p>
-            <h1 className="text-xl font-black text-[#f0f4f8] leading-tight">{product.name}</h1>
-            {product.brand && <p className="text-sm text-[#7a8fa6] mt-0.5">{product.brand}</p>}
+            <h1 className="text-xl font-black text-[var(--foreground)] leading-tight">{product.name}</h1>
+            {product.brand && <p className="text-sm text-[var(--muted)] mt-0.5">{product.brand}</p>}
 
             {scanConfidence === 'low' && (
               <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                 <p className="text-xs font-bold text-amber-400 mb-1">🤖 AI-Estimated Data</p>
-                <p className="text-[11px] text-[#7a8fa6] leading-relaxed">
+                <p className="text-[11px] text-[var(--muted)] leading-relaxed">
                   This product wasn't found in any database. The name and nutrition shown were estimated by AI based on the barcode prefix.
                   <button onClick={() => router.push(`/contribute?barcode=${product.barcode || scannedBarcode}`)}
                     className="ml-1 text-amber-400 underline font-medium">Help improve it →</button>
@@ -594,7 +594,7 @@ async function handleLogMeal(mealType: string) {
 
       {/* ── Score breakdown strip ─────────────────────────────────────────── */}
       {analysis.health_score_breakdown && (
-        <div className="mx-4 -mt-2 mb-4 bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 space-y-2.5">
+        <div className="mx-4 -mt-2 mb-4 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-4 space-y-2.5">
           <MiniBar label="Nutrition Quality"  score={analysis.health_score_breakdown.nutrition_score} />
           <MiniBar label="Ingredient Safety"  score={analysis.health_score_breakdown.ingredient_safety_score} />
           <MiniBar label="Processing Level"   score={analysis.health_score_breakdown.processing_score} />
@@ -602,7 +602,7 @@ async function handleLogMeal(mealType: string) {
       )}
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-[#0d0f12] border-b border-[#2a3545] px-4">
+      <div className="sticky top-0 z-30 bg-[var(--background)] border-b border-[var(--card-border)] px-4 backdrop-blur-xl/50">
         <div className="flex gap-1 overflow-x-auto no-scrollbar py-2">
           {tabsMeta.map(({ key, locked, reason }) => (
             <button key={key} onClick={() => { if (!locked) setActiveTab(key) }}
@@ -610,8 +610,8 @@ async function handleLogMeal(mealType: string) {
                 activeTab === key
                   ? 'bg-emerald-500 text-white'
                   : locked
-                    ? 'text-[#4a5a6a] bg-[#161a20] cursor-not-allowed opacity-50'
-                    : 'text-[#7a8fa6] hover:text-[#f0f4f8] bg-[#161a20]'
+                    ? 'text-[var(--muted-2)] bg-[var(--card)] cursor-not-allowed opacity-50 border border-[var(--card-border)]'
+                    : 'text-[var(--muted)] hover:text-[var(--foreground)] bg-[var(--card)] border border-[var(--card-border)]'
               }`}
               title={locked ? reason : ''}>
               {key === 'Ingredients' && harmfulCount > 0 ? `Ingredients (${harmfulCount})` : key}
@@ -631,7 +631,7 @@ async function handleLogMeal(mealType: string) {
         )}
       </div>
 
-      <div className="px-4 pt-4 space-y-4">
+      <div className="app-container pt-4 space-y-4">
 
         {activeTab === 'Overview' && (
           <OverviewTab analysis={analysis} />
@@ -1154,7 +1154,7 @@ async function handleLogMeal(mealType: string) {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
+    <div className="min-h-[100svh] flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )

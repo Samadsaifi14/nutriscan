@@ -54,7 +54,7 @@ export default function FloatingScanButton() {
             {/* Photo/Label Scan Option */}
             <button
               onClick={() => { setMode('photo'); setShowScanner(true); setShowMenu(false) }}
-              className="flex items-center gap-2 px-4 py-3 bg-[#1a1f28] border border-[#2a3545] rounded-xl shadow-lg hover:bg-[#252c38] transition-colors"
+              className="flex items-center gap-2 px-4 py-3 bg-[var(--card)] border border-[var(--card-border)] rounded-xl shadow-lg hover:bg-[color-mix(in_oklab,var(--card),black_6%)] transition-colors"
             >
               <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
                 <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -64,15 +64,15 @@ export default function FloatingScanButton() {
                 </svg>
               </div>
               <div className="text-left">
-                <p className="text-sm font-bold text-[#f0f4f8]">📷 Scan Label</p>
-                <p className="text-[10px] text-[#7a8fa6]">Take photo of nutrition label</p>
+                <p className="text-sm font-bold text-[var(--foreground)]">📷 Scan Label</p>
+                <p className="text-[10px] text-[var(--muted)]">Take photo of nutrition label</p>
               </div>
             </button>
             
             {/* Barcode Scan Option */}
             <button
               onClick={() => { setMode('barcode'); setShowScanner(true); setShowMenu(false) }}
-              className="flex items-center gap-2 px-4 py-3 bg-[#1a1f28] border border-[#2a3545] rounded-xl shadow-lg hover:bg-[#252c38] transition-colors"
+              className="flex items-center gap-2 px-4 py-3 bg-[var(--card)] border border-[var(--card-border)] rounded-xl shadow-lg hover:bg-[color-mix(in_oklab,var(--card),black_6%)] transition-colors"
             >
               <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
                 <svg className="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -81,8 +81,8 @@ export default function FloatingScanButton() {
                 </svg>
               </div>
               <div className="text-left">
-                <p className="text-sm font-bold text-[#f0f4f8]">🏷️ Scan Barcode</p>
-                <p className="text-[10px] text-[#7a8fa6]">Scan product barcode</p>
+                <p className="text-sm font-bold text-[var(--foreground)]">🏷️ Scan Barcode</p>
+                <p className="text-[10px] text-[var(--muted)]">Scan product barcode</p>
               </div>
             </button>
           </div>

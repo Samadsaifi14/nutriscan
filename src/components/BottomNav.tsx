@@ -20,7 +20,7 @@ export default function BottomNav() {
   if (!session) return null // No nav for guests
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-[#0d1117]/95 backdrop-blur-2xl border-t border-[#2a3545] safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-[color-mix(in_oklab,var(--background),black_10%)]/90 dark:bg-[color-mix(in_oklab,var(--background),white_5%)]/85 backdrop-blur-2xl border-t border-[var(--card-border)] safe-area-bottom">
       <div className="flex items-center justify-around max-w-lg mx-auto px-2 py-3">
         {NAV_ITEMS.map(item => {
           const isActive = pathname === item.href
@@ -31,8 +31,8 @@ export default function BottomNav() {
               href={item.href}
               className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all ${
                 isActive
-                  ? 'text-emerald-400 bg-emerald-500/10'
-                  : 'text-[#7a8fa6] hover:text-white hover:bg-[#1a2030]'
+                  ? 'text-[var(--foreground)] bg-[color-mix(in_oklab,var(--brand),transparent_88%)] border border-[color-mix(in_oklab,var(--brand),transparent_70%)]'
+                  : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[color-mix(in_oklab,var(--card),transparent_35%)]'
               }`}
             >
               <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />

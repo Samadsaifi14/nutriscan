@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <Providers>
           <ErrorBoundary>
-            <main className="pb-20 min-h-screen">
+            <main className="min-h-[100svh] pb-24 app-bg">
               {children}
             </main>
             <Footer />
