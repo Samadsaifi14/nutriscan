@@ -20,14 +20,6 @@ export function WeeklyChart({ userId }: WeeklyChartProps) {
 
   const effectiveUserId = userId || (session as any)?.userId
 
-  useEffect(() => {
-    if (effectiveUserId) {
-      fetchWeeklyData()
-    } else {
-      setLoading(false)
-    }
-  }, [effectiveUserId, fetchWeeklyData])
-
   const fetchWeeklyData = useCallback(async function fetchWeeklyData() {
     setLoading(true)
     setError(null)
@@ -79,6 +71,14 @@ export function WeeklyChart({ userId }: WeeklyChartProps) {
       setLoading(false)
     }
   }, [effectiveUserId])
+
+  useEffect(() => {
+    if (effectiveUserId) {
+      fetchWeeklyData()
+    } else {
+      setLoading(false)
+    }
+  }, [effectiveUserId, fetchWeeklyData])
 
   if (loading) {
     return (

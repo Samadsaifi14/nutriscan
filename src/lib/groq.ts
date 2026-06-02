@@ -12,6 +12,7 @@ export interface UnifiedAnalysisRequest {
     sodium?: number
     carbs?: number
     fat?: number
+    saturated_fat?: number
     fiber?: number
   }
   additives_found: string[]

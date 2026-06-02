@@ -42,12 +42,6 @@ export default function AdminPendingPage() {
       .catch(() => setIsAdmin(false))
   }, [status])
 
-  useEffect(() => {
-    if (status === 'authenticated' && isAdmin) {
-      fetchProducts()
-    }
-  }, [status, filter, isAdmin, fetchProducts])
-
   const fetchProducts = useCallback(async function fetchProducts() {
     setLoading(true)
     let query = supabase
@@ -69,6 +63,12 @@ export default function AdminPendingPage() {
     }
     setLoading(false)
   }, [filter])
+
+  useEffect(() => {
+    if (status === 'authenticated' && isAdmin) {
+      fetchProducts()
+    }
+  }, [status, filter, isAdmin, fetchProducts])
 
   const handleAction = useCallback(async function handleAction(productId: string, action: 'approve' | 'reject' | 'edit') {
     if (action === 'edit') {
