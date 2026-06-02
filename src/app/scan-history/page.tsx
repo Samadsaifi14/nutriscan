@@ -39,7 +39,7 @@ export default function ScanHistoryPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
-  }, [status])
+  }, [status, router])
 
   const { data: sessions, isLoading } = useQuery({
     queryKey: ['scan-history', userId],

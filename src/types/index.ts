@@ -11,6 +11,7 @@ export interface Product {
     protein: number
     carbs: number
     fat: number
+    saturated_fat?: number
     sugar?: number
     sodium?: number
     fiber?: number

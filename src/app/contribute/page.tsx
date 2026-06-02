@@ -326,6 +326,7 @@ function CameraCapturePage({ title, description, onCapture, onSkip }: {
     return () => {
       if (stream) stream.getTracks().forEach(t => t.stop())
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function startCamera() {

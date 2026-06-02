@@ -14,6 +14,7 @@ export interface AlternativeProduct {
     protein?: number
     carbs?: number
     fat?: number
+    saturated_fat?: number
     sugar?: number
     sodium?: number
     fiber?: number
@@ -67,6 +68,7 @@ export async function searchOFFByIngredients(
           protein: n.proteins_100g,
           carbohydrates: n.carbohydrates_100g,
           total_fat: n.fat_100g,
+          saturated_fat: n['saturated-fat_100g'],
           sugar: n.sugars_100g,
           sodium: n.sodium_100g ? n.sodium_100g * 1000 : undefined,
           fiber: n.fiber_100g,
@@ -148,6 +150,7 @@ interface FetchedProduct {
     protein?: number
     carbs?: number
     fat?: number
+    saturated_fat?: number
     sugar?: number
     sodium?: number
     fiber?: number
@@ -189,8 +192,9 @@ async function fetchFromOpenFoodFacts(category: string, limit: number = 20): Pro
             protein: n.proteins_100g || undefined,
             carbs: n.carbohydrates_100g || undefined,
             fat: n.fat_100g || undefined,
+            saturated_fat: n['saturated-fat_100g'] || undefined,
             sugar: n.sugars_100g || undefined,
-            sodium: n.sodium_100g ? n.sodium_100g * 1000 : undefined, // Convert g to mg
+            sodium: n.sodium_100g ? n.sodium_100g * 1000 : undefined,
             fiber: n.fiber_100g || undefined,
           },
           ingredients_text: p.ingredients_text || null,
@@ -212,6 +216,7 @@ function scoreAlternativeProduct(product: FetchedProduct): { score: number; grad
     protein: product.nutrition_per_100g.protein,
     carbohydrates: product.nutrition_per_100g.carbs,
     total_fat: product.nutrition_per_100g.fat,
+    saturated_fat: product.nutrition_per_100g.saturated_fat,
     sugar: product.nutrition_per_100g.sugar,
     sodium: product.nutrition_per_100g.sodium,
     fiber: product.nutrition_per_100g.fiber,
@@ -336,7 +341,7 @@ export async function findHealthierAlternatives(
     brand: string | null
     category: string | null
     barcode: string | null
-    nutrition_per_100g: { calories?: number; protein?: number; carbs?: number; fat?: number; sugar?: number; sodium?: number; fiber?: number }
+    nutrition_per_100g: { calories?: number; protein?: number; carbs?: number; fat?: number; saturated_fat?: number; sugar?: number; sodium?: number; fiber?: number }
     ingredients_text: string | null
   },
   maxAlternatives: number = 5
@@ -349,6 +354,7 @@ export async function findHealthierAlternatives(
     protein: currentProduct.nutrition_per_100g.protein,
     carbohydrates: currentProduct.nutrition_per_100g.carbs,
     total_fat: currentProduct.nutrition_per_100g.fat,
+    saturated_fat: currentProduct.nutrition_per_100g.saturated_fat,
     sugar: currentProduct.nutrition_per_100g.sugar,
     sodium: currentProduct.nutrition_per_100g.sodium,
     fiber: currentProduct.nutrition_per_100g.fiber,

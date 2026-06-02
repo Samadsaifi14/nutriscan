@@ -12,6 +12,7 @@ export interface ProductData {
     protein?: number
     carbs?: number
     fat?: number
+    saturated_fat?: number
     sugar?: number
     sodium?: number
     fiber?: number
@@ -60,6 +61,7 @@ async function lookupOpenFoodFacts(barcode: string): Promise<ProductData | null>
       protein: normalizeNutrient(nutrition['proteins_100g'] || nutrition.proteins),
       carbs: normalizeNutrient(nutrition['carbohydrates_100g'] || nutrition.carbohydrates),
       fat: normalizeNutrient(nutrition['fat_100g'] || nutrition.fat),
+      saturated_fat: normalizeNutrient(nutrition['saturated-fat_100g'] || nutrition.saturated_fat),
       sugar: normalizeNutrient(nutrition['sugars_100g'] || nutrition.sugars),
       sodium: normalizeNutrient(nutrition['sodium_100g'] || nutrition.sodium),
       fiber: normalizeNutrient(nutrition['fiber_100g'] || nutrition.fiber),
@@ -174,6 +176,7 @@ export function scoreOFFProduct(product: ProductData) {
     protein: product.nutrition_per_100g.protein || 0,
     carbohydrates: product.nutrition_per_100g.carbs || 0,
     total_fat: product.nutrition_per_100g.fat || 0,
+    saturated_fat: product.nutrition_per_100g.saturated_fat || 0,
     sugar: product.nutrition_per_100g.sugar || 0,
     sodium: product.nutrition_per_100g.sodium || 0,
   }

@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSession } from 'next-auth/react'
 
@@ -26,9 +26,9 @@ export function WeeklyChart({ userId }: WeeklyChartProps) {
     } else {
       setLoading(false)
     }
-  }, [effectiveUserId])
+  }, [effectiveUserId, fetchWeeklyData])
 
-  async function fetchWeeklyData() {
+  const fetchWeeklyData = useCallback(async function fetchWeeklyData() {
     setLoading(true)
     setError(null)
     try {
@@ -78,7 +78,7 @@ export function WeeklyChart({ userId }: WeeklyChartProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [effectiveUserId])
 
   if (loading) {
     return (

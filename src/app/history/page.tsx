@@ -26,7 +26,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin')
-  }, [status])
+  }, [status, router])
 
   const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ['meal-history', userId],

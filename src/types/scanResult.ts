@@ -5,6 +5,7 @@ export interface Nutrition {
   protein:  number
   carbs:    number
   fat:      number
+  saturated_fat?: number | null
   sugar?:   number | null
   sodium?:  number | null
   fiber?:   number | null

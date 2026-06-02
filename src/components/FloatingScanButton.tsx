@@ -187,6 +187,7 @@ function LabelScanner({ onCapture, onClose }: { onCapture: (data: string) => voi
         stream.getTracks().forEach(track => track.stop())
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function captureImage() {

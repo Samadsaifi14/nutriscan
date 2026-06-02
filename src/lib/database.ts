@@ -16,6 +16,7 @@ export interface Product {
   protein_per_100g?: number | null
   carbs_per_100g?: number | null
   fat_per_100g?: number | null
+  saturated_fat_per_100g?: number | null
   sugar_per_100g?: number | null
   sodium_per_100g?: number | null
   fiber_per_100g?: number | null
@@ -67,6 +68,7 @@ export async function saveProduct(product: Partial<Product>): Promise<Product> {
       protein_per_100g: product.protein_per_100g,
       carbs_per_100g: product.carbs_per_100g,
       fat_per_100g: product.fat_per_100g,
+      saturated_fat_per_100g: product.saturated_fat_per_100g,
       sugar_per_100g: product.sugar_per_100g,
       sodium_per_100g: product.sodium_per_100g,
       fiber_per_100g: product.fiber_per_100g,

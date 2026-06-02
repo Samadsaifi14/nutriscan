@@ -1,7 +1,7 @@
 // src/app/admin/pending-products/page.tsx
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { createClient } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
@@ -46,9 +46,9 @@ export default function AdminPendingPage() {
     if (status === 'authenticated' && isAdmin) {
       fetchProducts()
     }
-  }, [status, filter, isAdmin])
+  }, [status, filter, isAdmin, fetchProducts])
 
-  async function fetchProducts() {
+  const fetchProducts = useCallback(async function fetchProducts() {
     setLoading(true)
     let query = supabase
       .from('community_products')
@@ -68,9 +68,9 @@ export default function AdminPendingPage() {
       setProducts(data)
     }
     setLoading(false)
-  }
+  }, [filter])
 
-  async function handleAction(productId: string, action: 'approve' | 'reject' | 'edit') {
+  const handleAction = useCallback(async function handleAction(productId: string, action: 'approve' | 'reject' | 'edit') {
     if (action === 'edit') {
       // Open edit modal
       const product = products.find(p => p.id === productId)
@@ -98,7 +98,7 @@ export default function AdminPendingPage() {
     } catch (err) {
       toast.error('Action failed')
     }
-  }
+  }, [products, fetchProducts])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function AdminPendingPage() {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedProduct])
+  }, [selectedProduct, handleAction])
 
   if (status === 'loading') {
     return <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
