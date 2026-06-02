@@ -5,7 +5,7 @@
 const AMAZON_AFFILIATE_ID = 'BioYou-21'
 
 export interface ShoppingLink {
-  platform: 'amazon' | 'flipkart' | 'bigbasket' | 'blinkit' | 'zepto' | 'instamart'
+  platform: 'amazon' | 'flipkart' | 'bigbasket' | 'blinkit' | 'zepto' | 'instamart' | 'jiomart'
   url: string
 }
 
@@ -16,6 +16,7 @@ const PLATFORM_SEARCH_URLS = {
   blinkit: 'https://www.blinkit.com',
   zepto: 'https://www.zepto.app',
   instamart: 'https://www.swiggy.com/instamart',
+  jiomart: 'https://www.jiomart.com',
 }
 
 export function getAmazonLink(productName: string, brand?: string): string {
@@ -39,7 +40,49 @@ export function getAllShoppingLinks(productName: string, brand?: string): Shoppi
     { platform: 'blinkit', url: `https://www.blinkit.com/search?q=${searchTerm}` },
     { platform: 'zepto', url: `https://www.zepto.app/search?q=${searchTerm}` },
     { platform: 'instamart', url: `https://www.swiggy.com/instamart/search?q=${searchTerm}` },
+    { platform: 'jiomart', url: `https://www.jiomart.com/search?q=${searchTerm}` },
   ]
+}
+
+export interface EnrichedShoppingLink {
+  platform: 'amazon' | 'flipkart' | 'bigbasket' | 'blinkit' | 'zepto' | 'instamart' | 'jiomart'
+  name: string
+  url: string
+  label: string
+  icon: string
+  color: string
+  affiliate: boolean
+}
+
+export interface ShoppingLinksForProduct {
+  amazon: string
+  platforms: string[]
+  all: EnrichedShoppingLink[]
+}
+
+/**
+ * Generate a full shopping-links payload for a product/alternative
+ * used by API responses (so the front-end doesn't have to know the platform URLs).
+ */
+export function getShoppingLinksForProduct(productName: string, brand?: string): ShoppingLinksForProduct {
+  const raw = getAllShoppingLinks(productName, brand)
+  const all: EnrichedShoppingLink[] = raw.map(link => {
+    const info = PLATFORM_INFO[link.platform]
+    return {
+      platform: link.platform,
+      name: info.name,
+      url: link.url,
+      label: getBuyButtonText(link.platform),
+      icon: info.icon,
+      color: info.color,
+      affiliate: info.affiliate,
+    }
+  })
+  return {
+    amazon: getAmazonLink(productName, brand),
+    platforms: all.map(l => l.name),
+    all,
+  }
 }
 
 export const PLATFORM_INFO = {
@@ -49,6 +92,7 @@ export const PLATFORM_INFO = {
   blinkit: { name: 'Blinkit', icon: '⚡', color: '#f43c1f', affiliate: false },
   zepto: { name: 'Zepto', icon: '⚡', color: '#6C63FF', affiliate: false },
   instamart: { name: 'Instamart', icon: '🛍️', color: '#fc8019', affiliate: false },
+  jiomart: { name: 'JioMart', icon: '🛍️', color: '#0a2885', affiliate: false },
 }
 
 export function getBuyButtonText(platform: string): string {
@@ -59,6 +103,7 @@ export function getBuyButtonText(platform: string): string {
     case 'blinkit': return 'Order on Blinkit'
     case 'zepto': return 'Order on Zepto'
     case 'instamart': return 'Order on Instamart'
+    case 'jiomart': return 'Find on JioMart'
     default: return 'Find Online'
   }
 }

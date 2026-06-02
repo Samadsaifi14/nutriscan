@@ -303,14 +303,25 @@ useEffect(() => {
 // Lightweight AI-health insights for the ingredients via API
   useEffect(() => {
     if (!payload) return
-    const text = payload.product?.ingredients_text || ''
+    const product = payload.product
+    const text = product?.ingredients_text || ''
     const ings = text.split(',').map(s => s.trim()).filter(Boolean)
-    if (ings.length === 0) return
-    const query = encodeURIComponent(ings.join(','))
-    fetch(`/api/ingredients-health?ingredients=${query}`)
+    const params = new URLSearchParams()
+    if (ings.length > 0) params.set('ingredients', ings.join(','))
+    if (product?.name) params.set('product', product.name)
+    if (product?.brand) params.set('brand', product.brand)
+    if (product?.category) params.set('category', product.category)
+    if (product?.nutrition?.calories != null) params.set('calories', String(product.nutrition.calories))
+    if (product?.nutrition?.protein != null) params.set('protein', String(product.nutrition.protein))
+    if (!params.toString()) return
+    fetch(`/api/ingredients-health?${params.toString()}`)
       .then(r => r.json())
       .then((d) => {
         if (d?.success) setAiInsights(d.data || [])
+        // Also seed the local ingredient list when Groq filled in missing ingredients
+        if (d?.ai_generated && d?.data?.length) {
+          setIngredientList(d.data.map((it: any) => ({ name: it.name, status: it.status })))
+        }
       })
       .catch(() => {})
   }, [payload])
@@ -503,18 +514,9 @@ async function handleLogMeal(mealType: string) {
 
   const totalCals    = Math.round((product.nutrition?.calories || 0) * quantity / 100)
 
-  // Tab metadata for graceful degradation
-  const tabsMeta: TabMeta[] = TABS.map(tab => {
-    if (tab === 'Ingredients') {
-      const locked = !product.ingredients_text && (!analysis.harmful_ingredients || analysis.harmful_ingredients.length === 0)
-      return { key: tab, locked, reason: 'No ingredient data — contribute to unlock' }
-    }
-    if (tab === 'Nutrition') {
-      const locked = !product.nutrition?.calories && !product.nutrition?.protein && !product.nutrition?.carbs
-      return { key: tab, locked, reason: 'No nutrition data — contribute to unlock' }
-    }
-    return { key: tab, locked: false, reason: '' }
-  })
+  // Tab metadata — all tabs are always accessible (we always have at least an
+  // AI-generated ingredient list and a synthesized nutrition panel).
+  const tabsMeta: TabMeta[] = TABS.map(tab => ({ key: tab, locked: false, reason: '' }))
 
   return (
     <div className="min-h-[100svh] text-[var(--foreground)] font-sans pb-28">
@@ -604,31 +606,17 @@ async function handleLogMeal(mealType: string) {
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-30 bg-[var(--background)] border-b border-[var(--card-border)] px-4 backdrop-blur-xl/50">
         <div className="flex gap-1 overflow-x-auto no-scrollbar py-2">
-          {tabsMeta.map(({ key, locked, reason }) => (
-            <button key={key} onClick={() => { if (!locked) setActiveTab(key) }}
+          {TABS.map(key => (
+            <button key={key} onClick={() => setActiveTab(key)}
               className={`flex-shrink-0 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 activeTab === key
                   ? 'bg-emerald-500 text-white'
-                  : locked
-                    ? 'text-[var(--muted-2)] bg-[var(--card)] cursor-not-allowed opacity-50 border border-[var(--card-border)]'
-                    : 'text-[var(--muted)] hover:text-[var(--foreground)] bg-[var(--card)] border border-[var(--card-border)]'
-              }`}
-              title={locked ? reason : ''}>
+                  : 'text-[var(--muted)] hover:text-[var(--foreground)] bg-[var(--card)] border border-[var(--card-border)]'
+              }`}>
               {key === 'Ingredients' && harmfulCount > 0 ? `Ingredients (${harmfulCount})` : key}
-              {locked && <span className="ml-1 text-[10px]">🔒</span>}
             </button>
           ))}
         </div>
-        {/* Show lock reason bar when active tab is locked */}
-        {tabsMeta.find(t => t.key === activeTab)?.locked && (
-          <div className="bg-amber-500/10 border-t border-amber-500/20 px-4 py-2 text-center">
-            <p className="text-xs text-amber-400">
-              🔒 {tabsMeta.find(t => t.key === activeTab)?.reason}
-              <button onClick={() => router.push(`/contribute?barcode=${product.barcode || scannedBarcode || ''}`)}
-                className="ml-2 underline font-bold">Contribute now</button>
-            </p>
-          </div>
-        )}
       </div>
 
       <div className="app-container pt-4 space-y-4">
@@ -642,7 +630,13 @@ async function handleLogMeal(mealType: string) {
         ════════════════════════════════════════════════════════════════ */}
         {activeTab === 'Ingredients' && (
           <>
-            {analysis.harmful_ingredients === undefined || analysis.harmful_ingredients === null ? (
+            {!product.ingredients_text && aiInsights.length === 0 && ingredientList.length === 0 ? (
+              <div className="flex flex-col items-center py-12 text-center">
+                <div className="text-5xl mb-4">🤖</div>
+                <p className="text-base font-bold text-emerald-400 mb-1">Generating ingredient list…</p>
+                <p className="text-sm text-[#7a8fa6]">Using AI to estimate ingredients for this product</p>
+              </div>
+            ) : analysis.harmful_ingredients === undefined || analysis.harmful_ingredients === null ? (
               <div className="space-y-3">
                 <SkeletonCard />
                 <SkeletonCard />
@@ -731,15 +725,24 @@ async function handleLogMeal(mealType: string) {
             {/* All Ingredients List with Color Coding */}
             {ingredientList && ingredientList.length > 0 && (
               <div className="mt-4">
-                <p className="text-xs font-bold text-[#7a8fa6] mb-2">📋 All Ingredients</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-bold text-[#7a8fa6]">📋 All Ingredients</p>
+                  {!product.ingredients_text && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25 font-bold">
+                      🤖 AI-estimated
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {ingredientList.map((ing, idx) => (
-                    <span 
-                      key={idx} 
+                    <span
+                      key={idx}
                       className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                        ing.status === 'harmful' 
-                          ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-                          : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                        ing.status === 'harmful'
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          : ing.status === 'unknown'
+                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
+                            : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
                       }`}
                     >
                       {ing.name}
@@ -1031,9 +1034,16 @@ async function handleLogMeal(mealType: string) {
             )}
 
             {/* Curated / fallback alternatives (always shown when no dynamic alternatives) */}
-            {(!apiAlternatives?.alternatives || apiAlternatives?.source === 'curated') && apiAlternatives?.alternatives?.length > 0 && (
+            {(!apiAlternatives?.alternatives || apiAlternatives?.source === 'curated' || apiAlternatives?.source === 'groq_ai') && apiAlternatives?.alternatives?.length > 0 && (
               <div className="space-y-3">
-                <p className="text-xs text-[#7a8fa6] px-1">🛒 Curated healthier options</p>
+                <div className="flex items-center gap-2 px-1">
+                  <p className="text-xs text-[#7a8fa6]">
+                    {apiAlternatives?.source === 'groq_ai' ? '🤖 AI-suggested healthier options' : '🛒 Curated healthier options'}
+                  </p>
+                  {apiAlternatives?.source === 'groq_ai' && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25 font-bold">AI</span>
+                  )}
+                </div>
                 {apiAlternatives.alternatives.map((alt: any, i: number) => {
                   const typeIcon: Record<string, string> = { branded: '🏷️', homemade: '🏠', whole_food: '🌾' }
                   const typeLabel: Record<string, string> = { branded: 'Branded', homemade: 'Homemade', whole_food: 'Whole food' }
@@ -1097,10 +1107,11 @@ async function handleLogMeal(mealType: string) {
               </div>
             )}
 
-            {/* Alternatives returned but empty */}
+            {/* Alternatives returned but empty — show a friendly AI-suggested fallback */}
             {apiAlternatives && apiAlternatives?.alternatives?.length === 0 && (
               <div className="text-center py-8 text-[#7a8fa6]">
-                <p className="text-sm">No specific alternatives found for this product</p>
+                <p className="text-sm">We're finding healthier options for you…</p>
+                <p className="text-[10px] mt-1">Universal whole-food options below</p>
               </div>
             )}
 

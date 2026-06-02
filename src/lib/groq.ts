@@ -199,3 +199,148 @@ function getTemplateUnified(req: UnifiedAnalysisRequest): UnifiedAnalysisRespons
     ingredients: [],
   }
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// Ingredient-list fallback (used when scanned product has no ingredients text)
+// ───────────────────────────────────────────────────────────────────────────
+
+export interface IngredientRequest {
+  product_name?: string
+  category?: string
+  brand?: string
+  nutrition?: { calories?: number; protein?: number; carbs?: number; fat?: number; sugar?: number; sodium?: number; fiber?: number }
+}
+
+const INDIAN_GROCERY_PLATFORMS = ['Amazon India', 'Flipkart', 'BigBasket', 'Blinkit', 'Zepto', 'Swiggy Instamart', 'JioMart']
+
+/**
+ * Generate a typical ingredient list for a product when the source DB is missing it.
+ * Returns a comma-separated list (string) of ingredients — caller is responsible
+ * for splitting. Returns empty string on failure or missing API key.
+ */
+export async function generateIngredientsViaGroq(req: IngredientRequest): Promise<string> {
+  if (!process.env.GROQ_API_KEY) return ''
+  const name = (req.product_name || '').trim() || 'this packaged food'
+  const category = (req.category || '').trim()
+  const brand = (req.brand || '').trim()
+
+  const prompt = `You are an Indian food packaging expert. List the typical ingredients found on the label of the following Indian packaged product.
+
+Product: ${name}
+${brand ? `Brand: ${brand}\n` : ''}${category ? `Category: ${category}\n` : ''}
+${req.nutrition ? `Nutrition (per 100g): ${req.nutrition.calories ?? '?'}kcal, ${req.nutrition.protein ?? '?'}g protein, ${req.nutrition.carbs ?? '?'}g carbs, ${req.nutrition.fat ?? '?'}g fat, ${req.nutrition.sugar ?? '?'}g sugar, ${req.nutrition.sodium ?? '?'}mg sodium\n` : ''}
+
+Return ONLY a comma-separated list of typical ingredients (no markdown, no explanation, no numbering).
+Example output: Refined wheat flour (maida), sugar, palm oil, salt, yeast, emulsifier (E481), acidity regulator (E500), preservative (E282)
+
+The list should be specific to the Indian market and realistic for the named product. 8-15 ingredients is ideal.`
+
+  try {
+    const content = await callGroq(prompt, 600)
+    if (!content) return ''
+    return content
+      .replace(/```[a-z]*\s*/gi, '')
+      .replace(/```/g, '')
+      .trim()
+  } catch (err) {
+    console.warn('Groq ingredient generation failed:', err)
+    return ''
+  }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Alternatives fallback (Groq, when dynamic + curated both fail)
+// ───────────────────────────────────────────────────────────────────────────
+
+export interface GroqAlternative {
+  name: string
+  brand?: string | null
+  reason: string
+  availability: string
+  type: 'branded' | 'homemade' | 'whole_food'
+  price_band?: string
+  ingredients_summary?: string
+  shopping_platforms?: string[]
+}
+
+export interface GroqAlternativesRequest {
+  product_name: string
+  brand?: string | null
+  category?: string | null
+  barcode?: string | null
+  current_score?: number
+  current_ingredients?: string | null
+  current_nutrition?: { calories?: number; protein?: number; carbs?: number; fat?: number; sugar?: number; sodium?: number; fiber?: number }
+  health_concerns?: string[]
+}
+
+/**
+ * Generate healthier alternatives via Groq when the dynamic + curated tiers are empty.
+ * Strict requirements enforced in prompt:
+ *  1. Available in India (purchasable on Amazon India, Flipkart, BigBasket, Blinkit, Zepto, Swiggy Instamart, JioMart)
+ *  2. Similar price band to the scanned product
+ *  3. Healthier ingredient list (less sugar/sodium/trans fat, no harmful additives)
+ *  4. Real Indian brands or homemade/whole-food options
+ */
+export async function generateAlternativesViaGroq(req: GroqAlternativesRequest): Promise<GroqAlternative[]> {
+  if (!process.env.GROQ_API_KEY) return []
+
+  const prompt = `You are an Indian nutrition expert helping users find healthier alternatives to packaged food products sold in India.
+
+ORIGINAL PRODUCT:
+Name: ${req.product_name}
+${req.brand ? `Brand: ${req.brand}\n` : ''}${req.category ? `Category: ${req.category}\n` : ''}
+${req.current_score != null ? `Health score: ${req.current_score}/10\n` : ''}
+${req.current_nutrition ? `Nutrition (per 100g): ${req.current_nutrition.calories ?? '?'}kcal, protein ${req.current_nutrition.protein ?? '?'}g, carbs ${req.current_nutrition.carbs ?? '?'}g, fat ${req.current_nutrition.fat ?? '?'}g, sugar ${req.current_nutrition.sugar ?? '?'}g, sodium ${req.current_nutrition.sodium ?? '?'}mg\n` : ''}
+${req.current_ingredients ? `Ingredients: ${req.current_ingredients}\n` : ''}
+${req.health_concerns?.length ? `Health concerns: ${req.health_concerns.join('; ')}\n` : ''}
+
+TASK: Suggest 4 healthier alternatives that meet ALL these criteria:
+1. AVAILABILITY — must be available in India on at least 2 of these platforms: Amazon India, Flipkart, BigBasket, Blinkit, Zepto, Swiggy Instamart, JioMart (or be a whole-food / homemade option)
+2. PRICE — must be in a similar price band to the original (within ±25% per serving)
+3. INGREDIENTS — must have a healthier ingredient list than the original (e.g. less sugar, less sodium, no MSG, no trans fat, no artificial colours, no harmful additives, more whole grains/protein/fiber where applicable)
+4. INDIAN MARKET — prefer real Indian brands (Yoga, True Elements, 24 Mantra, Organic Tattva, Soulfull, Saffola, Amul, Britannia NutriChoice, Tata Sampann, etc.) or whole-food/homemade options (fresh fruit, nuts, sprouts, dal-based snacks, homemade versions)
+
+Return ONLY valid JSON (no markdown, no code fences) in this exact shape:
+{
+  "alternatives": [
+    {
+      "name": "specific product or recipe name",
+      "brand": "brand name or null",
+      "type": "branded" | "homemade" | "whole_food",
+      "reason": "1-2 sentence nutritional reason it's healthier than the original",
+      "ingredients_summary": "short comma-separated list highlighting the healthy parts, e.g. 'whole wheat, no maida, low sugar (3g), high fiber (6g)'",
+      "price_band": "similar | lower | higher",
+      "availability": "Amazon India, BigBasket",
+      "shopping_platforms": ["Amazon India", "BigBasket"]
+    }
+  ]
+}
+
+Be specific with brand names and product names that an Indian consumer can actually buy. Do not invent fake brands.`
+
+  try {
+    const content = await callGroq(prompt, 1200)
+    if (!content) return []
+    const cleaned = content.replace(/```json\s*/gi, '').replace(/```/g, '').trim()
+    const parsed = JSON.parse(cleaned)
+    if (!Array.isArray(parsed.alternatives)) return []
+
+    return parsed.alternatives
+      .filter((a: any) => a && typeof a.name === 'string' && a.name.trim())
+      .slice(0, 4)
+      .map((a: any) => ({
+        name: String(a.name).trim(),
+        brand: a.brand ? String(a.brand).trim() : null,
+        reason: String(a.reason || 'A healthier Indian alternative').trim(),
+        type: (['branded', 'homemade', 'whole_food'].includes(a.type) ? a.type : 'branded') as 'branded' | 'homemade' | 'whole_food',
+        ingredients_summary: a.ingredients_summary ? String(a.ingredients_summary) : undefined,
+        price_band: a.price_band ? String(a.price_band) : 'similar',
+        availability: a.availability ? String(a.availability) : INDIAN_GROCERY_PLATFORMS.slice(0, 2).join(', '),
+        shopping_platforms: Array.isArray(a.shopping_platforms) ? a.shopping_platforms.filter((p: any) => typeof p === 'string') : undefined,
+      }))
+  } catch (err) {
+    console.warn('Groq alternatives generation failed:', err)
+    return []
+  }
+}
