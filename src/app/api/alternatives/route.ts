@@ -84,17 +84,22 @@ export async function POST(req: NextRequest) {
     const [dynamicSettled, curatedSettled] = await Promise.allSettled([
       (async () => {
         if (!hasNutrition) return null
-        const result = await findHealthierAlternatives(parsed.data)
-        if (result.alternatives.length > 0) {
-          return {
-            alternatives: result.alternatives,
-            why_better: result.why_better,
-            current_score: result.current_score,
-            current_grade: result.current_grade,
-            source: 'dynamic',
-          }
-        }
-        return null
+        // 4s timeout so the route never hangs on slow Open Food Facts
+        return await Promise.race([
+          findHealthierAlternatives(parsed.data).then(result => {
+            if (result.alternatives.length > 0) {
+              return {
+                alternatives: result.alternatives,
+                why_better: result.why_better,
+                current_score: result.current_score,
+                current_grade: result.current_grade,
+                source: 'dynamic',
+              }
+            }
+            return null
+          }),
+          new Promise<null>((_, reject) => setTimeout(() => reject(new Error('dynamic alternatives timeout')), 4000)),
+        ])
       })(),
       (async () => {
         return findCuratedAlternatives(
@@ -120,15 +125,19 @@ export async function POST(req: NextRequest) {
     // Tier 3: only fire if both prior tiers are empty
     if (!dynamicResult && curatedResult.length === 0) {
       try {
-        groqResult = await generateAlternativesViaGroq({
-          product_name: parsed.data.name,
-          brand: parsed.data.brand,
-          category: parsed.data.category,
-          barcode: parsed.data.barcode,
-          current_score: parsed.data.current_score,
-          current_ingredients: parsed.data.ingredients_text,
-          current_nutrition: parsed.data.nutrition_per_100g,
-        })
+        // 4s timeout — Groq should normally respond in <2s, but we cap it
+        groqResult = await Promise.race([
+          generateAlternativesViaGroq({
+            product_name: parsed.data.name,
+            brand: parsed.data.brand,
+            category: parsed.data.category,
+            barcode: parsed.data.barcode,
+            current_score: parsed.data.current_score,
+            current_ingredients: parsed.data.ingredients_text,
+            current_nutrition: parsed.data.nutrition_per_100g,
+          }),
+          new Promise<GroqAlternative[]>((resolve) => setTimeout(() => resolve([]), 4000)),
+        ])
       } catch (groqErr: any) {
         console.warn('Groq alternatives failed:', groqErr.message)
       }
