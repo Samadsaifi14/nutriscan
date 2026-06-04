@@ -123,16 +123,20 @@ Respond in exactly this JSON format (no markdown, no code fences):
     const content = await callGroq(prompt, 2000)
 
     if (content) {
-      const parsed = JSON.parse(content)
-      return {
-        summary: parsed.summary || getTemplateUnified(req).summary,
-        recommendation: parsed.recommendation || '',
-        concerns: parsed.concerns || [],
-        positives: parsed.positives || [],
-        recommendations: parsed.recommendations || [],
-        personalizedWarnings: parsed.personalizedWarnings || [],
-        long_term_risks: parsed.long_term_risks || [],
-        ingredients: parsed.ingredients || [],
+      try {
+        const parsed = JSON.parse(content)
+        return {
+          summary: parsed.summary || getTemplateUnified(req).summary,
+          recommendation: parsed.recommendation || '',
+          concerns: parsed.concerns || [],
+          positives: parsed.positives || [],
+          recommendations: parsed.recommendations || [],
+          personalizedWarnings: parsed.personalizedWarnings || [],
+          long_term_risks: parsed.long_term_risks || [],
+          ingredients: parsed.ingredients || [],
+        }
+      } catch (parseErr) {
+        console.warn('Groq unified analysis: invalid JSON, using template')
       }
     }
   } catch (err) {

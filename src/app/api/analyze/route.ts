@@ -288,11 +288,18 @@ export async function POST(req: NextRequest) {
     const CACHE_DURATION_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
     
     if (product.barcode) {
-      const { data: cached } = await supabaseAdmin
-        .from('products')
-        .select('health_score, health_grade, nutrition_score, additive_score, nova_group, local_analysis_json, cached_at, ai_analysis_json, ai_analyzed_at')
-        .eq('barcode', product.barcode)
-        .single()
+      let cached: any = null
+      try {
+        const { data } = await supabaseAdmin
+          .from('products')
+          .select('health_score, health_grade, nutrition_score, additive_score, nova_group, local_analysis_json, cached_at, ai_analysis_json, ai_analyzed_at')
+          .eq('barcode', product.barcode)
+          .single()
+        cached = data
+      } catch (cacheErr: any) {
+        // Cache miss or query failure (e.g. column missing) — proceed with fresh analysis
+        console.warn('Cache check skipped:', cacheErr?.message || cacheErr)
+      }
 
       // Check local score cache first (30 days)
       if (cached?.health_score && cached?.cached_at) {
@@ -543,10 +550,14 @@ export async function POST(req: NextRequest) {
         updateData.ai_analyzed_at = analysis.analyzed_at
       }
 
-      await supabaseAdmin
-        .from('products')
-        .update(updateData)
-        .eq('barcode', product.barcode)
+      try {
+        await supabaseAdmin
+          .from('products')
+          .update(updateData)
+          .eq('barcode', product.barcode)
+      } catch (cacheUpdateErr: any) {
+        console.warn('Cache update skipped:', cacheUpdateErr?.message || cacheUpdateErr)
+      }
     }
 
     return NextResponse.json({ success: true, data: analysis, cached: false, ai_failed: aiFailed })

@@ -12,6 +12,7 @@ import { UNIVERSAL_FALLBACK } from '@/lib/curated-alternatives'
 import { event, AnalyticsEvents } from '@/lib/analytics'
 import { useOffline } from '@/hooks/useOffline'
 import { supabase } from '@/lib/supabase'
+import { buildLocalAnalysis } from '@/lib/client-analysis'
 import OverviewTab from '@/components/results/OverviewTab'
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
@@ -244,36 +245,33 @@ useEffect(() => {
               }).then(r => r.json()).catch(() => null),
             ])
 
-            // Build a richer default summary that the user can see immediately,
-            // before /api/analyze completes. The /api/analyze call will then
-            // override it with the AI-generated one.
-            const quickSummary = (() => {
-              const n = productData.nutrition || {}
-              const cal = Math.round(n.calories || 0)
-              const pro = Math.round(n.protein || 0)
-              const sugar = n.sugar
-              const sodium = n.sodium
-              const bits: string[] = []
-              if (cal) bits.push(`${cal} kcal/100g`)
-              if (pro) bits.push(`${pro}g protein`)
-              if (sugar != null) bits.push(`${sugar}g sugar`)
-              if (sodium != null) bits.push(`${sodium}mg sodium`)
-              const header = `${productData.name} — quick snapshot${bits.length ? ' (' + bits.join(', ') + ')' : ''}.`
-              const tail = 'Full AI breakdown is generating below — see score, ingredients, and safer alternatives.'
-              return `${header} ${tail}`
-            })()
+            // Build a complete analysis locally using the deterministic health
+            // engine so the Overview / Nutrition tabs are populated immediately
+            // with a REAL health_score, breakdown, harmful_ingredients, etc.
+            // The /api/analyze response (when successful) only ENHANCES this
+            // base with AI-generated summary / long-term risks.
+            const localAnalysis = buildLocalAnalysis({
+              name: productData.name,
+              brand: productData.brand,
+              category: productData.category,
+              ingredients_text: productData.ingredients_text,
+              nutrition: productData.nutrition,
+            })
 
-            let analysis: any = {
-              health_score: 5,
-              health_rating: 'moderate',
-              summary: quickSummary,
-              analyzed_at: new Date().toISOString(),
-              harmful_ingredients: [],
-              positives: [],
-              long_term_risks: [],
+            // Merge: local base + AI enhancements from /api/analyze (if any)
+            const analysis: any = {
+              ...localAnalysis,
+              ...(analyzeJson?.success && analyzeJson.data ? analyzeJson.data : {}),
             }
-            if (analyzeJson?.success && analyzeJson.data) {
-              analysis = { ...analysis, ...analyzeJson.data }
+            // Keep the local health_score_breakdown even when AI returns a partial object
+            analysis.health_score_breakdown = {
+              nutrition_score: localAnalysis.health_score_breakdown.nutrition_score,
+              ingredient_safety_score: localAnalysis.health_score_breakdown.ingredient_safety_score,
+              processing_score: localAnalysis.health_score_breakdown.processing_score,
+              overall: localAnalysis.health_score_breakdown.overall,
+              ...(analyzeJson?.success && analyzeJson.data?.health_score_breakdown
+                ? analyzeJson.data.health_score_breakdown
+                : {}),
             }
 
             const preFetchedAlternatives = altJson?.success && altJson.data ? altJson.data : null
@@ -336,6 +334,48 @@ useEffect(() => {
       return { name, status }
     })
     setIngredientList(list)
+  }, [payload])
+
+  // Ensure the payload's analysis is ALWAYS complete with real health_score,
+  // breakdown, harmful_ingredients, etc. — even when reading old/stale data
+  // from localStorage. The local health engine gives us deterministic values
+  // independent of the AI response.
+  useEffect(() => {
+    if (!payload) return
+    const a: any = payload.analysis || {}
+    const needsHydration = (
+      a.health_score == null ||
+      a.health_score_breakdown == null ||
+      a.summary == null ||
+      a.summary === '' ||
+      a.harmful_ingredients == null ||
+      a.positives == null ||
+      a.long_term_risks == null
+    )
+    if (!needsHydration) return
+    const local = buildLocalAnalysis({
+      name: payload.product?.name || 'Unknown',
+      brand: payload.product?.brand,
+      category: payload.product?.category,
+      ingredients_text: payload.product?.ingredients_text,
+      nutrition: payload.product?.nutrition || {
+        calories: 0, protein: 0, carbs: 0, fat: 0,
+      },
+    })
+    setPayload({
+      ...payload,
+      analysis: {
+        ...local,
+        ...a,
+        health_score_breakdown: {
+          nutrition_score: local.health_score_breakdown.nutrition_score,
+          ingredient_safety_score: local.health_score_breakdown.ingredient_safety_score,
+          processing_score: local.health_score_breakdown.processing_score,
+          overall: local.health_score_breakdown.overall,
+          ...(a.health_score_breakdown || {}),
+        },
+      },
+    })
   }, [payload])
 
 // Lightweight AI-health insights for the ingredients via API
