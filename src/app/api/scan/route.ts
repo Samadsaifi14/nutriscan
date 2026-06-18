@@ -30,6 +30,9 @@ export async function GET(req: NextRequest) {
 
   console.log('Scanning barcode:', trimmedBarcode)
 
+  // Track OFF products that have metadata but no nutrition data
+  let offFallback: any = null
+
   // Layer 1 — Check our Supabase cache
   try {
     const { data: cached } = await supabaseAdmin
@@ -88,16 +91,23 @@ export async function GET(req: NextRequest) {
           source: 'open_food_facts',
         }
 
-        // Cache it for future
-        cacheProduct(product)
+        // Check if OFF has actual nutrition data
+        const hasNutrition = product.calories_per_100g || product.protein_per_100g || product.carbs_per_100g || product.fat_per_100g
 
-        console.log('Found on Open Food Facts:', product.name)
-        return NextResponse.json({
-          success: true,
-          source: 'open_food_facts',
-          confidence: 'high' as Confidence,
-          data: formatProduct(product),
-        })
+        if (hasNutrition) {
+          cacheProduct(product)
+          console.log('Found on Open Food Facts:', product.name)
+          return NextResponse.json({
+            success: true,
+            source: 'open_food_facts',
+            confidence: 'high' as Confidence,
+            data: formatProduct(product),
+          })
+        }
+
+        // OFF has metadata but no nutrition — save as fallback for AI estimation
+        console.log('OFF has product but no nutrition data, will estimate via AI:', product.name)
+        offFallback = product
       }
     }
   } catch (e) {
@@ -312,19 +322,22 @@ export async function GET(req: NextRequest) {
           body: JSON.stringify({ barcode: trimmedBarcode, name: groqResult.name, brand: groqResult.brand, confidence: 'estimated' }),
         }).catch(() => {})
 
-        console.log('Groq category estimated:', groqResult.name)
+        const mergedName7 = offFallback?.name || groqResult.name
+        const mergedBrand7 = offFallback?.brand || groqResult.brand
+        const mergedImage7 = offFallback?.image_url || null
+        console.log('Groq category estimated:', mergedName7)
         return NextResponse.json({
           success: true,
-          source: 'groq_category_estimated',
+          source: offFallback ? 'open_food_facts_with_ai_nutrition' : 'groq_category_estimated',
           confidence: 'estimated' as Confidence,
           data: {
             barcode: trimmedBarcode,
-            name: groqResult.name,
-            brand: groqResult.brand,
+            name: mergedName7,
+            brand: mergedBrand7,
             category: cat,
             country_of_origin: analysis7.isIndian ? 'India' : null,
-            image_url: null,
-            source: 'groq_category_estimated',
+            image_url: mergedImage7,
+            source: offFallback ? 'open_food_facts_with_ai_nutrition' : 'groq_category_estimated',
             nutrition: {
               calories: groqResult.nutrition.calories || 0,
               protein: groqResult.nutrition.protein || 0,
@@ -337,8 +350,8 @@ export async function GET(req: NextRequest) {
             },
             serving_size_g: null,
             ingredients_text: groqResult.ingredients_text || null,
-            allergens: [],
-            additives: [],
+            allergens: offFallback?.allergens || [],
+            additives: offFallback?.additives || [],
           },
         })
       }
@@ -384,19 +397,22 @@ export async function GET(req: NextRequest) {
         body: JSON.stringify({ barcode: trimmedBarcode, name: aiResult.name, brand: aiResult.brand, confidence: 'low' }),
       }).catch(() => {})
 
-      console.log('AI estimated product:', aiResult.name)
+      const mergedName8 = offFallback?.name || aiResult.name
+      const mergedBrand8 = offFallback?.brand || aiResult.brand
+      const mergedImage8 = offFallback?.image_url || null
+      console.log('AI estimated product:', mergedName8)
       return NextResponse.json({
         success: true,
-        source: 'ai_estimated',
+        source: offFallback ? 'open_food_facts_with_ai_nutrition' : 'ai_estimated',
         confidence: 'low' as Confidence,
         data: {
           barcode: trimmedBarcode,
-          name: aiResult.name,
-          brand: aiResult.brand,
+          name: mergedName8,
+          brand: mergedBrand8,
           category: aiResult.category,
           country_of_origin: aiResult.isIndian ? 'India' : null,
-          image_url: null,
-          source: 'ai_estimated',
+          image_url: mergedImage8,
+          source: offFallback ? 'open_food_facts_with_ai_nutrition' : 'ai_estimated',
           nutrition: {
             calories: aiResult.nutrition.calories || 0,
             protein: aiResult.nutrition.protein || 0,
@@ -409,13 +425,26 @@ export async function GET(req: NextRequest) {
           },
           serving_size_g: null,
           ingredients_text: aiResult.ingredients_text || null,
-          allergens: [],
-          additives: [],
+          allergens: offFallback?.allergens || [],
+          additives: offFallback?.additives || [],
         },
       })
     }
   } catch (e) {
     console.log('AI estimation failed:', e)
+  }
+
+  // Final — If OFF had metadata but no AI layer succeeded, return it anyway
+  if (offFallback) {
+    console.log('Returning OFF metadata without AI nutrition:', offFallback.name)
+    cacheProduct(offFallback)
+    return NextResponse.json({
+      success: true,
+      source: 'open_food_facts',
+      confidence: 'high' as Confidence,
+      data: formatProduct(offFallback),
+      warning: 'Product found but nutrition data unavailable. Try contributing the nutrition info.'
+    })
   }
 
   // Final — Not found anywhere
