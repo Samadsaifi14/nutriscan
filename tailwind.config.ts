@@ -22,6 +22,23 @@ const config: Config = {
         display: ['Syne', 'sans-serif'],
         body: ['DM Sans', 'sans-serif'],
       },
+      borderRadius: {
+        sm: '8px',
+        md: '14px',
+        lg: '20px',
+        xl: '28px',
+        pill: '999px',
+      },
+      boxShadow: {
+        sm: '0 2px 8px rgba(44,31,15,0.08), 0 0 0 1px rgba(196,113,74,0.06)',
+        md: '0 4px 20px rgba(44,31,15,0.12), 0 1px 4px rgba(44,31,15,0.06)',
+        lg: '0 12px 40px rgba(44,31,15,0.16), 0 4px 12px rgba(44,31,15,0.08)',
+        bark: '0 8px 32px rgba(196,113,74,0.25), 0 2px 8px rgba(196,113,74,0.12)',
+      },
+      transitionTimingFunction: {
+        spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
       animation: {
         'shimmer': 'shimmer 1.5s infinite',
         'fade-in': 'fadeIn 0.5s ease-out',
@@ -35,6 +52,11 @@ const config: Config = {
         'pulse-glow': 'pulse-glow 2s infinite',
         'scale-in': 'scaleIn 0.3s ease-out both',
         'fade-in-up': 'fadeInUp 0.4s ease-out both',
+        'float': 'float 6s cubic-bezier(0.65,0,0.35,1) infinite',
+        'float-slow': 'float 9s cubic-bezier(0.65,0,0.35,1) infinite',
+        'page-enter': 'page-enter 0.5s cubic-bezier(0.16,1,0.3,1) both',
+        'toast-in': 'toast-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both',
+        'score-fill': 'score-fill 1.2s cubic-bezier(0.16,1,0.3,1) forwards',
       },
       keyframes: {
         shimmer: {
@@ -90,6 +112,23 @@ const config: Config = {
         'pulse-glow': {
           '0%, 100%': { boxShadow: '0 0 0 0 rgba(196,113,74,0.4)' },
           '50%': { boxShadow: '0 0 0 12px rgba(196,113,74,0)' },
+        },
+        float: {
+          '0%,100%': { transform: 'translateY(0px) rotate(0deg)' },
+          '33%': { transform: 'translateY(-10px) rotate(-1.5deg)' },
+          '66%': { transform: 'translateY(-5px) rotate(1deg)' },
+        },
+        'page-enter': {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'toast-in': {
+          '0%': { opacity: '0', transform: 'translateY(16px) scale(0.95)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        'score-fill': {
+          '0%': { strokeDashoffset: '283' },
+          '100%': { strokeDashoffset: '0' },
         },
       },
     },

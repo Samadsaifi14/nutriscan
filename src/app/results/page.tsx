@@ -5,7 +5,7 @@ import { useRouter, useSearchParams }             from 'next/navigation'
 import { useSession }            from 'next-auth/react'
 import toast                     from 'react-hot-toast'
 import { readScanResult, ScanResultPayload } from '@/types/scanResult'
-import { IngredientChip } from '@/components/IngredientChip'
+
 import { ShareButton } from '@/components/ShareButton'
 import { ShoppingLinks } from '@/components/ShoppingLinks'
 import { UNIVERSAL_FALLBACK } from '@/lib/curated-alternatives'

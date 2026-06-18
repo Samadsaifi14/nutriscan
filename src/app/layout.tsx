@@ -9,7 +9,6 @@ import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 import { Footer } from '@/components/Footer'
 import { CookieBanner } from '@/components/CookieBanner'
 import GrainOverlay from '@/components/GrainOverlay'
-import CustomCursor from '@/components/CustomCursor'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -54,11 +53,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${syne.variable} ${dmSans.variable}`}>
         <GrainOverlay />
-        <CustomCursor />
         <Providers>
           <ErrorBoundary>
             <main className="min-h-[100svh] pb-24">
-              {children}
+              <div className="page-enter">{children}</div>
             </main>
             <Footer />
             <BottomNav />
