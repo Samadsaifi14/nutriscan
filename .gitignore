@@ -40,3 +40,6 @@ off_full.csv
 
 off_full.csv
 PROJECT_FILE_MAP.txt
+
+# logs
+dev.log
