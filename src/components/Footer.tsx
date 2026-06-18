@@ -4,26 +4,30 @@ import Link from 'next/link'
 
 export function Footer() {
   return (
-    <footer className="border-t border-[var(--card-border)] px-5 py-8 mt-8 bg-[color-mix(in_oklab,var(--background),black_6%)] dark:bg-[color-mix(in_oklab,var(--background),white_3%)]">
+    <footer className="border-t px-5 py-8 mt-8"
+      style={{
+        borderColor: 'var(--card-border)',
+        background: 'color-mix(in oklab, var(--background), black 6%)',
+      }}>
       <div className="max-w-3xl mx-auto">
         <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
-          <Link href="/legal/privacy" className="text-xs text-[var(--muted-2)] hover:text-[var(--brand)] transition-colors">
-            Privacy Policy
-          </Link>
-          <Link href="/legal/terms" className="text-xs text-[var(--muted-2)] hover:text-[var(--brand)] transition-colors">
-            Terms of Service
-          </Link>
-          <Link href="/legal/disclaimer" className="text-xs text-[var(--muted-2)] hover:text-[var(--brand)] transition-colors">
-            Medical Disclaimer
-          </Link>
-          <Link href="/legal/cookies" className="text-xs text-[var(--muted-2)] hover:text-[var(--brand)] transition-colors">
-            Cookie Policy
-          </Link>
+          {[
+            { href: '/legal/privacy', label: 'Privacy Policy' },
+            { href: '/legal/terms', label: 'Terms of Service' },
+            { href: '/legal/disclaimer', label: 'Medical Disclaimer' },
+            { href: '/legal/cookies', label: 'Cookie Policy' },
+          ].map(item => (
+            <Link key={item.href} href={item.href}
+              className="text-xs transition-colors"
+              style={{ color: 'var(--muted-2)' }}>
+              {item.label}
+            </Link>
+          ))}
         </div>
-        <p className="text-[10px] text-[var(--muted-2)]">
-          &copy; {new Date().getFullYear()} BioYou. All rights reserved.
+        <p className="text-[10px]" style={{ color: 'var(--muted-2)' }}>
+          &copy; {new Date().getFullYear()} HealthOX. All rights reserved.
         </p>
-        <p className="text-[10px] text-[var(--muted-2)] mt-1">
+        <p className="text-[10px] mt-1" style={{ color: 'var(--muted-2)' }}>
           As an Amazon Associate, we earn from qualifying purchases.
         </p>
       </div>

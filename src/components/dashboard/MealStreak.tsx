@@ -23,7 +23,7 @@ export default function MealStreak() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse h-24" />
+      <div className="rounded-2xl p-4 bg-[var(--card)] border border-[var(--card-border)] animate-pulse h-24" />
     )
   }
 
@@ -38,7 +38,7 @@ export default function MealStreak() {
     : 'text-yellow-500'
 
   return (
-    <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
+    <div className="rounded-2xl p-4 bg-[var(--card)] border border-[var(--card-border)] shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center
@@ -46,18 +46,18 @@ export default function MealStreak() {
             <Flame className={`w-5 h-5 ${flameColor}`} />
           </div>
           <div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Logging Streak</p>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-gray-900 dark:text-gray-100">{streak}</span>
-              <span className="text-sm text-gray-400 dark:text-gray-500">day{streak !== 1 ? 's' : ''}</span>
+          <p className="text-xs text-[var(--muted)] font-medium">Logging Streak</p>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-black text-[var(--foreground)]">{streak}</span>
+            <span className="text-sm text-[var(--muted)]">day{streak !== 1 ? 's' : ''}</span>
             </div>
           </div>
         </div>
 
         <div className="flex flex-col items-end gap-1">
           {loggedToday ? (
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400
-              bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
+            <span className="text-xs font-semibold text-[var(--moss)]
+              bg-[color-mix(in_oklab,var(--moss),transparent_88%)] px-2.5 py-1 rounded-full">
               ✓ Logged today
             </span>
           ) : (
@@ -67,7 +67,7 @@ export default function MealStreak() {
             </span>
           )}
           {longest > 0 && (
-            <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+            <div className="flex items-center gap-1 text-xs text-[var(--muted)]">
               <Trophy className="w-3 h-3" /> Best: {longest} day{longest !== 1 ? 's' : ''}
             </div>
           )}
@@ -75,9 +75,9 @@ export default function MealStreak() {
       </div>
 
       {streak >= 7 && (
-        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
+        <div className="mt-3 pt-3 border-t border-[var(--card-border)] flex items-center gap-2">
           <span className="text-lg">{streak >= 30 ? '🏆' : streak >= 14 ? '🥇' : '🔥'}</span>
-          <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+          <p className="text-xs font-semibold text-[var(--muted)]">
             {streak >= 30
               ? `${streak}-day legend! Incredible consistency.`
               : streak >= 14

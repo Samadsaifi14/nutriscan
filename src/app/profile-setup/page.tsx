@@ -28,9 +28,9 @@ const weightGoalOptions = [
     label: 'Maintain Weight',
     desc: 'Stay at your current weight with balanced nutrition',
     icon: '⚖️',
-    color: '#059669',
-    bg: 'rgba(5,150,105,0.08)',
-    border: 'rgba(5,150,105,0.3)',
+    color: '#C4714A',
+    bg: 'rgba(196,113,74,0.08)',
+    border: 'rgba(196,113,74,0.3)',
   },
   {
     value: 'gain',
@@ -139,8 +139,8 @@ export default function ProfileSetupPage() {
       advice: 'Focus on nutritious calorie-dense foods to reach a healthy weight.',
     }
     if (bmi < 25) return {
-      label: 'Normal weight', color: '#059669',
-      bg: 'rgba(5,150,105,0.08)',
+      label: 'Normal weight', color: '#C4714A',
+      bg: 'rgba(196,113,74,0.08)',
       advice: 'Great work! Maintain your balanced diet and active lifestyle.',
     }
     if (bmi < 30) return {
@@ -221,11 +221,11 @@ export default function ProfileSetupPage() {
   }
 
   const gradientStyle = {
-    background: 'linear-gradient(135deg, #059669, #0ea5e9)',
+    background: 'linear-gradient(135deg, #C4714A, #2C1F0F)',
   }
 
   const textGradientStyle = {
-    background: 'linear-gradient(135deg, #059669, #0ea5e9)',
+    background: 'linear-gradient(135deg, #C4714A, #2C1F0F)',
     WebkitBackgroundClip: 'text' as const,
     WebkitTextFillColor: 'transparent' as const,
   }
@@ -235,8 +235,8 @@ export default function ProfileSetupPage() {
 
       {/* Background blobs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-72 h-72 bg-emerald-400/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-sky-400/5 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-72 h-72 bg-[var(--clay)]/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-[var(--moss)]/5 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-sm">
@@ -246,7 +246,7 @@ export default function ProfileSetupPage() {
           <div className="inline-block mb-4">
             <Logo size={56} />
           </div>
-          <h1 className="text-2xl font-black mb-1 text-[#1a4d32] dark:text-emerald-100">BioYou</h1>
+          <h1 className="text-2xl font-black mb-1 text-[var(--moss)]">BioYou</h1>
           <p className="text-sm text-[var(--muted)]">
             {step === 4 ? 'Your profile is ready!' : `Step ${step} of 3`}
           </p>
@@ -261,7 +261,7 @@ export default function ProfileSetupPage() {
                 className="flex-1 h-1.5 rounded-full transition-all duration-500"
                 style={{
                   background: step >= s
-                    ? 'linear-gradient(135deg, #059669, #0ea5e9)'
+                    ? 'linear-gradient(135deg, #C4714A, #2C1F0F)'
                     : 'var(--card-border)'
                 }}
               />
@@ -285,7 +285,7 @@ export default function ProfileSetupPage() {
                   placeholder="e.g. 22"
                   value={form.age}
                   onChange={e => setForm({ ...form, age: e.target.value })}
-                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-[var(--card-border)] focus:border-emerald-500 bg-[var(--card)] text-[var(--foreground)] text-sm outline-none transition-colors"
+                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-[var(--card-border)] focus:border-[var(--clay)] bg-[var(--card)] text-[var(--foreground)] text-sm outline-none transition-colors"
                 />
               </div>
 
@@ -302,11 +302,11 @@ export default function ProfileSetupPage() {
                       onClick={() => setForm({ ...form, gender: g.value })}
                       className="py-3.5 rounded-2xl border-2 text-sm font-bold transition-all"
                       style={{
-                        borderColor: form.gender === g.value ? '#059669' : 'var(--card-border)',
-                        background: form.gender === g.value
-                          ? 'linear-gradient(135deg, rgba(5,150,105,0.1), rgba(14,165,233,0.05))'
-                          : 'var(--card)',
-                        color: form.gender === g.value ? '#059669' : 'var(--muted)',
+                      borderColor: form.gender === g.value ? '#C4714A' : 'var(--card-border)',
+                      background: form.gender === g.value
+                        ? 'linear-gradient(135deg, rgba(196,113,74,0.1), rgba(44,31,15,0.05))'
+                        : 'var(--card)',
+                      color: form.gender === g.value ? '#C4714A' : 'var(--muted)',
                       }}
                     >
                       {g.label}
@@ -324,7 +324,7 @@ export default function ProfileSetupPage() {
                     placeholder="e.g. 170"
                     value={form.height_cm}
                     onChange={e => setForm({ ...form, height_cm: e.target.value })}
-                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-[var(--card-border)] focus:border-emerald-500 bg-[var(--card)] text-[var(--foreground)] text-sm outline-none transition-colors"
+                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-[var(--card-border)] focus:border-[var(--clay)] bg-[var(--card)] text-[var(--foreground)] text-sm outline-none transition-colors"
                   />
                 </div>
                 <div>
@@ -334,7 +334,7 @@ export default function ProfileSetupPage() {
                     placeholder="e.g. 65"
                     value={form.weight_kg}
                     onChange={e => setForm({ ...form, weight_kg: e.target.value })}
-                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-[var(--card-border)] focus:border-emerald-500 bg-[var(--card)] text-[var(--foreground)] text-sm outline-none transition-colors"
+                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-[var(--card-border)] focus:border-[var(--clay)] bg-[var(--card)] text-[var(--foreground)] text-sm outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -350,7 +350,7 @@ export default function ProfileSetupPage() {
                 setStep(2)
               }}
               className="w-full mt-6 py-4 rounded-2xl text-white text-sm font-bold"
-              style={{ ...gradientStyle, boxShadow: '0 8px 24px rgba(5,150,105,0.3)' }}
+              style={{ ...gradientStyle, boxShadow: '0 8px 24px rgba(196,113,74,0.3)' }}
             >
               Continue →
             </button>
@@ -421,7 +421,7 @@ export default function ProfileSetupPage() {
               <button
                 onClick={() => setStep(3)}
                 className="flex-1 py-3.5 rounded-2xl text-white text-sm font-bold"
-                style={{ ...gradientStyle, boxShadow: '0 8px 24px rgba(5,150,105,0.3)' }}
+              style={{ ...gradientStyle, boxShadow: '0 8px 24px rgba(196,113,74,0.3)' }}
               >
                 Continue →
               </button>
@@ -445,9 +445,9 @@ export default function ProfileSetupPage() {
                     onClick={() => setForm({ ...form, activity_level: opt.value })}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all"
                     style={{
-                      borderColor: form.activity_level === opt.value ? '#059669' : 'var(--card-border)',
+                      borderColor: form.activity_level === opt.value ? '#C4714A' : 'var(--card-border)',
                       background: form.activity_level === opt.value
-                        ? 'linear-gradient(135deg, rgba(5,150,105,0.08), rgba(14,165,233,0.04))'
+                        ? 'linear-gradient(135deg, rgba(196,113,74,0.08), rgba(44,31,15,0.04))'
                         : 'transparent',
                     }}
                   >
@@ -455,7 +455,7 @@ export default function ProfileSetupPage() {
                     <div className="flex-1">
                       <p
                         className="text-sm font-bold"
-                        style={{ color: form.activity_level === opt.value ? '#059669' : 'var(--foreground)' }}
+                        style={{ color: form.activity_level === opt.value ? '#C4714A' : 'var(--foreground)' }}
                       >
                         {opt.label}
                       </p>
@@ -464,7 +464,7 @@ export default function ProfileSetupPage() {
                     {form.activity_level === opt.value && (
                       <div
                         className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs flex-shrink-0"
-                        style={{ background: '#059669' }}
+                        style={{ background: '#C4714A' }}
                       >
                         ✓
                       </div>
@@ -492,15 +492,15 @@ export default function ProfileSetupPage() {
                     onClick={() => setForm({ ...form, [item.key]: !form[item.key as keyof typeof form] })}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all"
                     style={{
-                      borderColor: form[item.key as keyof typeof form] ? '#059669' : 'var(--card-border)',
-                      background: form[item.key as keyof typeof form] ? 'rgba(5,150,105,0.05)' : 'transparent',
+                      borderColor: form[item.key as keyof typeof form] ? '#C4714A' : 'var(--card-border)',
+                      background: form[item.key as keyof typeof form] ? 'rgba(196,113,74,0.05)' : 'transparent',
                     }}
                   >
                     <div
                       className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 text-white transition-all"
                       style={{
-                        borderColor: form[item.key as keyof typeof form] ? '#059669' : 'var(--card-border)',
-                        background: form[item.key as keyof typeof form] ? '#059669' : 'transparent',
+                        borderColor: form[item.key as keyof typeof form] ? '#C4714A' : 'var(--card-border)',
+                        background: form[item.key as keyof typeof form] ? '#C4714A' : 'transparent',
                         fontSize: '11px',
                       }}
                     >
@@ -532,15 +532,15 @@ export default function ProfileSetupPage() {
                     onClick={() => setForm({ ...form, [item.key]: !form[item.key as keyof typeof form] })}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all"
                     style={{
-                      borderColor: form[item.key as keyof typeof form] ? '#059669' : 'var(--card-border)',
-                      background: form[item.key as keyof typeof form] ? 'rgba(5,150,105,0.05)' : 'transparent',
+                      borderColor: form[item.key as keyof typeof form] ? '#C4714A' : 'var(--card-border)',
+                      background: form[item.key as keyof typeof form] ? 'rgba(196,113,74,0.05)' : 'transparent',
                     }}
                   >
                     <div
                       className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 text-white transition-all"
                       style={{
-                        borderColor: form[item.key as keyof typeof form] ? '#059669' : 'var(--card-border)',
-                        background: form[item.key as keyof typeof form] ? '#059669' : 'transparent',
+                        borderColor: form[item.key as keyof typeof form] ? '#C4714A' : 'var(--card-border)',
+                        background: form[item.key as keyof typeof form] ? '#C4714A' : 'transparent',
                         fontSize: '11px',
                       }}
                     >
@@ -601,13 +601,13 @@ export default function ProfileSetupPage() {
                 type="checkbox"
                 checked={dataConsent}
                 onChange={e => setDataConsent(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-gray-600 accent-emerald-500 flex-shrink-0"
+                className="mt-0.5 w-4 h-4 rounded border-gray-600 accent-[var(--clay)] flex-shrink-0"
               />
               <div>
                 <p className="text-xs text-[var(--muted)] leading-relaxed">
                   I consent to BioYou storing my health data (conditions, allergies, 
                   diet preferences) to personalize food analysis. View our{" "}
-                  <a href="/legal/privacy" className="text-emerald-400 hover:text-emerald-300 underline">Privacy Policy</a>.
+                  <a href="/legal/privacy" className="text-[var(--clay)] hover:text-[var(--clay)]/70 underline">Privacy Policy</a>.
                 </p>
               </div>
             </label>
@@ -626,7 +626,7 @@ export default function ProfileSetupPage() {
                 <div>
                   <p className="text-xs text-[var(--muted)] leading-relaxed">
                     I confirm that I have obtained verifiable parental/guardian consent to use BioYou and for the processing of my personal data as described in the{" "}
-                    <a href="/legal/privacy" className="text-emerald-400 hover:text-emerald-300 underline">Privacy Policy</a>.
+                  <a href="/legal/privacy" className="text-[var(--clay)] hover:text-[var(--clay)]/70 underline">Privacy Policy</a>.
                   </p>
                 </div>
               </label>
@@ -651,8 +651,8 @@ export default function ProfileSetupPage() {
                 }
                 className="flex-1 py-3.5 rounded-2xl text-white text-sm font-bold transition-all"
                 style={{
-                  background: loading ? '#9ca3af' : 'linear-gradient(135deg, #059669, #0ea5e9)',
-                  boxShadow: loading ? 'none' : '0 8px 24px rgba(5,150,105,0.3)',
+                  background: loading ? '#9ca3af' : 'linear-gradient(135deg, #C4714A, #2C1F0F)',
+                  boxShadow: loading ? 'none' : '0 8px 24px rgba(196,113,74,0.3)',
                   cursor: loading ? 'not-allowed' : 'pointer',
                 }}
               >
@@ -699,8 +699,8 @@ export default function ProfileSetupPage() {
             <div
               className="rounded-2xl p-5 mb-4"
               style={{
-                background: 'linear-gradient(135deg, rgba(5,150,105,0.06), rgba(14,165,233,0.04))',
-                border: '1px solid rgba(5,150,105,0.2)',
+                background: 'linear-gradient(135deg, rgba(196,113,74,0.06), rgba(44,31,15,0.04))',
+                border: '1px solid rgba(196,113,74,0.2)',
               }}
             >
               <p className="text-xs text-[var(--muted)] text-center mb-3">Daily Calorie Goal</p>
@@ -728,7 +728,7 @@ export default function ProfileSetupPage() {
                         ? '#3b82f6'
                         : result.weight_goal === 'gain'
                         ? '#f59e0b'
-                        : '#059669'
+                        : '#C4714A'
                     }}
                   >
                     {result.weight_goal === 'lose' ? '− 500 kcal (deficit)' : result.weight_goal === 'gain' ? '+ 300 kcal (surplus)' : 'No change'}
@@ -738,7 +738,7 @@ export default function ProfileSetupPage() {
                   className="flex justify-between items-center pt-2 border-t border-[var(--card-border)]"
                 >
                   <span className="text-xs font-bold text-[var(--foreground)]">Your Daily Target</span>
-                  <span className="text-sm font-black" style={{ color: '#059669' }}>
+                  <span className="text-sm font-black" style={{ color: '#C4714A' }}>
                     {result.dailyCalorieGoal} kcal
                   </span>
                 </div>
@@ -748,7 +748,7 @@ export default function ProfileSetupPage() {
             {/* Goal badge */}
             <div
               className="flex items-center gap-3 p-3 rounded-xl mb-6"
-              style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)' }}
+              style={{ background: 'rgba(196,113,74,0.06)', border: '1px solid rgba(196,113,74,0.15)' }}
             >
               <span className="text-xl">
                 {result.weight_goal === 'lose' ? '📉' : result.weight_goal === 'gain' ? '📈' : '⚖️'}
@@ -768,7 +768,7 @@ export default function ProfileSetupPage() {
             <button
               onClick={() => router.push('/dashboard')}
               className="w-full py-4 rounded-2xl text-white text-sm font-bold"
-              style={{ ...gradientStyle, boxShadow: '0 8px 24px rgba(5,150,105,0.3)' }}
+              style={{ ...gradientStyle, boxShadow: '0 8px 24px rgba(196,113,74,0.3)' }}
             >
               Start Tracking with BioYou →
             </button>
@@ -781,7 +781,7 @@ export default function ProfileSetupPage() {
           <div className="flex items-center gap-3 mb-5">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-              style={{ background: 'rgba(5,150,105,0.1)' }}
+              style={{ background: 'rgba(196,113,74,0.1)' }}
             >
               📧
             </div>
@@ -800,10 +800,10 @@ export default function ProfileSetupPage() {
               className="flex items-start gap-4 p-4 rounded-2xl border-2 transition-all"
               style={{
                 borderColor: emailPrefs.weekly_report_email && !emailPrefs.email_unsubscribed
-                  ? 'rgba(5,150,105,0.3)'
+                  ? 'rgba(196,113,74,0.3)'
                   : 'var(--card-border)',
                 background: emailPrefs.weekly_report_email && !emailPrefs.email_unsubscribed
-                  ? 'rgba(5,150,105,0.04)'
+                  ? 'rgba(196,113,74,0.04)'
                   : 'transparent',
               }}
             >
@@ -826,9 +826,9 @@ export default function ProfileSetupPage() {
                 disabled={savingPrefs || emailPrefs.email_unsubscribed}
                 className="relative flex-shrink-0 w-12 h-6 rounded-full transition-all duration-300 disabled:opacity-50"
                 style={{
-                  background: emailPrefs.weekly_report_email && !emailPrefs.email_unsubscribed
-                    ? 'linear-gradient(135deg, #059669, #0ea5e9)'
-                    : '#e5e7eb',
+                    background: emailPrefs.weekly_report_email && !emailPrefs.email_unsubscribed
+                      ? 'linear-gradient(135deg, #C4714A, #2C1F0F)'
+                      : '#e5e7eb',
                 }}
               >
                 <div
@@ -876,7 +876,7 @@ export default function ProfileSetupPage() {
 
             {/* Warning */}
             {emailPrefs.email_unsubscribed && (
-              <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+              <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-[color-mix(in_oklab,var(--risk),transparent_88%)] rounded-xl border border-red-200 dark:border-red-800">
                 <span className="flex-shrink-0">⚠️</span>
                 <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed">
                   You are unsubscribed from all BioYou emails. Toggle off above to re-enable.
@@ -885,18 +885,18 @@ export default function ProfileSetupPage() {
             )}
 
             {/* Status */}
-            <div className="p-3 bg-gray-50 dark:bg-slate-800/50 rounded-xl">
+              <div className="p-3 bg-[color-mix(in_oklab,var(--card),black_4%)] rounded-xl">
               <p className="text-xs font-bold text-[var(--foreground)] mb-2">Current Status</p>
               <div className="space-y-1.5">
                 <div className="flex justify-between">
                   <span className="text-xs text-[var(--muted)]">Weekly reports</span>
-                  <span className={`text-xs font-bold ${emailPrefs.weekly_report_email && !emailPrefs.email_unsubscribed ? 'text-emerald-600' : 'text-red-500'}`}>
+                  <span className={`text-xs font-bold ${emailPrefs.weekly_report_email && !emailPrefs.email_unsubscribed ? 'text-[var(--clay)]' : 'text-[var(--risk)]'}`}>
                     {emailPrefs.weekly_report_email && !emailPrefs.email_unsubscribed ? '✓ On' : '✗ Off'}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-[var(--muted)]">All emails</span>
-                  <span className={`text-xs font-bold ${!emailPrefs.email_unsubscribed ? 'text-emerald-600' : 'text-red-500'}`}>
+                  <span className={`text-xs font-bold ${!emailPrefs.email_unsubscribed ? 'text-[var(--clay)]' : 'text-[var(--risk)]'}`}>
                     {!emailPrefs.email_unsubscribed ? '✓ Subscribed' : '✗ Unsubscribed'}
                   </span>
                 </div>

@@ -27,28 +27,26 @@ export function CookieBanner() {
 
   return (
     <div className="fixed bottom-20 left-0 right-0 z-50 px-4 pb-2">
-      <div className="max-w-md mx-auto bg-[#1a1f28] border border-[#2a3545] rounded-2xl p-4 shadow-2xl">
-        <p className="text-xs text-[#c8d6e0] leading-relaxed mb-3">
-          We use cookies and Google Analytics to improve your experience. 
+      <div className="max-w-md mx-auto rounded-2xl p-4 shadow-2xl"
+        style={{ background: 'var(--card)', border: '1px solid var(--card-border)' }}>
+        <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+          We use cookies and Google Analytics to improve your experience.
           Essential cookies are always active. Analytics cookies are optional.
         </p>
         <div className="flex items-center gap-2">
-          <button
-            onClick={acceptAll}
-            className="flex-1 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold transition-colors"
-          >
+          <button onClick={acceptAll}
+            className="flex-1 px-3 py-2 rounded-xl text-white text-xs font-bold transition-colors"
+            style={{ background: 'var(--clay)' }}>
             Accept All
           </button>
-          <button
-            onClick={rejectAnalytics}
-            className="flex-1 px-3 py-2 rounded-xl bg-[#252c38] hover:bg-[#2a3545] text-[#c8d6e0] text-xs font-bold transition-colors"
-          >
+          <button onClick={rejectAnalytics}
+            className="flex-1 px-3 py-2 rounded-xl text-xs font-bold transition-colors"
+            style={{ background: 'color-mix(in oklab, var(--card), black 10%)', color: 'var(--muted)' }}>
             Reject Analytics
           </button>
-          <Link
-            href="/legal/cookies"
-            className="px-3 py-2 text-xs text-emerald-400 hover:text-emerald-300 underline flex-shrink-0"
-          >
+          <Link href="/legal/cookies"
+            className="px-3 py-2 text-xs underline flex-shrink-0"
+            style={{ color: 'var(--clay)' }}>
             Learn More
           </Link>
         </div>

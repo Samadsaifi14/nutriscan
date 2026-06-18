@@ -10,17 +10,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-        }
+        sand: { DEFAULT: '#F2EDE4', dark: '#E8E0D3' },
+        bark: { DEFAULT: '#2C1F0F', mid: '#4A3520' },
+        ink: '#1A1208',
+        cream: '#FAF7F2',
+        moss: { DEFAULT: '#3D5C2E', light: '#6B8F52' },
+        clay: { DEFAULT: '#C4714A', light: '#E8956E' },
+        risk: '#B43C28',
+      },
+      fontFamily: {
+        display: ['Syne', 'sans-serif'],
+        body: ['DM Sans', 'sans-serif'],
       },
       animation: {
         'shimmer': 'shimmer 1.5s infinite',
-        'fade-in': 'fadeIn 0.3s ease-in-out',
+        'fade-in': 'fadeIn 0.5s ease-out',
+        'slide-up': 'slideUp 0.6s cubic-bezier(.16,1,.3,1) both',
+        'breathe': 'breathe 6s ease-in-out infinite',
+        'grain': 'grainShift 0.5s steps(1) infinite',
+        'scan-line': 'scanAnim 2.5s ease-in-out infinite',
+        'logo-pulse': 'logoPulse 3s ease-in-out infinite',
+        'phone-float': 'phoneFloat 6s ease-in-out infinite',
+        'marquee': 'marquee 20s linear infinite',
+        'pulse-glow': 'pulse-glow 2s infinite',
+        'scale-in': 'scaleIn 0.3s ease-out both',
+        'fade-in-up': 'fadeInUp 0.4s ease-out both',
       },
       keyframes: {
         shimmer: {
@@ -28,10 +42,56 @@ const config: Config = {
           '100%': { backgroundPosition: '200% 0' },
         },
         fadeIn: {
-          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(30px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
-        }
-      }
+        },
+        fadeInUp: {
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        breathe: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.08)' },
+        },
+        grainShift: {
+          '0%': { transform: 'translate(0,0)' },
+          '20%': { transform: 'translate(-5%,-5%)' },
+          '40%': { transform: 'translate(3%,7%)' },
+          '60%': { transform: 'translate(-8%,2%)' },
+          '80%': { transform: 'translate(6%,-4%)' },
+          '100%': { transform: 'translate(0,0)' },
+        },
+        scanAnim: {
+          '0%': { top: '10%', opacity: '0' },
+          '10%': { opacity: '1' },
+          '90%': { opacity: '1' },
+          '100%': { top: '90%', opacity: '0' },
+        },
+        logoPulse: {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '50%': { transform: 'scale(1.6)', opacity: '0.6' },
+        },
+        phoneFloat: {
+          '0%, 100%': { transform: 'translateY(0) rotateY(-12deg) rotateX(5deg)' },
+          '50%': { transform: 'translateY(-16px) rotateY(-12deg) rotateX(5deg)' },
+        },
+        marquee: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+        'pulse-glow': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(196,113,74,0.4)' },
+          '50%': { boxShadow: '0 0 0 12px rgba(196,113,74,0)' },
+        },
+      },
     },
   },
   plugins: [],

@@ -33,7 +33,7 @@ export default function NutrientAlerts() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse h-20" />
+      <div className="rounded-2xl p-4 bg-[var(--card)] border border-[var(--card-border)] animate-pulse h-20" />
     )
   }
 
@@ -45,11 +45,11 @@ export default function NutrientAlerts() {
 
   if (allAlerts.length === 0) {
     return (
-      <div className="rounded-2xl p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 shadow-sm flex items-center gap-3">
+      <div className="rounded-2xl p-4 bg-[color-mix(in_oklab,var(--moss),transparent_92%)] border border-[color-mix(in_oklab,var(--moss),transparent_80%)] shadow-sm flex items-center gap-3">
         <span className="text-2xl">✅</span>
         <div>
-          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Nutrient Balance Looks Good!</p>
-          <p className="text-xs text-emerald-600/70 dark:text-emerald-500">
+          <p className="text-sm font-semibold text-[var(--moss)]">Nutrient Balance Looks Good!</p>
+          <p className="text-xs text-[var(--moss)]/70">
             Based on your last {data.daysTracked} day{data.daysTracked !== 1 ? 's' : ''} of tracking
           </p>
         </div>
@@ -58,7 +58,7 @@ export default function NutrientAlerts() {
   }
 
   return (
-    <div className={`rounded-2xl bg-white dark:bg-gray-900 border shadow-sm overflow-hidden
+    <div className={`rounded-2xl bg-[var(--card)] border shadow-sm overflow-hidden
       ${highAlerts.length > 0
         ? 'border-red-100 dark:border-red-900/40'
         : 'border-amber-100 dark:border-amber-900/40'
@@ -79,18 +79,18 @@ export default function NutrientAlerts() {
               ${highAlerts.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
               {allAlerts.length} Nutrient Alert{allAlerts.length !== 1 ? 's' : ''}
             </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">
+            <p className="text-xs text-[var(--muted)]">
               Based on {data.daysTracked}-day average · Tap to view
             </p>
           </div>
         </div>
         {expanded
           ? <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          : <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+          : <ChevronDown className="w-4 h-4 text-[var(--muted)] flex-shrink-0" />}
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-2.5 border-t border-gray-100 dark:border-gray-800 pt-3">
+        <div className="px-4 pb-4 space-y-2.5 border-t border-[var(--card-border)] pt-3">
           {allAlerts.map((alert, i) => (
             <div key={i} className={`rounded-xl p-3 flex items-start gap-3
               ${alert.severity === 'high'
@@ -104,7 +104,7 @@ export default function NutrientAlerts() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{alert.nutrient}</span>
+                  <span className="text-xs font-bold text-[var(--foreground)]">{alert.nutrient}</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase
                     ${alert.type === 'deficient'
                       ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -113,7 +113,7 @@ export default function NutrientAlerts() {
                     {alert.type === 'deficient' ? 'Too Low' : 'Too High'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{alert.message}</p>
+                <p className="text-xs text-[var(--muted)] leading-relaxed">{alert.message}</p>
               </div>
             </div>
           ))}

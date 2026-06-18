@@ -188,11 +188,11 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
           {/* Targeting overlay */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-56 h-32 relative">
-              <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-emerald-400 rounded-tl" />
-              <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-emerald-400 rounded-tr" />
-              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-emerald-400 rounded-bl" />
-              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-emerald-400 rounded-br" />
-              <div className="absolute left-1 right-1 top-1/2 h-px bg-emerald-400/60" />
+              <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-[var(--clay)] rounded-tl" />
+              <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-[var(--clay)] rounded-tr" />
+              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-[var(--clay)] rounded-bl" />
+              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-[var(--clay)] rounded-br" />
+              <div className="absolute left-1 right-1 top-1/2 h-px bg-[var(--clay)]/60" />
             </div>
           </div>
 
@@ -215,7 +215,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         <div className="p-4 bg-[var(--card)]">
           <button
             onClick={handleManualCapture}
-            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition-colors text-sm"
+            className="w-full py-4 bg-[var(--clay)] hover:bg-[color-mix(in_oklab,var(--clay),black_15%)] text-white font-semibold rounded-xl transition-colors text-sm"
           >
             📸 Manual Scan (Tap if auto-detect fails)
           </button>

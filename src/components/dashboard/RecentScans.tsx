@@ -88,11 +88,11 @@ export default function RecentScans({ logs, onDelete }: RecentScansProps) {
             className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
               deletingId === log.id
                 ? 'opacity-50 bg-red-50 dark:bg-red-900/20'
-                : 'bg-gray-50 dark:bg-slate-800/50'
+                : 'bg-[color-mix(in_oklab,var(--card),black_4%)]'
             }`}
           >
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
-              mealColors[log.meal_type] || 'bg-gray-100 dark:bg-slate-700'
+              mealColors[log.meal_type] || 'bg-[color-mix(in_oklab,var(--card),black_8%)]'
             }`}>
               {mealEmoji[log.meal_type] || '🍽️'}
             </div>
@@ -111,7 +111,7 @@ export default function RecentScans({ logs, onDelete }: RecentScansProps) {
             </div>
 
             <div className="text-right flex-shrink-0 mr-1">
-              <p className="text-sm font-bold text-green-600 dark:text-green-400">
+              <p className="text-sm font-bold text-[var(--clay)]">
                 {Math.round(log.calories)}
               </p>
               <p className="text-xs text-[var(--muted)]">kcal</p>

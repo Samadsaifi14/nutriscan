@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Syne, DM_Sans } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
 import BottomNav from '@/components/BottomNav'
@@ -8,13 +8,25 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 import { Footer } from '@/components/Footer'
 import { CookieBanner } from '@/components/CookieBanner'
+import GrainOverlay from '@/components/GrainOverlay'
+import CustomCursor from '@/components/CustomCursor'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const syne = Syne({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-display',
+})
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500'],
+  variable: '--font-body',
+})
 
 export const metadata: Metadata = {
   title: {
-    default: 'BioYou — Scan. Know. Choose Better',
-    template: '%s | BioYou',
+    default: 'HealthOX — Scan. Know. Choose Better.',
+    template: '%s | HealthOX',
   },
   description: 'Scan packaged foods to analyze ingredients, detect harmful additives, and get health scores. Made for India.',
   icons: {
@@ -28,22 +40,24 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#1a4d32',
+  themeColor: '#C4714A',
   width: 'device-width',
   initialScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
+    <html lang="en" suppressHydrationWarning className={`${syne.variable} ${dmSans.variable}`}>
       <head>
         <link rel="preconnect" href="https://www.googletagmanager.com" />
         <link rel="preconnect" href="https://www.google-analytics.com" />
       </head>
-      <body className={inter.className}>
+      <body className={`${syne.variable} ${dmSans.variable}`}>
+        <GrainOverlay />
+        <CustomCursor />
         <Providers>
           <ErrorBoundary>
-            <main className="min-h-[100svh] pb-24 app-bg">
+            <main className="min-h-[100svh] pb-24">
               {children}
             </main>
             <Footer />

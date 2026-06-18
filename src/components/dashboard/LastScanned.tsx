@@ -26,7 +26,7 @@ export default function LastScanned() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse h-20" />
+      <div className="rounded-2xl p-4 bg-[var(--card)] border border-[var(--card-border)] animate-pulse h-20" />
     )
   }
 
@@ -34,27 +34,27 @@ export default function LastScanned() {
     return (
       <button
         onClick={() => router.push('/scan')}
-        className="w-full rounded-2xl p-4 bg-white dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700
-          flex items-center gap-3 hover:border-emerald-400 dark:hover:border-emerald-600 transition-colors group">
-        <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
-          <Scan className="w-5 h-5 text-emerald-500" />
+        className="w-full rounded-2xl p-4 bg-[var(--card)] border border-dashed border-[var(--card-border)]
+          flex items-center gap-3 hover:border-[var(--clay)] transition-colors group">
+        <div className="w-10 h-10 rounded-xl bg-[color-mix(in_oklab,var(--clay),transparent_88%)] flex items-center justify-center">
+          <Scan className="w-5 h-5 text-[var(--clay)]" />
         </div>
         <div className="flex-1 text-left">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Scan your first product</p>
-          <p className="text-xs text-gray-400">Tap to open scanner</p>
+          <p className="text-sm font-semibold text-[var(--foreground)]">Scan your first product</p>
+          <p className="text-xs text-[var(--muted)]">Tap to open scanner</p>
         </div>
-        <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors" />
+        <ChevronRight className="w-4 h-4 text-[var(--muted)] group-hover:text-[var(--clay)] transition-colors" />
       </button>
     )
   }
 
   const ratingColor =
-    scan.ai_health_rating === 'healthy'   ? 'text-emerald-500'
-    : scan.ai_health_rating === 'unhealthy' ? 'text-red-500'
+    scan.ai_health_rating === 'healthy'   ? 'text-[var(--moss)]'
+    : scan.ai_health_rating === 'unhealthy' ? 'text-[var(--risk)]'
     : 'text-amber-500'
 
   const ratingBg =
-    scan.ai_health_rating === 'healthy'   ? 'bg-emerald-50 dark:bg-emerald-900/20'
+    scan.ai_health_rating === 'healthy'   ? 'bg-[color-mix(in_oklab,var(--moss),transparent_88%)]'
     : scan.ai_health_rating === 'unhealthy' ? 'bg-red-50 dark:bg-red-900/20'
     : 'bg-amber-50 dark:bg-amber-900/20'
 
@@ -72,31 +72,31 @@ export default function LastScanned() {
   return (
     <button
       onClick={() => router.push('/scan')}
-      className="w-full rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm
-        flex items-center gap-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors group text-left">
+      className="w-full rounded-2xl p-4 bg-[var(--card)] border border-[var(--card-border)] shadow-sm
+        flex items-center gap-3 hover:border-[var(--clay)]/50 transition-colors group text-left">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${ratingBg}`}>
         {scan.product_image
           ? <img src={scan.product_image} alt={scan.product_name} className="w-10 h-10 rounded-xl object-cover" />
           : <Scan className={`w-5 h-5 ${ratingColor}`} />}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-400 dark:text-gray-500 font-medium mb-0.5">Last scanned</p>
-        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{scan.product_name}</p>
+          <p className="text-xs text-[var(--muted)] font-medium mb-0.5">Last scanned</p>
+        <p className="text-sm font-semibold text-[var(--foreground)] truncate">{scan.product_name}</p>
         <div className="flex items-center gap-2 mt-0.5">
           {scan.ai_health_score !== null && (
             <span className={`text-xs font-bold ${ratingColor}`}>
               {scan.ai_health_score.toFixed(1)}/10
             </span>
           )}
-          <span className="text-gray-200 dark:text-gray-700">·</span>
-          <div className="flex items-center gap-1 text-xs text-gray-400">
+          <span className="text-[var(--card-border)]">·</span>
+          <div className="flex items-center gap-1 text-xs text-[var(--muted)]">
             <Clock className="w-3 h-3" /> {timeAgo}
           </div>
         </div>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Scan again</span>
-        <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors" />
+        <span className="text-xs text-[var(--clay)] font-medium">Scan again</span>
+        <ChevronRight className="w-4 h-4 text-[var(--muted)] group-hover:text-[var(--clay)] transition-colors" />
       </div>
     </button>
   )

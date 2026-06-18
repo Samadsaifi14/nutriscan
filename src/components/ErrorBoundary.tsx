@@ -38,32 +38,26 @@ export default class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback
 
       return (
-        <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--background)' }}>
           <div className="max-w-sm w-full text-center">
-            <div className="text-6xl mb-4">😵</div>
-            <h1 className="text-xl font-bold text-[var(--foreground)] mb-2">
+            <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-display)' }}>
               Something went wrong
             </h1>
-            <p className="text-sm text-[var(--muted)] mb-2">
+            <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
               An unexpected error occurred. Please try again.
             </p>
-            <p className="text-xs text-[var(--muted)] mb-6">
+            <p className="text-xs mb-6" style={{ color: 'var(--muted-2)' }}>
               This error has been reported. Try refreshing or go back.
             </p>
             <div className="flex flex-col gap-2">
-              <button
-                onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-700 transition-colors"
-              >
+              <button onClick={() => window.location.reload()}
+                className="px-6 py-3 rounded-xl font-semibold text-sm transition-colors text-white"
+                style={{ background: 'var(--clay)' }}>
                 Reload Page
               </button>
-              <button
-                onClick={() => {
-                  this.setState({ hasError: false })
-                  window.location.href = '/dashboard'
-                }}
-                className="px-6 py-3 bg-gray-100 dark:bg-gray-800 text-[var(--foreground)] rounded-xl font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              >
+              <button onClick={() => { this.setState({ hasError: false }); window.location.href = '/dashboard' }}
+                className="px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
+                style={{ background: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--card-border)' }}>
                 Go to Dashboard
               </button>
             </div>

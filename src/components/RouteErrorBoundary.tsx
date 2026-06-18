@@ -13,7 +13,7 @@ export default function RouteErrorBoundary({ children }: { children: React.React
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
+              className="px-4 py-2 bg-[var(--clay)] text-white rounded-xl text-sm font-semibold"
             >
               Reload
             </button>

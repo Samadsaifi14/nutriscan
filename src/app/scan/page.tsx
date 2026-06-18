@@ -12,8 +12,8 @@ const BarcodeScanner = dynamic(
 
 function ScannerPlaceholder() {
   return (
-    <div className="w-full aspect-video bg-[#161a20] rounded-2xl border border-[#2a3545] flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+    <div className="w-full aspect-video bg-[var(--card)] rounded-2xl border border-[var(--card-border)] flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
     </div>
   )
 }
@@ -52,8 +52,8 @@ export default function ScanPage() {
           )}
           {!scanning && (
             <div className="w-full aspect-video bg-[var(--card)] flex flex-col items-center justify-center gap-3">
-              <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-emerald-400 font-medium">Barcode detected! Loading...</p>
+              <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-[var(--clay)] font-medium">Barcode detected! Loading...</p>
             </div>
           )}
         </div>

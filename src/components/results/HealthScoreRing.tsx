@@ -1,18 +1,17 @@
-// src/components/results/HealthScoreRing.tsx
 "use client"
 
 export function scoreHex(s: number) {
-  if (s >= 7.5) return '#22c55e'
-  if (s >= 5.5) return '#f59e0b'
-  if (s >= 3.5) return '#fb923c'
-  return '#ef4444'
+  if (s >= 7.5) return '#3D5C2E'
+  if (s >= 5.5) return '#C4714A'
+  if (s >= 3.5) return '#E8956E'
+  return '#B43C28'
 }
 
 export function scoreColorClass(s: number) {
-  if (s >= 7.5) return 'text-emerald-400'
-  if (s >= 5.5) return 'text-amber-400'
+  if (s >= 7.5) return 'text-moss'
+  if (s >= 5.5) return 'text-clay'
   if (s >= 3.5) return 'text-orange-400'
-  return 'text-red-400'
+  return 'text-risk'
 }
 
 export const ratingEmoji: Record<string, string> = {
@@ -32,7 +31,7 @@ export function HealthScoreRing({ score, rating }: { score: number; rating: stri
     <div className="flex flex-col items-center gap-1">
       <div className="relative w-24 h-24">
         <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
-          <circle cx="48" cy="48" r={radius} fill="none" stroke="#2a3545" strokeWidth="8" />
+          <circle cx="48" cy="48" r={radius} fill="none" stroke="var(--card-border)" strokeWidth="8" />
           <circle
             cx="48" cy="48" r={radius}
             fill="none"
@@ -44,41 +43,38 @@ export function HealthScoreRing({ score, rating }: { score: number; rating: stri
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-2xl font-black ${scoreColorClass(score)}`}>{score}</span>
-          <span className="text-[10px] text-[#7a8fa6]">/10</span>
+          <span className="text-2xl font-black" style={{ color: hex, fontFamily: 'var(--font-display)' }}>{score}</span>
+          <span className="text-[10px]" style={{ color: 'var(--muted-2)' }}>/10</span>
         </div>
       </div>
-      <span className={`text-xs font-semibold capitalize ${scoreColorClass(score)}`}>
+      <span className={`text-xs font-semibold capitalize`} style={{ color: hex }}>
         {ratingEmoji[rating]} {rating}
       </span>
     </div>
   )
 }
 
-export function ScoreBar({ label, score, colorClass }: { label: string; score: number; colorClass: string }) {
+export function ScoreBar({ label, score }: { label: string; score: number }) {
+  const color = score >= 7.5 ? 'var(--moss)' : score >= 5.5 ? 'var(--clay)' : score >= 3.5 ? 'var(--clay-light)' : 'var(--risk-red)'
   return (
     <div>
       <div className="flex justify-between items-center mb-1">
-        <span className="text-[11px] text-[#7a8fa6]">{label}</span>
-        <span className={`text-[11px] font-semibold ${colorClass}`}>{score}/10</span>
+        <span className="text-[11px]" style={{ color: 'var(--muted-2)' }}>{label}</span>
+        <span className="text-[11px] font-semibold" style={{ color }}>{score}/10</span>
       </div>
-      <div className="h-1.5 rounded-full bg-[#2a3545] overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-700 ${colorClass.replace('text-', 'bg-')}`}
-          style={{ width: `${score * 10}%` }}
-        />
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'color-mix(in oklab, var(--card-border), transparent 50%)' }}>
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${score * 10}%`, backgroundColor: color }} />
       </div>
     </div>
   )
 }
 
-// Enhanced detailed breakdown with icons
-export function DetailedScoreBreakdown({ 
+export function DetailedScoreBreakdown({
   nutrition,
   additives,
   novaGroup,
-  breakdown 
-}: { 
+  breakdown
+}: {
   nutrition?: { sugar?: number; sodium?: number; protein?: number; fiber?: number }
   additives?: { name: string; risk: string }[]
   novaGroup?: number
@@ -96,27 +92,26 @@ export function DetailedScoreBreakdown({
 
   const getImpactColor = (impact: string) => {
     switch (impact) {
-      case 'critical': return 'text-red-400'
-      case 'negative': return 'text-red-400'
-      case 'warning': return 'text-amber-400'
-      case 'positive': return 'text-emerald-400'
-      default: return 'text-gray-400'
+      case 'critical': return 'var(--risk-red)'
+      case 'negative': return 'var(--risk-red)'
+      case 'warning': return 'var(--clay)'
+      case 'positive': return 'var(--moss)'
+      default: return 'var(--muted-2)'
     }
   }
 
-  // Create summary items from nutrition
   const summaryItems: { label: string; value: string; impact: string }[] = []
-  
+
   if (nutrition?.sugar !== undefined) {
     const impact = nutrition.sugar > 15 ? 'critical' : nutrition.sugar > 5 ? 'warning' : 'positive'
     summaryItems.push({ label: 'Sugar', value: `${nutrition.sugar}g`, impact })
   }
-  
+
   if (nutrition?.sodium !== undefined) {
     const impact = nutrition.sodium > 500 ? 'critical' : nutrition.sodium > 150 ? 'warning' : 'positive'
     summaryItems.push({ label: 'Sodium', value: `${nutrition.sodium}mg`, impact })
   }
-  
+
   if (nutrition?.protein !== undefined) {
     const impact = nutrition.protein > 10 ? 'positive' : nutrition.protein < 3 ? 'negative' : 'warning'
     summaryItems.push({ label: 'Protein', value: `${nutrition.protein}g`, impact })
@@ -128,21 +123,19 @@ export function DetailedScoreBreakdown({
     summaryItems.push({ label: 'Additives', value: `${additives.length} risky`, impact })
   }
 
-  // Add NOVA group
   if (novaGroup) {
-    const novaLabels = { 1: 'Minimal', 2: 'Processed', 3: 'Ultra', 4: 'Highly Ultra' }
+    const novaLabels: Record<number, string> = { 1: 'Minimal', 2: 'Processed', 3: 'Ultra', 4: 'Highly Ultra' }
     const impact = novaGroup >= 4 ? 'critical' : novaGroup >= 3 ? 'warning' : 'positive'
-    summaryItems.push({ label: 'Processing', value: novaLabels[novaGroup as keyof typeof novaLabels] || 'Unknown', impact })
+    summaryItems.push({ label: 'Processing', value: novaLabels[novaGroup] || 'Unknown', impact })
   }
 
-  // Add from breakdown if available
   if (breakdown) {
     breakdown.forEach(item => {
       if (!summaryItems.find(s => s.label.toLowerCase() === item.factor.toLowerCase())) {
-        summaryItems.push({ 
-          label: item.factor.charAt(0).toUpperCase() + item.factor.slice(1).replace('_', ' '), 
+        summaryItems.push({
+          label: item.factor.charAt(0).toUpperCase() + item.factor.slice(1).replace('_', ' '),
           value: item.detail.split('—')[0].trim() || item.detail.substring(0, 20),
-          impact: item.impact 
+          impact: item.impact,
         })
       }
     })
@@ -151,12 +144,12 @@ export function DetailedScoreBreakdown({
   return (
     <div className="space-y-2">
       {summaryItems.map((item, idx) => (
-        <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-[#1e242d]">
+        <div key={idx} className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'color-mix(in oklab, var(--card), black 4%)' }}>
           <div className="flex items-center gap-2">
             <span className="text-base">{getImpactIcon(item.impact)}</span>
-            <span className="text-sm text-[#7a8fa6]">{item.label}</span>
+            <span className="text-sm" style={{ color: 'var(--muted-2)' }}>{item.label}</span>
           </div>
-          <span className={`text-sm font-medium ${getImpactColor(item.impact)}`}>
+          <span className="text-sm font-medium" style={{ color: getImpactColor(item.impact) }}>
             {item.value}
           </span>
         </div>
