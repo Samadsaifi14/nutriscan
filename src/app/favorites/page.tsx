@@ -86,7 +86,7 @@ export default function FavoritesPage() {
                 <button
                   type="button"
                   onClick={() => logFavorite(f)}
-                  className="px-3 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg"
+                  className="px-3 py-2 bg-[var(--clay)] text-white text-xs font-semibold rounded-lg"
                   aria-label={`Log ${f.product_name} as meal`}
                 >
                   Log

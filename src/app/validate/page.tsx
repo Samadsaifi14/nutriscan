@@ -131,7 +131,7 @@ export default function ValidatePage() {
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -163,7 +163,7 @@ export default function ValidatePage() {
       <div className="px-5 pt-4">
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-12">
@@ -213,7 +213,7 @@ export default function ValidatePage() {
                   <button
                     onClick={() => handleVote(product.id, 'approve')}
                     disabled={voting === product.id}
-                    className="flex-1 py-3 text-sm font-bold text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+                    className="flex-1 py-3 text-sm font-bold text-[var(--clay)] hover:bg-[var(--clay)]/10 transition-colors disabled:opacity-50"
                   >
                     ✅ Approve
                   </button>

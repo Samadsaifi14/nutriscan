@@ -18,7 +18,7 @@ export function WeeklyBarChart({ data, labels, height = 120 }: ChartProps) {
       {data.map((value, i) => (
         <div key={i} className="flex flex-col items-center flex-1">
           <div 
-            className="w-full max-w-8 rounded-t-md bg-gradient-to-t from-emerald-500 to-emerald-400 transition-all duration-500 hover:from-sky-500 hover:to-sky-400"
+            className="w-full max-w-8 rounded-t-md bg-gradient-to-t from-[var(--clay)] to-[var(--clay)] transition-all duration-500 hover:from-[var(--bark)] hover:to-[var(--bark)]"
             style={{ height: `${(value / max) * (height - 20)}px` }}
           />
           <span className="text-[10px] text-[#7a8fa6] mt-1 truncate w-full text-center">
@@ -47,8 +47,8 @@ export function LineTrendChart({ data, labels, height = 80 }: ChartProps) {
         {/* Background area */}
         <defs>
           <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+            <stop offset="0%" stopColor="#C4714A" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#C4714A" stopOpacity="0" />
           </linearGradient>
         </defs>
         <polygon 
@@ -58,7 +58,7 @@ export function LineTrendChart({ data, labels, height = 80 }: ChartProps) {
         <polyline 
           points={points} 
           fill="none" 
-          stroke="#10b981" 
+          stroke="#C4714A" 
           strokeWidth="2" 
           strokeLinecap="round" 
           strokeLinejoin="round" 
@@ -116,7 +116,7 @@ interface ProgressBarProps {
   color?: string
 }
 
-export function ProgressBar({ label, current, goal, color = '#10b981' }: ProgressBarProps) {
+export function ProgressBar({ label, current, goal, color = '#C4714A' }: ProgressBarProps) {
   const pct = Math.min((current / goal) * 100, 100)
   
   return (

@@ -91,7 +91,7 @@ export default function DisclaimerPage() {
           <p>
             For questions about this disclaimer, contact:
           </p>
-          <p className="mt-1 text-emerald-400">
+          <p className="mt-1 text-[var(--clay)]">
             Samad Saifi<br />
             samadlylives00@gmail.com
           </p>

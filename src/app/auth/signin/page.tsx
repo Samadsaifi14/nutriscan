@@ -31,18 +31,18 @@ export default function SignInPage() {
 
       {/* Background blobs */}
       <div className="absolute top-0 left-0 right-0 h-72 overflow-hidden pointer-events-none">
-        <div className="absolute -top-20 -left-20 w-96 h-96 bg-emerald-400/10 dark:bg-emerald-500/5 rounded-full blur-3xl" />
-        <div className="absolute -top-10 -right-20 w-72 h-72 bg-sky-400/10 dark:bg-sky-500/5 rounded-full blur-3xl" />
+        <div className="absolute -top-20 -left-20 w-96 h-96 bg-[var(--clay)]/10 dark:bg-[var(--clay)]/5 rounded-full blur-3xl" />
+        <div className="absolute -top-10 -right-20 w-72 h-72 bg-[var(--bark)]/10 dark:bg-[var(--bark)]/5 rounded-full blur-3xl" />
       </div>
 
       <div className="relative flex-1 flex flex-col items-center justify-center p-6 max-w-sm mx-auto w-full">
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-block mb-5 shadow-lg rounded-full" style={{ boxShadow: '0 8px 32px rgba(26,77,50,0.35)' }}>
+          <div className="inline-block mb-5 shadow-lg rounded-full" style={{ boxShadow: '0 8px 32px rgba(44,31,15,0.35)' }}>
             <Logo size={96} priority />
           </div>
-          <h1 className="text-4xl font-black tracking-tight mb-2 text-[#1a4d32] dark:text-emerald-100">
+          <h1 className="text-4xl font-black tracking-tight mb-2 text-[var(--bark)] dark:text-[var(--cream)]">
             BioYou
           </h1>
           <p className="text-sm text-[var(--muted)] leading-relaxed">
@@ -65,9 +65,9 @@ export default function SignInPage() {
             disabled={loading}
             className="w-full flex items-center justify-center gap-3 py-4 px-5 rounded-2xl font-bold text-sm transition-all duration-200 relative overflow-hidden group mb-3"
             style={{
-              background: loading ? '#9ca3af' : 'linear-gradient(135deg, #059669, #0ea5e9)',
+              background: loading ? '#9ca3af' : 'linear-gradient(135deg, #C4714A, #2C1F0F)',
               color: 'white',
-              boxShadow: loading ? 'none' : '0 8px 24px rgba(5,150,105,0.35)',
+              boxShadow: loading ? 'none' : '0 8px 24px rgba(196,113,74,0.35)',
               cursor: loading ? 'not-allowed' : 'pointer',
             }}
           >
@@ -113,7 +113,7 @@ export default function SignInPage() {
           </button>
 
           <div className="mt-3 p-3 rounded-xl text-center"
-            style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)' }}>
+            style={{ background: 'rgba(196,113,74,0.06)', border: '1px solid rgba(196,113,74,0.15)' }}>
             <p className="text-xs text-[var(--muted)] leading-relaxed">
               <strong className="text-[var(--foreground)]">Guest mode:</strong> You can scan products and get AI health ratings without signing in. Sign in to save meal history, track calories and receive weekly reports.
             </p>
@@ -121,9 +121,9 @@ export default function SignInPage() {
 
 <p className="text-xs text-center text-[var(--muted)] mt-4">
   By signing in you agree to our{" "}
-  <a href="/legal/terms" className="text-emerald-400 hover:text-emerald-300 underline">Terms of Service</a>{" "}
+  <a href="/legal/terms" className="text-[var(--clay)] hover:text-[var(--clay)] underline">Terms of Service</a>{" "}
   and{" "}
-  <a href="/legal/privacy" className="text-emerald-400 hover:text-emerald-300 underline">Privacy Policy</a>
+  <a href="/legal/privacy" className="text-[var(--clay)] hover:text-[var(--clay)] underline">Privacy Policy</a>
 </p>
         </div>
 
@@ -152,7 +152,7 @@ export default function SignInPage() {
       </div>
 
       <div className="text-center pb-6 relative">
-        <p className="text-xs text-[var(--muted)]">Made with 💚 for a healthier India</p>
+        <p className="text-xs text-[var(--muted)]">Made for a healthier India</p>
       </div>
     </div>
   )

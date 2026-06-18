@@ -60,10 +60,10 @@ export default function PrivacyPage() {
             We use Google Analytics to collect anonymized usage data including page views, 
             session duration, and app interactions. This helps us understand how the app 
             is used and improve it. You can opt out of analytics cookies (see our 
-            <a href="/legal/cookies" className="text-emerald-400 hover:text-emerald-300 underline mx-1">Cookie Policy</a>).
+            <a href="/legal/cookies" className="text-[var(--clay)] hover:text-[var(--clay)] underline mx-1">Cookie Policy</a>).
           </p>
         </Section>
-
+        
         <Section title="3. Legal Basis for Processing (DPDP Act 2023)">
           <p>
             We process your personal data based on your explicit consent. By creating an 
@@ -124,7 +124,7 @@ export default function PrivacyPage() {
             <li><strong>Right to Correction</strong> — Update inaccurate data</li>
             <li><strong>Right to Deletion</strong> — Request deletion of your data</li>
             <li><strong>Right to Data Portability</strong> — Request a machine-readable export of your data via our{" "}
-              <a href="/api/profile/export" className="text-emerald-400 hover:text-emerald-300 underline">export API</a>
+              <a href="/api/profile/export" className="text-[var(--clay)] hover:text-[var(--clay)] underline">export API</a>
             </li>
             <li><strong>Right to Withdraw Consent</strong> — Opt out of data processing at any time</li>
             <li><strong>Right to Nominate</strong> — Nominate a person to manage your data after your death or incapacity</li>
@@ -182,10 +182,10 @@ export default function PrivacyPage() {
           <p>
             We use essential cookies for authentication (NextAuth) and analytics cookies 
             (Google Analytics). For full details, see our 
-            <a href="/legal/cookies" className="text-emerald-400 hover:text-emerald-300 underline mx-1">Cookie Policy</a>.
+            <a href="/legal/cookies" className="text-[var(--clay)] hover:text-[var(--clay)] underline mx-1">Cookie Policy</a>.
           </p>
         </Section>
-
+        
         <Section title="13. Children's Privacy">
           <p>
             In compliance with the DPDP Act 2023, users under 18 years of age require 
@@ -213,7 +213,7 @@ export default function PrivacyPage() {
             In compliance with the Information Technology Act, 2000 and the DPDP Act, 2023, 
             the Grievance Officer for BioYou is:
           </p>
-          <p className="mt-1 text-emerald-400">
+          <p className="mt-1 text-[var(--clay)]">
             Samad Saifi<br />
             New Delhi, Delhi, India<br />
             samadlylives00@gmail.com

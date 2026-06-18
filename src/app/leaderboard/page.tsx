@@ -87,9 +87,9 @@ export default function LeaderboardPage() {
         
         {/* My Rank Card */}
         {session && currentUserRank && currentUserRank <= 50 && (
-          <div className="bg-gradient-to-r from-emerald-500/20 to-purple-500/20 border border-emerald-500/30 rounded-xl p-4 mb-4">
+          <div className="bg-gradient-to-r from-[var(--clay)]/20 to-purple-500/20 border border-[var(--clay)]/30 rounded-xl p-4 mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/30 flex items-center justify-center text-xl font-bold">
+              <div className="w-10 h-10 rounded-full bg-[var(--clay)]/30 flex items-center justify-center text-xl font-bold">
                 {getRankEmoji(currentUserRank)}
               </div>
               <div>
@@ -108,7 +108,7 @@ export default function LeaderboardPage() {
               onClick={() => setTimeFilter(t)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-colors ${
                 timeFilter === t 
-                  ? 'bg-emerald-500 text-white' 
+                  ? 'bg-[var(--clay)] text-white' 
                   : 'bg-[#1a1f28] text-[#7a8fa6]'
               }`}
             >
@@ -154,7 +154,7 @@ export default function LeaderboardPage() {
         {/* Rest of leaderboard */}
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : users.length === 0 ? (
           <div className="text-center py-12">
@@ -163,7 +163,7 @@ export default function LeaderboardPage() {
             <p className="text-sm text-[#7a8fa6]">Contribute products to top the leaderboard</p>
             <button 
               onClick={() => router.push('/contribute')}
-              className="mt-4 px-6 py-2 bg-emerald-500 text-white font-bold rounded-xl"
+              className="mt-4 px-6 py-2 bg-[var(--clay)] text-white font-bold rounded-xl"
             >
               Start Contributing
             </button>
@@ -174,7 +174,7 @@ export default function LeaderboardPage() {
               <div 
                 key={user.user_id} 
                 className={`flex items-center gap-3 p-3 bg-[#161a20] border border-[#2a3545] rounded-xl ${
-                  currentUserId === user.user_id ? 'border-emerald-500/50' : ''
+                  currentUserId === user.user_id ? 'border-[var(--clay)]/50' : ''
                 }`}
               >
                 <div className="w-8 text-center text-sm font-bold text-[#7a8fa6]">
@@ -197,7 +197,7 @@ export default function LeaderboardPage() {
                 </div>
                 
                 <div className="text-right">
-                  <p className="text-sm font-black text-emerald-400">{user.total_impact}</p>
+                  <p className="text-sm font-black text-[var(--clay)]">{user.total_impact}</p>
                   <p className="text-[10px] text-[#7a8fa6]">impact</p>
                 </div>
               </div>
@@ -211,7 +211,7 @@ export default function LeaderboardPage() {
           <div className="flex gap-2">
             <button 
               onClick={() => router.push('/contribute')}
-              className="flex-1 py-2.5 bg-emerald-500 text-white font-bold rounded-lg text-sm"
+              className="flex-1 py-2.5 bg-[var(--clay)] text-white font-bold rounded-lg text-sm"
             >
               📝 Contribute
             </button>

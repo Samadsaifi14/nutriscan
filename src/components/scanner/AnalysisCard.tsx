@@ -75,7 +75,7 @@ interface Props {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function getScoreColor(score: number) {
-  if (score >= 7.5) return '#10b981'
+  if (score >= 7.5) return '#C4714A'
   if (score >= 5.5) return '#f59e0b'
   if (score >= 3.5) return '#f97316'
   return '#ef4444'
@@ -91,7 +91,7 @@ function getSeverityStyles(severity: string) {
 
 function getSuitabilityConfig(value?: string) {
   switch (value) {
-    case 'suitable':              return { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/40', label: 'Safe' }
+    case 'suitable':              return { icon: CheckCircle, color: 'text-[var(--clay)]', bg: 'bg-[var(--sand)] dark:bg-[var(--moss)]/20 border border-[var(--sand)] dark:border-[var(--moss)]/40', label: 'Safe' }
     case 'consume_with_caution':  return { icon: AlertTriangle, color: 'text-amber-500',   bg: 'bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/40',   label: 'Caution' }
     case 'avoid':                 return { icon: XCircle,       color: 'text-red-500',     bg: 'bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40',             label: 'Avoid' }
     default:                      return { icon: Info,          color: 'text-gray-400',    bg: 'bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700',            label: 'Unknown' }
@@ -104,7 +104,7 @@ function ScoreRing({ score, rating }: { score: number; rating: string }) {
   const circ = 2 * Math.PI * radius
   const offset = circ * (1 - Math.min(Math.max(score / 10, 0), 1))
   const color = getScoreColor(score)
-  const ratingGradient = { healthy: 'from-emerald-500 to-teal-400', moderate: 'from-amber-500 to-yellow-400', unhealthy: 'from-red-500 to-orange-500' }
+  const ratingGradient = { healthy: 'from-[var(--clay)] to-[var(--moss)]', moderate: 'from-amber-500 to-yellow-400', unhealthy: 'from-red-500 to-orange-500' }
   const label = rating === 'healthy' ? 'Healthy' : rating === 'moderate' ? 'Moderate' : 'Unhealthy'
 
   return (
@@ -209,7 +209,7 @@ function HarmfulIngredientCard({ item }: { item: HarmfulIngredient }) {
               <span className="text-xs text-gray-400">{item.scientific_source}</span>
               {item.source_url && (
                 <a href={item.source_url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-0.5 text-xs text-emerald-600 dark:text-emerald-400 hover:underline ml-1">
+                  className="flex items-center gap-0.5 text-xs text-[var(--moss)] dark:text-[var(--clay)] hover:underline ml-1">
                   <ExternalLink className="w-3 h-3" /> View source
                 </a>
               )}
@@ -252,8 +252,8 @@ export default function AnalysisCard({ analysis, productName }: Props) {
           <ScoreRing score={score} rating={rating} />
 
           {analysis?.personalized && (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400
-              bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/40 px-3 py-1 rounded-full">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--moss)] dark:text-[var(--clay)]
+              bg-[var(--sand)] dark:bg-[var(--moss)]/20 border border-[var(--sand)] dark:border-[var(--moss)]/40 px-3 py-1 rounded-full">
               <Zap className="w-3 h-3" /> Personalised for your health profile
             </div>
           )}
@@ -365,15 +365,15 @@ export default function AnalysisCard({ analysis, productName }: Props) {
 
       {/* ── POSITIVES ────────────────────────────────────────────── */}
       {positives.length > 0 && (
-        <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
-          <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2 mb-3">
+        <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-[var(--sand)] dark:border-[var(--moss)]/30 shadow-sm">
+          <p className="text-sm font-bold text-[var(--moss)] dark:text-[var(--clay)] flex items-center gap-2 mb-3">
             <CheckCircle className="w-4 h-4" />
             What's Good About This Product
           </p>
           <ul className="space-y-2">
             {positives.map((p, i) => (
               <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300">
-                <Leaf className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                <Leaf className="w-4 h-4 text-[var(--clay)] flex-shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{p}</span>
               </li>
             ))}
@@ -385,7 +385,7 @@ export default function AnalysisCard({ analysis, productName }: Props) {
       {analysis?.safe_consumption && (
         <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
           <p className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-3">
-            <Clock className="w-4 h-4 text-emerald-500" />
+            <Clock className="w-4 h-4 text-[var(--clay)]" />
             Safe Consumption Guide
           </p>
           <div className="grid grid-cols-2 gap-2.5">
@@ -414,22 +414,22 @@ export default function AnalysisCard({ analysis, productName }: Props) {
       {alternatives.length > 0 && (
         <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
           <p className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-3">
-            <ShoppingBag className="w-4 h-4 text-emerald-500" />
+            <ShoppingBag className="w-4 h-4 text-[var(--clay)]" />
             Healthier Alternatives
           </p>
           <div className="space-y-2.5">
             {alternatives.map((alt, i) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-xl
-                bg-emerald-50/60 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0">
-                  <Leaf className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                bg-[var(--sand)]/60 dark:bg-[var(--moss)]/10 border border-[var(--sand)] dark:border-[var(--moss)]/30">
+                <div className="w-8 h-8 rounded-full bg-[var(--sand)] dark:bg-[var(--moss)]/40 flex items-center justify-center flex-shrink-0">
+                  <Leaf className="w-4 h-4 text-[var(--moss)] dark:text-[var(--clay)]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{alt.name}</p>
                     {alt.availability && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40
-                        text-emerald-700 dark:text-emerald-400 capitalize font-medium">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--sand)] dark:bg-[var(--moss)]/40
+                        text-[var(--moss)] dark:text-[var(--clay)] capitalize font-medium">
                         {alt.availability.replace(/_/g, ' ')}
                       </span>
                     )}
@@ -446,7 +446,7 @@ export default function AnalysisCard({ analysis, productName }: Props) {
       {analysis?.fssai_compliance && (
         <div className={`rounded-xl px-4 py-3 flex items-center gap-3 text-sm font-medium
           ${analysis.fssai_compliance === 'compliant'
-            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40'
+            ? 'bg-[var(--sand)] dark:bg-[var(--moss)]/20 text-[var(--moss)] dark:text-[var(--clay)] border border-[var(--sand)] dark:border-[var(--moss)]/40'
             : analysis.fssai_compliance === 'concern'
             ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40'
             : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700'

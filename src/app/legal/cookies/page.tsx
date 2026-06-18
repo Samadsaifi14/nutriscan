@@ -54,7 +54,7 @@ export default function CookiesPage() {
           <p>
             Google Analytics is a third-party service provided by Google LLC. 
             Their use of cookies is governed by 
-            <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline mx-1">
+            <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--clay)] hover:text-[var(--clay)] underline mx-1">
               Google's Privacy Policy
             </a>.
             We do not control Google's cookies.
@@ -75,10 +75,10 @@ export default function CookiesPage() {
             for common browsers:
           </p>
           <ul className="list-disc pl-5 space-y-1 mt-1">
-            <li><a href="https://support.google.com/chrome/answer/95647" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline">Google Chrome</a></li>
-            <li><a href="https://support.mozilla.org/en-US/kb/enable-and-disable-cookies-website-preferences" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline">Firefox</a></li>
-            <li><a href="https://support.apple.com/en-in/guide/safari/sfri11471/mac" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline">Safari</a></li>
-            <li><a href="https://support.microsoft.com/en-us/windows/microsoft-edge-browsing-data-and-privacy-8013406a-13e1-4a5b-4b7d-9c2a4c1e2d9e" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline">Microsoft Edge</a></li>
+            <li><a href="https://support.google.com/chrome/answer/95647" target="_blank" rel="noopener noreferrer" className="text-[var(--clay)] hover:text-[var(--clay)] underline">Google Chrome</a></li>
+            <li><a href="https://support.mozilla.org/en-US/kb/enable-and-disable-cookies-website-preferences" target="_blank" rel="noopener noreferrer" className="text-[var(--clay)] hover:text-[var(--clay)] underline">Firefox</a></li>
+            <li><a href="https://support.apple.com/en-in/guide/safari/sfri11471/mac" target="_blank" rel="noopener noreferrer" className="text-[var(--clay)] hover:text-[var(--clay)] underline">Safari</a></li>
+            <li><a href="https://support.microsoft.com/en-us/windows/microsoft-edge-browsing-data-and-privacy-8013406a-13e1-4a5b-4b7d-9c2a4c1e2d9e" target="_blank" rel="noopener noreferrer" className="text-[var(--clay)] hover:text-[var(--clay)] underline">Microsoft Edge</a></li>
           </ul>
         </Section>
 
@@ -101,7 +101,7 @@ export default function CookiesPage() {
           <p>
             For questions about this Cookie Policy, contact:
           </p>
-          <p className="mt-1 text-emerald-400">
+          <p className="mt-1 text-[var(--clay)]">
             Samad Saifi<br />
             samadlylives00@gmail.com
           </p>

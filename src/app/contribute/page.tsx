@@ -371,7 +371,7 @@ function CameraCapturePage({ title, description, onCapture, onSkip }: {
             Skip / Don't have
           </button>
         )}
-        <button onClick={capture} className="flex-1 py-3 bg-emerald-500 text-white font-bold rounded-xl">
+        <button onClick={capture} className="flex-1 py-3 bg-[var(--clay)] text-white font-bold rounded-xl">
           📸 Capture
         </button>
       </div>
@@ -457,7 +457,7 @@ function ReviewPage({ formData, setFormData, parsedData, correctedNutrition, set
         <button onClick={onBack} className="flex-1 py-3 bg-[#1a1f28] border border-[#2a3545] text-[#7a8fa6] font-bold rounded-xl">
           ← Back
         </button>
-        <button onClick={onSubmit} disabled={loading || !formData.name} className="flex-1 py-3 bg-emerald-500 disabled:bg-[#2a3545] text-white font-bold rounded-xl">
+        <button onClick={onSubmit} disabled={loading || !formData.name} className="flex-1 py-3 bg-[var(--clay)] disabled:bg-[#2a3545] text-white font-bold rounded-xl">
           {loading ? 'Submitting...' : '✅ Submit'}
         </button>
       </div>
@@ -471,13 +471,13 @@ function SuccessPage({ productName, onContributeMore, onGoHome }: { productName:
 
   return (
     <div className="px-4 pt-12 pb-6 text-center">
-      <div className="w-24 h-24 rounded-full bg-gradient-to-b from-emerald-500 to-emerald-600 mx-auto mb-6 flex items-center justify-center text-6xl">
+      <div className="w-24 h-24 rounded-full bg-gradient-to-b from-[var(--clay)] to-[color-mix(in_oklab,var(--clay),black_15%)] mx-auto mb-6 flex items-center justify-center text-6xl">
         🎉
       </div>
       
       <h1 className="text-2xl font-black mb-2">You're the First!</h1>
       <p className="text-[#7a8fa6] mb-6">
-        You added <span className="text-emerald-400 font-bold">{productName}</span> to BioYou.
+        You added <span className="text-[var(--clay)] font-bold">{productName}</span> to HealthOX.
       </p>
 
       <div className="bg-gradient-to-b from-amber-500/10 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-6">
@@ -489,14 +489,14 @@ function SuccessPage({ productName, onContributeMore, onGoHome }: { productName:
 
       <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 mb-6">
         <p className="text-xs text-[#7a8fa6] mb-1">Your Impact</p>
-        <p className="text-2xl font-black text-emerald-400">{impact}+ people</p>
+        <p className="text-2xl font-black text-[var(--clay)]">{impact}+ people</p>
         <p className="text-[10px] text-[#7a8fa6]">will see this product when it goes live</p>
       </div>
 
-      <button onClick={onGoHome} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl mb-3">
+      <button onClick={onGoHome} className="w-full py-3 bg-[var(--clay)] text-white font-bold rounded-xl mb-3">
         Back to Home
       </button>
-      <button onClick={onContributeMore} className="text-sm text-emerald-400 font-bold">
+      <button onClick={onContributeMore} className="text-sm text-[var(--clay)] font-bold">
         Add another product →
       </button>
     </div>
@@ -506,7 +506,7 @@ function SuccessPage({ productName, onContributeMore, onGoHome }: { productName:
 function LoadingScreen() {
   return (
     <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
     </div>
   )
 }

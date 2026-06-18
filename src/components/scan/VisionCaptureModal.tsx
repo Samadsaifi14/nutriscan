@@ -17,13 +17,13 @@ export function VisionCapturePanel({ notFoundBarcode, visionStatus, onCapture }:
         <div>
           <p className="text-sm font-semibold text-[#f0f4f8]">Product not in database</p>
           <p className="text-xs text-[#7a8fa6] mt-0.5">
-            Barcode <span className="font-mono text-emerald-400">{notFoundBarcode}</span> was not found.
+            Barcode <span className="font-mono text-[var(--clay)]">{notFoundBarcode}</span> was not found.
             Photograph the nutrition label to add it to our Indian database.
           </p>
         </div>
       </div>
       {visionStatus && (
-        <div className="px-4 py-2.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 mb-3">
+        <div className="px-4 py-2.5 bg-[var(--clay)]/5 border border-[var(--clay)]/20 rounded-xl text-xs text-[var(--clay)] mb-3">
           {visionStatus}
         </div>
       )}
@@ -70,7 +70,7 @@ function VisionCapture({ onCapture }: { onCapture: (b64: string) => void }) {
           />
           <div className="flex gap-2">
             <button onClick={capture}
-              className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold transition-colors">
+              className="flex-1 py-3 rounded-xl bg-[var(--clay)] hover:bg-[var(--clay)] text-white text-sm font-semibold transition-colors">
               📸 Capture
             </button>
             <button onClick={stop}

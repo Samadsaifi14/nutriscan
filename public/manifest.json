@@ -4,8 +4,8 @@
   "description": "Scan any packaged food and get an instant AI health rating",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#f0fdf4",
-  "theme_color": "#1a4d32",
+  "background_color": "#F2EDE4",
+  "theme_color": "#C4714A",
   "orientation": "portrait",
   "icons": [
     {

@@ -122,7 +122,7 @@ export default function AdminPendingPage() {
 
   if (status === 'loading') {
     return <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
     </div>
   }
 
@@ -160,7 +160,7 @@ export default function AdminPendingPage() {
               key={f}
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize ${
-                filter === f ? 'bg-emerald-500 text-white' : 'bg-[#1a1f28] text-[#7a8fa6]'
+                filter === f ? 'bg-[var(--clay)] text-white' : 'bg-[#1a1f28] text-[#7a8fa6]'
               }`}
             >
               {f}
@@ -172,7 +172,7 @@ export default function AdminPendingPage() {
       <div className="px-5 pt-4">
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-12">
@@ -199,7 +199,7 @@ export default function AdminPendingPage() {
                     <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                       product.status === 'unverified' ? 'bg-amber-500/20 text-amber-400' :
                       product.status === 'pending' ? 'bg-gray-500/20 text-gray-400' :
-                      'bg-emerald-500/20 text-emerald-400'
+                      'bg-[var(--clay)]/20 text-[var(--clay)]'
                     }`}>
                       {product.status || 'pending'}
                     </span>
@@ -238,7 +238,7 @@ export default function AdminPendingPage() {
                 <div className="flex border-t border-[#2a3545]">
                   <button
                     onClick={() => handleAction(product.id, 'approve')}
-                    className="flex-1 py-2.5 text-sm font-bold text-emerald-400 hover:bg-emerald-500/10"
+                    className="flex-1 py-2.5 text-sm font-bold text-[var(--clay)] hover:bg-[var(--clay)]/10"
                   >
                     ✅ Approve (A)
                   </button>
@@ -352,7 +352,7 @@ function EditModal({ product, onClose, onSave }: {
           <button onClick={onClose} className="flex-1 py-2.5 bg-[#1a1f28] text-[#7a8fa6] font-bold rounded-lg">
             Cancel
           </button>
-          <button onClick={() => onSave(form)} className="flex-1 py-2.5 bg-emerald-500 text-white font-bold rounded-lg">
+          <button onClick={() => onSave(form)} className="flex-1 py-2.5 bg-[var(--clay)] text-white font-bold rounded-lg">
             Save & Approve
           </button>
         </div>

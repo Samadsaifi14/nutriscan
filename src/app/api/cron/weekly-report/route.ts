@@ -102,9 +102,9 @@ export async function GET(req: NextRequest) {
           'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
         },
         body: JSON.stringify({
-          from: 'BioYou <onboarding@resend.dev>',
+          from: 'HealthOX <onboarding@resend.dev>',
           to: [user.email],
-          subject: `${firstName}, here is your weekly BioYou nutrition report 📊`,
+          subject: `${firstName}, here is your weekly HealthOX nutrition report 📊`,
           html,
         })
       })
@@ -151,7 +151,7 @@ function buildWeeklyHTML(data: {
     ? { label: 'Below target', color: '#3b82f6', icon: '📉', advice: 'Try to eat a bit more to reach your daily calorie goal and maintain energy levels.' }
     : data.avgDaily > 2800
     ? { label: 'Above target', color: '#dc2626', icon: '📈', advice: 'Consider reducing portion sizes or switching high-calorie snacks for healthier options.' }
-    : { label: 'On track', color: '#059669', icon: '✅', advice: 'Excellent work keeping your calories in a healthy range this week!' }
+    : { label: 'On track', color: '#C4714A', icon: '✅', advice: 'Excellent work keeping your calories in a healthy range this week!' }
 
   const totalMacros = data.totalProtein + data.totalCarbs + data.totalFat
 
@@ -163,14 +163,14 @@ function buildWeeklyHTML(data: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BioYou Weekly Report</title>
 </head>
-<body style="margin:0;padding:0;background:#f0fdf4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<body style="margin:0;padding:0;background:#F2EDE4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 
 <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
 
   <!-- Header -->
   <div style="text-align:center;margin-bottom:28px;">
     <img src="${data.baseUrl}/logo.png" alt="BioYou" width="80" height="80" style="border-radius:50%;margin-bottom:12px;" />
-    <h1 style="font-size:28px;font-weight:900;margin:0 0 4px;color:#1a4d32;">BioYou</h1>
+    <h1 style="font-size:28px;font-weight:900;margin:0 0 4px;color:#2C1F0F;">HealthOX</h1>
     <p style="font-size:13px;color:#6b7280;margin:0;">Weekly Nutrition Report · Scan. Know. Choose Better.</p>
   </div>
 
@@ -198,8 +198,8 @@ function buildWeeklyHTML(data: {
     <!-- Stats Grid -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
       ${[
-        { label: 'Total Calories', value: data.totalCalories.toLocaleString(), unit: 'kcal this week', color: '#059669' },
-        { label: 'Daily Average', value: data.avgDaily.toLocaleString(), unit: 'kcal per day', color: '#0ea5e9' },
+        { label: 'Total Calories', value: data.totalCalories.toLocaleString(), unit: 'kcal this week', color: '#C4714A' },
+        { label: 'Daily Average', value: data.avgDaily.toLocaleString(), unit: 'kcal per day', color: '#2C1F0F' },
         { label: 'Days Logged', value: `${data.daysLogged}/7`, unit: 'days this week', color: '#8b5cf6' },
         { label: 'Total Meals', value: data.totalMeals.toString(), unit: 'meals logged', color: '#f59e0b' },
       ].map(s => `
@@ -215,8 +215,8 @@ function buildWeeklyHTML(data: {
     <h3 style="font-size:15px;font-weight:800;color:#111827;margin:0 0 14px;">🥩 Weekly Macros Breakdown</h3>
 
     ${[
-      { label: 'Protein', value: data.totalProtein, color: '#059669' },
-      { label: 'Carbohydrates', value: data.totalCarbs, color: '#0ea5e9' },
+      { label: 'Protein', value: data.totalProtein, color: '#C4714A' },
+      { label: 'Carbohydrates', value: data.totalCarbs, color: '#2C1F0F' },
       { label: 'Fat', value: data.totalFat, color: '#f59e0b' },
     ].map(m => {
       const pct = totalMacros > 0 ? Math.round((m.value / totalMacros) * 100) : 0
@@ -249,8 +249,8 @@ function buildWeeklyHTML(data: {
           </div>
         </div>
       `).join('')}
-      <div style="padding:14px;background:#f0fdf4;border-radius:12px;margin:12px 0 24px;border:1px solid #bbf7d0;">
-        <p style="font-size:13px;font-weight:700;color:#059669;margin:0 0 6px;">💚 Healthier swaps to try</p>
+      <div style="padding:14px;background:#FAF7F2;border-radius:12px;margin:12px 0 24px;border:1px solid #D4A88A;">
+        <p style="font-size:13px;font-weight:700;color:#C4714A;margin:0 0 6px;">🌿 Healthier swaps to try</p>
         <p style="font-size:12px;color:#374151;margin:0;line-height:1.7;">
           Instead of packaged snacks try roasted chana, makhana, fox nuts, fresh fruit, or
           homemade snacks this week. Small swaps make a big difference over time!
@@ -260,7 +260,7 @@ function buildWeeklyHTML(data: {
     ` : ''}
 
     <!-- Encouragement message -->
-    <div style="background:linear-gradient(135deg,rgba(5,150,105,0.06),rgba(14,165,233,0.04));border-radius:14px;padding:18px;margin-bottom:28px;border:1px solid rgba(5,150,105,0.15);">
+    <div style="background:linear-gradient(135deg,rgba(196,113,74,0.06),rgba(44,31,15,0.04));border-radius:14px;padding:18px;margin-bottom:28px;border:1px solid rgba(196,113,74,0.15);">
       <p style="font-size:14px;color:#374151;line-height:1.8;margin:0;">
         ${data.daysLogged >= 5
           ? `🔥 Amazing consistency ${data.firstName}! You logged <strong>${data.daysLogged} out of 7 days</strong> this week. That kind of dedication is what creates lasting healthy habits. Keep it up!`
@@ -274,7 +274,7 @@ function buildWeeklyHTML(data: {
     <!-- CTA -->
     <div style="text-align:center;">
       <a href="${data.baseUrl}/scan"
-        style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#059669,#0ea5e9);color:white;text-decoration:none;border-radius:14px;font-size:14px;font-weight:800;box-shadow:0 8px 20px rgba(5,150,105,0.3);">
+        style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#C4714A,#2C1F0F);color:white;text-decoration:none;border-radius:14px;font-size:14px;font-weight:800;box-shadow:0 8px 20px rgba(196,113,74,0.3);">
         Scan This Week's Meals →
       </a>
     </div>
@@ -283,8 +283,8 @@ function buildWeeklyHTML(data: {
 
   <!-- Footer -->
   <div style="background:white;border-radius:20px;padding:20px 24px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.04);">
-    <p style="font-size:13px;color:#374151;font-weight:600;margin:0 0 4px;">Made with 💚 for a healthier India</p>
-    <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">BioYou — Scan. Know. Choose Better.</p>
+    <p style="font-size:13px;color:#374151;font-weight:600;margin:0 0 4px;">Made for a healthier India</p>
+    <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">HealthOX — Scan. Know. Choose Better.</p>
     <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
       <a href="${data.unsubscribeWeeklyUrl}" style="font-size:11px;color:#9ca3af;text-decoration:underline;">
         Unsubscribe from weekly reports

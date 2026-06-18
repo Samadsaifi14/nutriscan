@@ -1,307 +1,398 @@
 # DESIGN — HealthOX UI/UX System
-_Design system, component tree, theme, and page inventory_
+_Design system, component specifications, and page inventory_
 
 ---
 
 ## Design Philosophy
 
-HealthOX uses an **organic minimalism** aesthetic — warm earthy tones, editorial typography,
-and tactile textures. The goal is a product that feels handcrafted and Indian-rooted,
-not generic SaaS. Inspiration: Igloo Inc (3D spatial depth, grain texture) and
-Maná Yerba Mate (earthy palette, editorial type hierarchy, slow animation).
+HealthOX uses **organic minimalism** — warm earthy tones, editorial typography,
+film grain texture, and 3D spatial depth. The aesthetic is grounded in Indian
+materials culture (clay, bark, moss, sand) rather than generic tech-startup
+palettes (electric blue, emerald green, purple gradients).
+
+References: Igloo Inc (3D depth, grain, spatial composition), Maná Yerba Mate
+(earthy palette, editorial type, slow deliberate animation).
+
+The product should feel **handcrafted and Indian**, not generated.
 
 ---
 
 ## Typography
 
-| Role | Font | Weight | Size | Notes |
+| Role | Font | Weight | Size | Tracking |
 |---|---|---|---|---|
-| Display / Headings | Syne | 800 | clamp(52px–80px hero, 38–58px sections) | letter-spacing: -0.04em |
-| UI Labels / Nav | Syne | 600–700 | 13–18px | letter-spacing: -0.03em |
-| Body copy | DM Sans | 300–400 | 15–17px | line-height: 1.7 |
-| Eyebrows / Tags | DM Sans | 500 | 11px | letter-spacing: 0.12em, uppercase |
-| Stat numbers | Syne | 700 | 30px | letter-spacing: -0.04em |
+| Hero display | Syne | 800 | clamp(52px, 5.5vw, 80px) | -0.04em |
+| Section headings | Syne | 800 | clamp(38px, 4vw, 58px) | -0.04em |
+| Card titles | Syne | 700 | 18–22px | -0.03em |
+| Navigation logo | Syne | 800 | 18px | -0.03em |
+| Body copy | DM Sans | 300 | 15–17px | normal |
+| UI labels / nav links | DM Sans | 500 | 13px | 0.04em |
+| Eyebrows / tags | DM Sans | 500 | 11px | 0.12em (uppercase) |
+| Stat numbers | Syne | 700 | 30px | -0.04em |
+| Nutrient values | DM Sans | 500 | 10–12px | normal |
 
-Import from Google Fonts:
 ```css
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 ```
 
 ---
 
-## Color Palette
+## Color System
 
-No blue. No purple. No generic `emerald-500`. HealthOX uses a curated earthy system:
+Replace all Tailwind `emerald` usage with this custom token system.
+These are CSS custom properties defined in `globals.css`:
 
-| Token | Hex | Usage |
-|---|---|---|
-| `--sand` | `#F2EDE4` | Page background |
-| `--sand-dark` | `#E8E0D3` | Subtle surface, input backgrounds |
-| `--cream` | `#FAF7F2` | Card backgrounds, light surfaces |
-| `--bark` | `#2C1F0F` | Primary text, dark CTAs, nav |
-| `--bark-mid` | `#4A3520` | Secondary text, muted labels |
-| `--ink` | `#1A1208` | Headings, display text |
-| `--moss` | `#3D5C2E` | Safe/healthy indicators, FSSAI green |
-| `--moss-light` | `#6B8F52` | Fiber bars, secondary green |
-| `--clay` | `#C4714A` | Primary brand accent, CTAs, score rings |
-| `--clay-light` | `#E8956E` | Scan line glow, hover states |
-| `--risk-red` | `#B43C28` | Harmful ingredients, bad score |
+```css
+:root {
+  /* Backgrounds */
+  --sand:       #F2EDE4;   /* Page background */
+  --sand-dark:  #E8E0D3;   /* Input backgrounds, subtle surface */
+  --cream:      #FAF7F2;   /* Card backgrounds */
 
-Tailwind config — replace `emerald` with custom tokens:
-```js
-// tailwind.config.ts
-colors: {
-  sand: { DEFAULT: '#F2EDE4', dark: '#E8E0D3' },
-  bark: { DEFAULT: '#2C1F0F', mid: '#4A3520' },
-  ink: '#1A1208',
-  cream: '#FAF7F2',
-  moss: { DEFAULT: '#3D5C2E', light: '#6B8F52' },
-  clay: { DEFAULT: '#C4714A', light: '#E8956E' },
-  risk: '#B43C28',
+  /* Text */
+  --ink:        #1A1208;   /* Display headings */
+  --bark:       #2C1F0F;   /* Primary text, dark CTAs */
+  --bark-mid:   #4A3520;   /* Secondary text, muted labels */
+
+  /* Brand accents */
+  --moss:       #3D5C2E;   /* Safe/healthy, FSSAI, A-grade */
+  --moss-light: #6B8F52;   /* Fiber bars, secondary green */
+  --clay:       #C4714A;   /* Primary brand accent, CTAs */
+  --clay-light: #E8956E;   /* Hover states, scan line glow */
+
+  /* Semantic */
+  --risk-red:   #B43C28;   /* Harmful ingredients, banned additives */
+  --warn-amber: #C47A1A;   /* Medium-risk additives, B/C grade */
+}
+
+/* Dark mode — warm dark, not cold */
+.dark {
+  --sand:       #130E08;
+  --sand-dark:  #1C1510;
+  --cream:      #1E1710;
+  --ink:        #FAF7F2;
+  --bark:       #F2EDE4;
+  --bark-mid:   #B8A898;
+  /* clay, moss, risk-red unchanged in dark mode */
 }
 ```
+
+Tailwind config:
+```js
+// tailwind.config.ts
+theme: {
+  extend: {
+    colors: {
+      sand:     { DEFAULT: '#F2EDE4', dark: '#E8E0D3' },
+      bark:     { DEFAULT: '#2C1F0F', mid: '#4A3520' },
+      ink:      '#1A1208',
+      cream:    '#FAF7F2',
+      moss:     { DEFAULT: '#3D5C2E', light: '#6B8F52' },
+      clay:     { DEFAULT: '#C4714A', light: '#E8956E' },
+      risk:     '#B43C28',
+      warn:     '#C47A1A',
+    }
+  }
+}
+```
+
+---
+
+## Spacing Scale
+
+Use Tailwind's default 4px base scale. Custom additions:
+
+| Token | Value | Usage |
+|---|---|---|
+| Page padding | 48px | Left/right padding on all sections |
+| Section vertical | 120px | Top/bottom padding per section |
+| Card padding | 36px 32px | Feature cards |
+| Bento padding | 28px | Bento grid cards |
+| Gap — feature grid | 20px | Between feature cards |
+| Gap — bento grid | 16px | Between bento cells |
+| Nav height | 80px | Used as padding-top on hero |
+
+---
+
+## Z-Index System
+
+| Layer | Z-index | Elements |
+|---|---|---|
+| Grain texture | 9000 | `.grain` fixed overlay |
+| Cursor ring | 9998 | `.cursor-ring` |
+| Cursor dot | 9999 | `.cursor` |
+| Navigation | 100 | `nav` |
+| Floating tags | 10 | Phone mockup orbit tags |
+| Page content | 2 | Hero copy, feature cards |
+| Background orbs | 1 | Ambient radial gradients |
 
 ---
 
 ## Texture & Atmosphere
 
-### Film grain overlay
-A fixed SVG noise layer creates analogue depth — prevents the app from feeling purely digital.
-```css
-.grain {
-  position: fixed;
-  inset: -200%;
-  width: 400%; height: 400%;
-  background-image: url("data:image/svg+xml,...feTurbulence baseFrequency='0.9'...");
-  opacity: 0.028;
-  pointer-events: none;
-  z-index: 9000;
-  animation: grainShift 0.5s steps(1) infinite;
-}
-@keyframes grainShift {
-  /* 5-step random translate to animate grain */
-}
-```
+### Film grain
+Fixed SVG feTurbulence layer at 2.8% opacity (3.5% in dark mode).
+Animates through 5 random translate positions at `steps(1)` — creates analogue noise.
+Never remove this — it is the single largest differentiator from AI-generated aesthetics.
 
-### Radial ambient orbs
-Soft radial gradients (12–15% opacity clay and moss) placed behind key sections to
-create depth without being literal backgrounds. Never use these at > 20% opacity.
+### Ambient orbs
+Radial gradient blobs (clay 12%, moss 8%) placed behind key sections.
+Max opacity: 20%. Never use as literal backgrounds.
+Use `animation: breathe` (scale 1→1.08, 6–8s ease-in-out infinite) for life.
+
+### Line weight
+All borders: `0.5px solid rgba(44,31,15,0.07)` in light mode.
+Never use `1px` solid borders on cards — they look digital and harsh.
 
 ---
 
 ## Custom Cursor
 
-Replace the default cursor with a two-part system:
-- Small filled dot (10px, clay color, `mix-blend-mode: multiply`)
-- Lagging ring (36px, 0.5px border-bark, follows with 0.12 lerp factor)
+Two-part cursor replaces the system default.
+Set `cursor: none` on `body` and all interactive elements.
 
-On hover over interactive elements: dot expands to 18px, ring to 52px.
-```js
-let rx = 0, ry = 0;
-function animRing() {
-  rx += (mx - rx) * 0.12;
-  ry += (my - ry) * 0.12;
-  ring.style.left = rx + 'px';
-  ring.style.top = ry + 'px';
-  requestAnimationFrame(animRing);
+```css
+.cursor {
+  width: 10px; height: 10px;
+  background: var(--clay);
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+  transition: width 0.2s, height 0.2s;
+}
+.cursor-ring {
+  width: 36px; height: 36px;
+  border: 1px solid var(--bark-mid);
+  border-radius: 50%;
+  opacity: 0.5;
+  /* Follows mouse with 0.12 lerp — never instant */
 }
 ```
-Set `cursor: none` on `body`. Set `cursor: none` on all interactive elements too.
+
+On hover over any interactive element: dot → 18px, ring → 52px.
+
+```js
+// Lerp-based ring follow
+let rx = 0, ry = 0;
+(function tick() {
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) * 0.12;
+  ring.style.cssText = `left:${rx}px;top:${ry}px`;
+  requestAnimationFrame(tick);
+})();
+```
 
 ---
 
 ## Animation System
 
-### Principles
-- All animations use `cubic-bezier(.16,1,.3,1)` (spring-out) — not ease-in-out
-- Entry animations use `opacity + translateY(30px)` with `animation-fill-mode: forwards`
-- Stagger delays: 0.1s, 0.2s, 0.3s between siblings
-- Phone 3D float: `rotateY(-12deg) rotateX(5deg)`, 6s ease-in-out infinite
-- Phone parallax: mouse position drives `rotateY` ±8deg, `rotateX` ±4deg in real time
+### Easing
+All animations use `cubic-bezier(.16,1,.3,1)` — a spring-out curve.
+Never use `ease-in-out` for entry animations (it feels mechanical).
+`cubic-bezier(.34,1.56,.64,1)` for button hover states (slight overshoot).
 
-### Keyframes
+### Motion reduction
 ```css
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes breathe {
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.08); }
-}
-@keyframes grainShift { /* 5-step random offset */ }
-@keyframes scanAnim {
-  0%   { top: 10%; opacity: 0; }
-  10%  { opacity: 1; }
-  90%  { opacity: 1; }
-  100% { top: 90%; opacity: 0; }
-}
-@keyframes logoPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50%       { transform: scale(1.6); opacity: 0.6; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .grain { animation: none; }
+  .phone-scene { animation: none; transform: rotateY(-12deg) rotateX(5deg); }
 }
 ```
 
 ### Scroll reveal
 ```css
-.reveal { opacity: 0; transform: translateY(40px); transition: opacity 0.9s cubic-bezier(.16,1,.3,1), transform 0.9s; }
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.9s cubic-bezier(.16,1,.3,1),
+              transform 0.9s cubic-bezier(.16,1,.3,1);
+}
 .reveal.visible { opacity: 1; transform: translateY(0); }
-```
-```js
-const observer = new IntersectionObserver(entries => {
-  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
-}, { threshold: 0.15 });
+.reveal-d1 { transition-delay: 0.1s; }
+.reveal-d2 { transition-delay: 0.2s; }
+.reveal-d3 { transition-delay: 0.3s; }
 ```
 
----
+IntersectionObserver threshold: 0.15.
 
-## 3D Phone Mockup
-
-The hero phone is a pure CSS 3D object — no image assets required:
+### 3D Phone Mockup
 ```css
 .phone-scene {
   transform-style: preserve-3d;
   animation: phoneFloat 6s ease-in-out infinite;
 }
-.phone-outer {
-  background: #1A1208;
-  border-radius: 40px;
-  box-shadow:
-    40px 60px 80px rgba(26,18,8,0.35),
-    0 0 0 1px rgba(255,255,255,0.06),
-    inset 0 1px 0 rgba(255,255,255,0.1);
+@keyframes phoneFloat {
+  0%,100% { transform: rotateY(-12deg) rotateX(5deg) translateY(0); }
+  50%      { transform: rotateY(-8deg) rotateX(3deg) translateY(-20px); }
 }
 ```
-The parent `<div>` wrapping the scene uses `perspective: 1200px`.
 
-Floating tag pills orbit the phone with staggered `tagFloat` animations
-(opacity 0→1 on load, then continuous vertical oscillation).
+Mouse parallax: update `rotateY` ±8deg and `rotateX` ±4deg on mousemove.
+Parent must have `perspective: 1200px`.
 
 ---
 
-## Layout System
-
-### Container
-```css
-.app-container { max-width: 1280px; margin: 0 auto; padding: 0 48px; }
-```
-
-### Hero grid
-Two-column: `grid-template-columns: 1fr 1fr`. Left = copy, right = 3D phone.
-
-### Features grid
-3-column: `grid-template-columns: repeat(3, 1fr)` with one `grid-column: span 2` card.
-
-### Bento grid
-4-column: `grid-template-columns: repeat(4, 1fr)` with mixed spans:
-- Big dark card: `span 2 / span 2`
-- Wide card: `span 2`
-- Single cards: `span 1`
-
----
-
-## Component Specifications
-
-### Buttons
-```css
-.btn-primary {
-  background: var(--bark); color: var(--cream);
-  padding: 16px 32px; border-radius: 100px;
-  /* Animated clay fill on hover via ::before scaleX(0→1) */
-  transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
-}
-.btn-primary:hover { transform: translateY(-2px); }
-
-.btn-light {
-  background: var(--cream); color: var(--bark);
-  /* On hover: clay background, white text */
-}
-```
+## Component Library
 
 ### Feature cards
-```css
-.feature-card {
-  background: var(--cream);
-  border-radius: 24px; padding: 36px 32px;
-  border: 1px solid rgba(44,31,15,0.07);
-  transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), box-shadow 0.4s;
-}
-.feature-card:hover { transform: translateY(-8px); box-shadow: 0 24px 60px rgba(44,31,15,0.12); }
-```
+border-radius: 24px
+
+padding: 36px 32px
+
+background: var(--cream)
+
+border: 0.5px solid rgba(44,31,15,0.07)
+
+hover: translateY(-8px) + box-shadow 0 24px 60px rgba(44,31,15,0.12)
+
+transition: 0.4s cubic-bezier(.34,1.56,.64,1)
 
 ### Bento cards
-```css
-.bento-card {
-  background: var(--cream); border-radius: 24px; padding: 28px;
-  border: 1px solid rgba(44,31,15,0.07);
-  transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
-}
-.bento-card:hover { transform: scale(1.02); }
-/* Dark card variant: background: var(--bark) */
-```
+border-radius: 24px
+
+padding: 28px
+
+hover: scale(1.02)
+
+Dark variant: background: var(--bark)
+
+### Buttons
+Primary: background bark, color cream, radius 100px, padding 16px 32px
+
+hover: clay fill sweeps left-to-right via ::before scaleX
+
+hover: translateY(-2px)
+Light: background cream, color bark, radius 100px
+
+hover: clay background, white text, scale(1.04)
+Ghost: color bark-mid, text only with → suffix
+
+hover: color bark, gap increases (→ shifts right)
 
 ### Ingredient chips
-```css
-.chip-safe { background: rgba(61,92,46,0.10); color: #3D5C2E; }
-.chip-warn { background: rgba(196,113,74,0.12); color: #C4714A; }
-.chip-bad  { background: rgba(180,60,40,0.10); color: #B43C28; }
-/* All chips: font-size 10–11px, padding 4px 10px, border-radius 100px */
-```
+Safe:    background rgba(61,92,46,0.10)  color #3D5C2E
+
+Warning: background rgba(196,113,74,0.12) color #C4714A
+
+Harmful: background rgba(180,60,40,0.10)  color #B43C28
+
+Banned:  background rgba(180,60,40,0.18)  color #B43C28  font-weight 600
+All: font-size 10–11px, padding 4px 10px, border-radius 100px
 
 ### Health score ring
-SVG circle with `stroke-dasharray` + animated `stroke-dashoffset`.
-Color by grade: A = `--moss`, B = `--clay`, C = `--risk-red`.
+SVG circle with animated `stroke-dashoffset`.
+A (8–10): stroke var(--moss)
+
+B (6–8):  stroke var(--clay)
+
+C (4–6):  stroke var(--warn-amber)
+
+D–F (<4): stroke var(--risk-red)
+
+### Nutrient bars
+height: 5px, border-radius: 100px
+
+Protein: var(--moss)
+
+Carbs:   var(--clay)
+
+Fat:     var(--risk-red)
+
+Fiber:   var(--moss-light)
+
+Sugar:   var(--warn-amber)
+
+### Eyebrow labels
+font: DM Sans 500, 11px, uppercase, letter-spacing 0.12em
+
+background: rgba(61,92,46,0.10)  color: var(--moss)  [default]
+
+border-radius: 100px, padding: 6px 14px
+
+### Floating orbit tags (phone mockup)
+background: white, border-radius: 100px, padding 8px 14px
+
+box-shadow: 0 8px 30px rgba(44,31,15,0.15)
+
+Staggered tagFloat animations with opacity 0→1 on load
 
 ### Marquee ticker
-Duplicate content for seamless loop:
-```css
-.marquee-track { animation: marquee 20s linear infinite; width: max-content; }
-@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-```
+Duplicate content 2× for seamless loop.
+`animation: marquee 20s linear infinite`
+Pause on hover: `animation-play-state: paused`
 
 ---
 
-## Navigation
+## Layout Grids
 
-Fixed, transparent nav. Items in 13px uppercase `DM Sans` with underline-slide hover.
-Logo: Syne 800 with animated clay dot (pulse keyframe).
-CTA: pill-shaped dark button → clay on hover.
+### Hero
+`grid-template-columns: 1fr 1fr` — copy left, 3D phone right.
+`min-height: 100vh`, `padding-top: 80px` (nav height).
+
+### Features
+`grid-template-columns: repeat(3, 1fr)` with one `grid-column: span 2` card.
+
+### Bento
+`grid-template-columns: repeat(4, 1fr)`:
+- Dark anchor card: `grid-column: span 2; grid-row: span 2`
+- Wide card: `grid-column: span 2`
+- Single cells: `grid-column: span 1`
+
+### CTA strip
+`display: flex; justify-content: space-between; align-items: center`
+`margin: 0 48px; border-radius: 32px; padding: 80px`
+
+---
+
+## Component Tree
+RootLayout
+
+└── Providers
+
+├── SessionProvider (NextAuth)
+
+├── QueryClientProvider (TanStack v5)
+
+├── ThemeProvider (next-themes, class-based, system default)
+
+├── Analytics (GA4 — consent-gated via CookieBanner)
+
+├── OnboardingGate → profile_completed=false → /profile-setup
+
+├── {children}
+
+├── BottomNav (mobile: Scan / Dashboard / History / Profile)
+
+├── FloatingScanButton (FAB, clay gradient, /scan)
+
+├── ErrorBoundary (global React error boundary)
+
+├── ServiceWorkerRegister
+
+├── Footer
+
+└── CookieBanner (GA consent gate)
 
 ---
 
 ## Page Inventory
 
-| Route | Description | Key Visual Feature |
+| Route | Key Visual | Notes |
 |---|---|---|
-| `/` | Landing page | 3D floating phone, grain texture, bento grid |
-| `/auth/signin` | Sign in | Minimal centered card on sand bg |
-| `/scan` | Barcode scanner | Scanner frame with animated scan line |
-| `/results` | Scan results | 4 tabs: Overview (score ring), Ingredients (chips), Nutrition (bars), Alternatives (cards) |
-| `/dashboard` | User dashboard | Calorie ring (clay stroke), macro bars, meal list |
-| `/profile-setup` | Onboarding | Multi-step with progress indicator |
-| `/history` | Meal history | Date-grouped, filterable by meal type |
-| `/scan-history` | Scan history | Product scan list with score badges |
-| `/contribute` | Product contribution | Camera capture + OCR preview |
-| `/validate` | Community validation | Card-swipe voting interface |
-| `/correct-product` | Product correction | Framer Motion field transitions |
-| `/favorites` | Saved meals | Quick-relog card grid |
-| `/insights` | Weekly insights | Charts, summary, alerts |
-| `/search` | Product search | DB + community results with filters |
-
----
-
-## Dark Mode
-
-Dark mode inverts to a warm-dark system — not cold grays:
-
-| Token | Dark value |
-|---|---|
-| `--sand` | `#130E08` |
-| `--sand-dark` | `#1C1510` |
-| `--cream` | `#1E1710` |
-| `--bark` | `#F2EDE4` |
-| `--bark-mid` | `#B8A898` |
-| `--ink` | `#FAF7F2` |
-
-The clay, moss, and risk-red accents remain unchanged in dark mode.
-Grain texture opacity increases to 0.035 in dark mode.
+| `/` | 3D phone, grain, bento | Landing — organic earthy aesthetic |
+| `/auth/signin` | Minimal centered card | Google OAuth, no distractions |
+| `/scan` | Scanner frame + animated scan line | BarcodeDetector API |
+| `/results` | Score ring, ingredient chips, nutrient bars | 4 tabs |
+| `/dashboard` | Calorie ring (clay), macro bars, streak | TanStack Query |
+| `/profile-setup` | Multi-step with Syne progress numerals | 8 steps |
+| `/history` | Date-group headers, meal-type filter pills | |
+| `/scan-history` | Product list + score badges | |
+| `/contribute` | Camera capture, OCR preview, enhancement | |
+| `/validate` | Card-swipe voting interface | |
+| `/correct-product` | Framer Motion field transitions | |
+| `/favorites` | Quick-relog card grid | |
+| `/insights` | Weekly chart, nutrient alerts | |
+| `/search` | DB + community results, filter sidebar | |

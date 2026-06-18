@@ -130,7 +130,7 @@ function CorrectProductPageContent() {
                   onClick={() => setActiveSection('basic')}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                     activeSection === 'basic' 
-                      ? 'bg-emerald-500 text-white' 
+                      ? 'bg-[var(--clay)] text-white' 
                       : 'text-[#7a8fa6] hover:text-[#f0f4f8]'
                   }`}
                 >
@@ -140,7 +140,7 @@ function CorrectProductPageContent() {
                   onClick={() => setActiveSection('nutrition')}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                     activeSection === 'nutrition' 
-                      ? 'bg-emerald-500 text-white' 
+                      ? 'bg-[var(--clay)] text-white' 
                       : 'text-[#7a8fa6] hover:text-[#f0f4f8]'
                   }`}
                 >
@@ -156,7 +156,7 @@ function CorrectProductPageContent() {
                       type="text"
                       value={product.name}
                       onChange={(e) => setProduct({ ...product, name: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-emerald-500/50 outline-none"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-[var(--clay)]/50 outline-none"
                       placeholder="e.g., Parle-G Chocolate"
                     />
                   </div>
@@ -167,7 +167,7 @@ function CorrectProductPageContent() {
                       type="text"
                       value={product.brand}
                       onChange={(e) => setProduct({ ...product, brand: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-emerald-500/50 outline-none"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-[var(--clay)]/50 outline-none"
                       placeholder="e.g., Britannia"
                     />
                   </div>
@@ -178,7 +178,7 @@ function CorrectProductPageContent() {
                       type="text"
                       value={product.barcode}
                       onChange={(e) => setProduct({ ...product, barcode: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-emerald-500/50 outline-none"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-[var(--clay)]/50 outline-none"
                       placeholder="8901234567890"
                     />
                   </div>
@@ -188,14 +188,14 @@ function CorrectProductPageContent() {
                     <textarea
                       value={product.ingredients_text}
                       onChange={(e) => setProduct({ ...product, ingredients_text: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm h-24 resize-none focus:border-emerald-500/50 outline-none"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm h-24 resize-none focus:border-[var(--clay)]/50 outline-none"
                       placeholder="Sugar, Wheat Flour, Cocoa Butter, etc."
                     />
                   </div>
 
                   <button
                     onClick={() => setActiveSection('nutrition')}
-                    className="w-full py-2.5 rounded-xl border border-[#2a3545] text-[#7a8fa6] text-sm font-bold hover:border-emerald-500/30 transition-colors"
+                    className="w-full py-2.5 rounded-xl border border-[#2a3545] text-[#7a8fa6] text-sm font-bold hover:border-[var(--clay)]/30 transition-colors"
                   >
                     Next: Add Nutrition →
                   </button>
@@ -222,7 +222,7 @@ function CorrectProductPageContent() {
                               type="number"
                               value={product.nutrition?.[field.key as keyof Nutrition] || ''}
                               onChange={(e) => updateNutrition(field.key as keyof Nutrition, e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg bg-[#1e242d] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-emerald-500/50 outline-none"
+                              className="w-full px-3 py-2 rounded-lg bg-[#1e242d] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-[var(--clay)]/50 outline-none"
                               placeholder="0"
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#7a8fa6]">
@@ -236,7 +236,7 @@ function CorrectProductPageContent() {
 
                   <button
                     onClick={() => setActiveSection('basic')}
-                    className="w-full py-2.5 rounded-xl border border-[#2a3545] text-[#7a8fa6] text-sm font-bold hover:border-emerald-500/30 transition-colors"
+                    className="w-full py-2.5 rounded-xl border border-[#2a3545] text-[#7a8fa6] text-sm font-bold hover:border-[var(--clay)]/30 transition-colors"
                   >
                     ← Back to Details
                   </button>
@@ -248,7 +248,7 @@ function CorrectProductPageContent() {
                 <button
                   onClick={handleSubmit}
                   disabled={saving}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-sky-500 text-white font-bold text-sm disabled:opacity-50 shadow-lg shadow-emerald-500/20"
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[var(--clay)] to-[var(--bark)] text-white font-bold text-sm disabled:opacity-50 shadow-lg shadow-[var(--clay)]/20"
                 >
                   {saving ? 'Submitting...' : 'Submit Correction ✓'}
                 </button>
@@ -273,7 +273,7 @@ function CorrectProductPageContent() {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => router.push('/results')}
-                  className="w-full py-3 rounded-xl bg-emerald-500 text-white font-bold text-sm"
+                  className="w-full py-3 rounded-xl bg-[var(--clay)] text-white font-bold text-sm"
                 >
                   View Results
                 </button>
@@ -304,7 +304,7 @@ function CorrectProductPageContent() {
 function LoadingFallback() {
   return (
     <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
     </div>
   )
 }

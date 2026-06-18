@@ -70,16 +70,16 @@ export function ProductPhotoCaptureModal({ onCapture, onClose }: ProductPhotoCap
                 '🌿 Veg/Non-veg certification',
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-emerald-400 flex-shrink-0" />
+                  <div className="w-1 h-1 rounded-full bg-[var(--clay)] flex-shrink-0" />
                   <p className="text-[11px] text-[#7a8fa6]">{item}</p>
                 </div>
               ))}
             </div>
-            <div className="p-3 bg-emerald-500/5 border border-emerald-500/15 rounded-xl mb-5 text-[11px] text-emerald-400 leading-relaxed">
+            <div className="p-3 bg-[var(--clay)]/5 border border-[var(--clay)]/15 rounded-xl mb-5 text-[11px] text-[var(--clay)] leading-relaxed">
               💡 <strong>Tip:</strong> Photograph the back or side where the nutrition table and ingredients are printed. Good lighting is important!
             </div>
             <button onClick={startCamera}
-              className="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20">
+              className="w-full py-4 rounded-2xl bg-[var(--clay)] hover:bg-[var(--clay)] text-white text-sm font-semibold transition-colors shadow-lg shadow-[var(--clay)]/20">
               📷 Open Camera
             </button>
           </div>
@@ -91,10 +91,10 @@ export function ProductPhotoCaptureModal({ onCapture, onClose }: ProductPhotoCap
                 className="w-full h-full object-cover" muted playsInline
               />
               <div className="absolute inset-4 pointer-events-none">
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
+                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[var(--clay)] rounded-tl-lg" />
+                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[var(--clay)] rounded-tr-lg" />
+                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-[var(--clay)] rounded-bl-lg" />
+                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[var(--clay)] rounded-br-lg" />
               </div>
               <div className="absolute bottom-3 inset-x-0 flex justify-center">
                 <span className="bg-black/70 text-white text-[11px] px-3 py-1.5 rounded-full">
@@ -107,7 +107,7 @@ export function ProductPhotoCaptureModal({ onCapture, onClose }: ProductPhotoCap
                 className={`w-full py-4 rounded-2xl text-white text-sm font-semibold transition-all ${
                   capturing
                     ? 'bg-[#2a3545] text-[#7a8fa6] cursor-not-allowed'
-                    : 'bg-emerald-500 hover:bg-emerald-400 shadow-lg shadow-emerald-500/20 active:scale-95'
+                    : 'bg-[var(--clay)] hover:bg-[var(--clay)] shadow-lg shadow-[var(--clay)]/20 active:scale-95'
                 }`}>
                 {capturing ? '⏳ Processing…' : '📸 Capture Product'}
               </button>

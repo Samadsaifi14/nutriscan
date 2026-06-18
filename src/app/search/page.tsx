@@ -96,7 +96,7 @@ function SearchPageContent() {
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-50"
+            className="px-4 py-3 bg-[var(--clay)] text-white rounded-xl font-semibold text-sm disabled:opacity-50"
           >
             {loading ? '...' : 'Search'}
           </button>
@@ -111,12 +111,12 @@ function SearchPageContent() {
                   <button
                     type="button"
                     onClick={() => openProduct(p.barcode)}
-                    className="w-full text-left p-4 rounded-xl bg-[var(--card)] border border-[var(--card-border)] hover:border-emerald-500/50"
+                    className="w-full text-left p-4 rounded-xl bg-[var(--card)] border border-[var(--card-border)] hover:border-[var(--clay)]/50"
                   >
                     <p className="font-semibold">{p.name}</p>
                     {p.brand && <p className="text-xs text-[var(--muted)]">{p.brand}</p>}
                     {p.health_score != null && (
-                      <p className="text-xs text-emerald-600 mt-1">Score: {p.health_score}/10</p>
+                      <p className="text-xs text-[var(--clay)] mt-1">Score: {p.health_score}/10</p>
                     )}
                   </button>
                 </li>
@@ -148,7 +148,7 @@ function SearchPageContent() {
         {!loading && query.length >= 2 && products.length === 0 && community.length === 0 && (
           <p className="text-sm text-[var(--muted)] text-center py-8">
             No products found.{' '}
-            <Link href="/contribute" className="text-emerald-600 underline">
+            <Link href="/contribute" className="text-[var(--clay)] underline">
               Contribute this product
             </Link>
           </p>

@@ -1,100 +1,165 @@
-# PRD — HealthOX (BioYou / Nutriscan)
-_Product Requirements Document_
+# PRD — HealthOX
+_Product Requirements Document · v1.0_
 
 ---
 
-## 1. Problem Statement
+## 1. Vision
 
-Indian consumers have no fast, trustworthy way to evaluate packaged food health impact in the context of Indian labeling standards (FSSAI), Indian dietary guidelines (ICMR RDA), and Indian market availability. Generic global tools miss Indian barcodes, Indian brand nuances, and culturally relevant alternatives.
+India has 1.4 billion people eating packaged food governed by FSSAI regulations, yet
+no consumer product exists that makes those regulations legible. HealthOX is the first
+AI-powered food intelligence platform built specifically for the Indian market —
+combining deterministic nutritional science, FSSAI compliance, and Gemini Vision AI
+into a sub-second scan experience.
 
----
-
-## 2. Target Users
-
-| Persona | Description |
-|---|---|
-| Health-conscious consumer | Adults 20–45 tracking diet and fitness |
-| Parent | Checking child safety of packaged snacks/drinks |
-| Dietary-restricted user | Diabetic, hypertensive, vegetarian/vegan |
-| Fitness enthusiast | Macro-tracking, high-protein goals |
+The north star: a parent in Lucknow should be able to scan a children's biscuit packet
+and know within 3 seconds whether it is safe, why, and what to buy instead.
 
 ---
 
-## 3. User Stories
+## 2. Problem Statement
+
+| Pain | Current Reality | HealthOX Solution |
+|---|---|---|
+| Can't read nutrition labels | FSSAI labels use Per 100g format, not serving size | OCR parser tuned to FSSAI label format |
+| Global apps miss Indian products | OFF has < 20% Indian barcode coverage | 5-layer lookup chain with Indian-specific fallbacks |
+| Western RDA doesn't apply | US/EU apps reference FDA/EFSA values | ICMR 2020 RDA by Indian demographic profile |
+| Additives not explained | INS codes on labels are opaque | 50+ additives with plain-language risk explanations |
+| No child-specific guidance | Generic adult scoring | Age-group-specific child safety evaluation |
+| No alternatives in Indian context | "Try a healthier option" links to US Amazon | Curated Indian alternatives + live Blinkit/Zepto links |
+
+---
+
+## 3. Target Users
+
+### Primary
+**Health-conscious urban Indian, 25–45**
+Tracks diet, reads labels, uses apps. Understands broad nutrition but can't parse
+FSSAI-specific additive codes. Shops on Blinkit/Zepto. Uses WhatsApp heavily.
+
+### Secondary
+**Indian parent, 30–50**
+Buying snacks and beverages for children under 12. Needs child-safety signals,
+not generic adult scores. Primary trigger: ingredient concern, not macro tracking.
+
+### Tertiary
+**Fitness-focused individual, 20–35**
+Macro tracking, protein goals, NOVA classification matters. Will use meal logging
+and weekly reports consistently.
+
+### Anti-persona
+International user with no Indian market context. This product is not optimised
+for them and should not dilute India-specific features to serve them.
+
+---
+
+## 4. User Stories
 
 ### Core Scanning
-- As a user, I can scan a product barcode and receive a health score (0–10) with A–F grading
-- As a user, I can see ingredient-level analysis with harmful/safe/unknown tagging
-- As a user, I can photograph a product to extract nutrition data via OCR
-- As a user, I get personalized analysis based on my age, gender, activity level, and health conditions
-
-### Nutrition Tracking
-- As a user, I can log meals and track daily/weekly intake against ICMR RDA goals
-- As a user, I can view a dashboard with calorie ring, macro breakdown, and logging streak
-- As a user, I can save favorite meals and re-log them in one tap
-- As a user, I receive a weekly nutrition summary email
+- As a user, I can scan a product barcode and receive a health score (0–10) with A–F grading in under 3 seconds
+- As a user, I can photograph a nutrition label and have ingredients auto-extracted via OCR
+- As a user, I see color-coded ingredient chips (green/amber/red) with plain-language risk explanations
+- As a user, I get a NOVA processing classification (1–4) with a plain explanation
+- As a user, I see FSSAI compliance status — specifically whether any banned additives are present
+- As a user, I see a child safety evaluation when the product is relevant for under-12s
+- As a user, I get personalized analysis based on my profile (age, gender, activity, health conditions)
+- As a user, when AI is unavailable, I still get a complete deterministic score
 
 ### Discovery & Alternatives
-- As a user, I can search for products across the database and Open Food Facts
-- As a user, I see healthier Indian alternatives for any scanned product
-- As a user, I can buy scanned products via Amazon, Flipkart, Blinkit, Instamart, BigBasket, Zepto, JioMart
+- As a user, I see 3–5 healthier Indian alternatives for any scanned product
+- As a user, I can buy any scanned product or its alternative directly from Amazon IN, Flipkart, Blinkit, Instamart, BigBasket, Zepto, or JioMart
+- As a user, I can search the product database before scanning
+
+### Nutrition Tracking
+- As a user, I can log a scanned product as a meal with serving size
+- As a user, I can view today's nutrition against my ICMR RDA goals on a dashboard
+- As a user, I can view meal history grouped by date and meal type
+- As a user, I can save a meal as a favorite and re-log it in one tap
+- As a user, I can see my consecutive logging streak
+- As a user, I receive a weekly nutrition summary email every Monday
 
 ### Community
-- As a user, I can contribute missing product data (photo + label)
-- As a user, I can validate community-submitted products
+- As a user, I can contribute a missing product by photographing it
+- As a user, I can vote to validate or reject community-submitted products
 - As a user, I can submit corrections to incorrect product data
-- As a user, I earn badges for contributions and consistent logging
+- As a user, I earn badges for contributions, streak milestones, and scan counts
+- As a user, community products I submit become part of the main database once validated
 
-### Sharing & PWA
-- As a user, I can share results on WhatsApp, Twitter, Facebook
-- As a user, the app works offline (PWA + IndexedDB)
-
----
-
-## 4. India-Specific Requirements
-
-- Indian barcode prefix detection (890 range)
-- FSSAI compliance checking (banned additives, trans fat < 0.2g)
-- Indian nutrition label OCR (FSSAI format: Energy kcal, Total Carbohydrate, Per 100g)
-- ICMR RDA reference values for Indian demographic profiles
-- 70+ Indian brand barcode prefix mappings
-- Curated healthier alternatives for 30+ Indian product categories
-- Indian marketplace shopping links with affiliate tags
-- `en-IN` locale number and date formatting
+### Platform
+- As a user, the app works fully offline after first load (PWA)
+- As a user, meal logs and product submissions made offline sync automatically on reconnect
+- As a user, I can share my scan result to WhatsApp, Twitter, or Facebook
+- As a user, I can unsubscribe from weekly emails via a one-click signed link
 
 ---
 
-## 5. Non-Functional Requirements
+## 5. India-Specific Requirements
 
-| Category | Requirement |
+These are non-negotiable. They define the product's right to exist in the Indian market.
+
+| Requirement | Implementation |
 |---|---|
-| Performance | Mobile-first, LCP < 2.5s |
-| Offline | PWA with service worker + IndexedDB caching |
-| Reliability | Graceful AI degradation — deterministic engine always available |
-| Security | RLS, rate limiting, no service_role key client-side |
-| Accessibility | WCAG AA contrast, keyboard navigable |
-| Theme | Dark/light system-default with manual override |
-| Analytics | Google Analytics 4 with cookie consent gate |
-| Monitoring | Sentry (optional) |
+| Indian barcode prefix detection | 890-prefix detection + 70+ brand mappings in `barcode-intelligence.ts` |
+| FSSAI compliance checking | Banned additive list from `fssai-rules.json`, trans fat < 0.2g check |
+| Indian nutrition label OCR | FSSAI format parser: Energy kcal, Total Carbohydrate, Per 100g |
+| ICMR RDA reference | `icmr-rda.json` with values by age/gender/activity level (ICMR 2020) |
+| Indian product alternatives | `curated-alternatives.ts` covering 30+ Indian product categories |
+| Indian marketplace links | Amazon IN, Flipkart, Blinkit, Instamart, BigBasket, Zepto, JioMart |
+| Child safety rules | Age-group thresholds from `child-safety-rules.json` |
+| Locale | `en-IN` number formatting throughout |
 
 ---
 
-## 6. Key Metrics
+## 6. Non-Functional Requirements
 
-| Metric | Description |
-|---|---|
-| Scan count | Total + daily active scans |
-| User retention | D7, D30 login rates |
-| Meal log rate | % of scans that lead to a food log |
-| Community contributions | Products submitted + validated |
-| Badge award rate | Gamification engagement |
-| Weekly email open rate | Report engagement |
+| Category | Requirement | Target |
+|---|---|---|
+| Performance | First Contentful Paint | < 1.5s |
+| Performance | Scan-to-score latency | < 3s (deterministic path) |
+| Performance | Core Web Vitals | LCP < 2.5s, CLS < 0.1, INP < 200ms |
+| Reliability | AI fallback | Deterministic score always returned even if Gemini + Groq both fail |
+| Reliability | Uptime | Vercel SLA (99.99%) |
+| Offline | PWA coverage | Static assets + scan results cached; offline meal log queue |
+| Security | Auth | RLS on all user tables; service_role never client-side |
+| Security | Rate limiting | All analysis/AI endpoints rate-limited per-user |
+| Accessibility | Colour contrast | WCAG AA minimum throughout |
+| Accessibility | Motion | `prefers-reduced-motion` respected on all animations |
+| Internationalisation | Locale | `en-IN` throughout; architecture supports future Hindi addition |
 
 ---
 
-## 7. Out of Scope (v1)
+## 7. Community Moderation Rules
 
-- Direct e-commerce checkout (links only, no cart)
+These thresholds are not currently documented — they must be codified:
+
+| Event | Threshold | Action |
+|---|---|---|
+| Community product → main DB | 3 approve votes, 0 reject | Auto-promote via `/api/community/promote` |
+| Community product → rejected | 2 reject votes | Status set to `rejected`, hidden from search |
+| Product correction → applied | Admin review OR 5 community approvals | `status = approved`, field updated on products |
+| User badge: Contributor | 5 approved submissions | Awarded by badge engine |
+| User badge: Validator | 10 validation votes cast | Awarded by badge engine |
+
+---
+
+## 8. Key Metrics & Success Definition
+
+| Metric | Definition | v1 Target |
+|---|---|---|
+| Activation | % of sign-ups who complete onboarding | > 60% |
+| Scan depth | % of scans that view Ingredients tab | > 40% |
+| Log rate | % of scans that result in a meal log | > 25% |
+| D7 retention | Users who return within 7 days | > 30% |
+| Community contribution rate | MAU who submit ≥ 1 product | > 5% |
+| Email open rate | Weekly report opens | > 35% |
+| Offline usage | Sessions initiated without network | Tracked via GA4 |
+
+---
+
+## 9. Out of Scope — v1
+
+- Direct e-commerce checkout (affiliate links only)
 - Custom recipe builder
-- Healthcare provider integration
+- Healthcare provider / doctor integration
 - Paid subscription tier
+- Hindi / regional language UI
+- Android/iOS native app (PWA covers mobile)

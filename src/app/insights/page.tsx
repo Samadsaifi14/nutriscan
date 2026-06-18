@@ -27,7 +27,7 @@ export default function InsightsPage() {
         {!isLoading && !summary && (
           <div className="text-center py-12">
             <p className="text-sm text-[var(--muted)] mb-4">Log meals this week to see personalized insights.</p>
-            <Link href="/scan" className="text-emerald-600 font-semibold text-sm">
+            <Link href="/scan" className="text-[var(--clay)] font-semibold text-sm">
               Scan your first meal →
             </Link>
           </div>

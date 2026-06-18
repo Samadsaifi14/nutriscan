@@ -81,7 +81,7 @@ export default function TermsPage() {
           <p className="mt-2">
             Always consult a qualified healthcare professional before making any dietary 
             changes, especially if you have a medical condition. See our full 
-            <a href="/legal/disclaimer" className="text-emerald-400 hover:text-emerald-300 underline mx-1">Medical Disclaimer</a> 
+            <a href="/legal/disclaimer" className="text-[var(--clay)] hover:text-[var(--clay)] underline mx-1">Medical Disclaimer</a> 
             for more details.
           </p>
         </Section>
@@ -161,7 +161,7 @@ export default function TermsPage() {
             In compliance with the Information Technology Act, 2000 and the IT (Intermediary 
             Guidelines) Rules, 2021, the Grievance Officer for BioYou is:
           </p>
-          <p className="mt-1 text-emerald-400">
+          <p className="mt-1 text-[var(--clay)]">
             Samad Saifi<br />
             New Delhi, Delhi, India<br />
             samadlylives00@gmail.com

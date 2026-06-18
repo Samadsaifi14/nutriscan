@@ -18,11 +18,11 @@ export function ScanErrorBanner({ error, onDismiss, onRetry, onPhotoMode }: Scan
           Dismiss
         </button>
         <button onClick={onRetry}
-          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#1e242d] border border-[#2a3545] text-[#f0f4f8] hover:border-emerald-500/30 transition-colors">
+          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#1e242d] border border-[#2a3545] text-[#f0f4f8] hover:border-[var(--clay)]/30 transition-colors">
           🔄 Try Again
         </button>
         <button onClick={onPhotoMode}
-          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#1e242d] border border-[#2a3545] text-[#f0f4f8] hover:border-emerald-500/30 transition-colors">
+          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#1e242d] border border-[#2a3545] text-[#f0f4f8] hover:border-[var(--clay)]/30 transition-colors">
           📷 Photo Mode
         </button>
       </div>
