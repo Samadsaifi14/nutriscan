@@ -447,3 +447,28 @@ Return ONLY valid JSON (no markdown, no code fences):
     return null
   }
 }
+
+export async function fillNutritionIfMissing(product: any): Promise<any> {
+  const n = product.nutrition || {}
+  if (n.calories || n.protein || n.carbs || n.fat) return product
+
+  console.log('No nutrition found, calling AI for:', product.name)
+  const estimate = await estimateNutritionFromName(product.name, product.brand, product.category)
+  if (!estimate) return product
+
+  return {
+    ...product,
+    source: product.source + '_with_ai_nutrition',
+    nutrition: {
+      calories:      estimate.nutrition.calories      ?? null,
+      protein:       estimate.nutrition.protein       ?? null,
+      carbs:         estimate.nutrition.carbs         ?? null,
+      fat:           estimate.nutrition.fat           ?? null,
+      saturated_fat: estimate.nutrition.saturated_fat ?? null,
+      sugar:         estimate.nutrition.sugar         ?? null,
+      sodium:        estimate.nutrition.sodium        ?? null,
+      fiber:         estimate.nutrition.fiber         ?? null,
+    },
+    ingredients_text: estimate.ingredients_text || product.ingredients_text,
+  }
+}

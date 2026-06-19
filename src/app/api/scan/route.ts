@@ -6,7 +6,8 @@ import {
   parseNum, parseSodium, parseList, extractNutrition,
   formatProduct, cacheProduct,
   searchIndianProductWeb,
-  getCategoryNutrition, estimateNutritionFromName, estimateProductWithAI, type AIEstimate,
+  getCategoryNutrition, estimateNutritionFromName, estimateProductWithAI,
+  fillNutritionIfMissing, type AIEstimate,
 } from '@/lib/scan-helpers'
 
 type Confidence = 'exact' | 'high' | 'estimated' | 'low' | 'none'
@@ -187,13 +188,24 @@ export async function GET(req: NextRequest) {
             source: 'open_food_facts_search',
           }
 
-          cacheProduct(product)
+          const formatted3 = await fillNutritionIfMissing(formatProduct(product))
+          cacheProduct({
+            ...product,
+            calories_per_100g:      formatted3.nutrition.calories,
+            protein_per_100g:       formatted3.nutrition.protein,
+            carbs_per_100g:         formatted3.nutrition.carbs,
+            fat_per_100g:           formatted3.nutrition.fat,
+            saturated_fat_per_100g: formatted3.nutrition.saturated_fat,
+            sugar_per_100g:         formatted3.nutrition.sugar,
+            sodium_per_100g:        formatted3.nutrition.sodium,
+            fiber_per_100g:         formatted3.nutrition.fiber,
+          })
           console.log('Found via OFF keyword search:', product.name)
           return NextResponse.json({
             success: true,
-            source: 'open_food_facts_search',
+            source: formatted3.source,
             confidence: 'high' as Confidence,
-            data: formatProduct(product),
+            data: formatted3,
           })
         }
       }
@@ -238,14 +250,24 @@ export async function GET(req: NextRequest) {
           source: 'upc_item_db',
         }
 
-        cacheProduct(product)
-
+        const formatted4 = await fillNutritionIfMissing(formatProduct(product))
+        cacheProduct({
+          ...product,
+          calories_per_100g:      formatted4.nutrition.calories,
+          protein_per_100g:       formatted4.nutrition.protein,
+          carbs_per_100g:         formatted4.nutrition.carbs,
+          fat_per_100g:           formatted4.nutrition.fat,
+          saturated_fat_per_100g: formatted4.nutrition.saturated_fat,
+          sugar_per_100g:         formatted4.nutrition.sugar,
+          sodium_per_100g:        formatted4.nutrition.sodium,
+          fiber_per_100g:         formatted4.nutrition.fiber,
+        })
         console.log('Found on UPC Item DB:', product.name)
         return NextResponse.json({
           success: true,
-          source: 'upc_item_db',
+          source: formatted4.source,
           confidence: 'estimated' as Confidence,
-          data: formatProduct(product),
+          data: formatted4,
         })
       }
     }
@@ -260,12 +282,13 @@ export async function GET(req: NextRequest) {
 
     const webResult = await searchIndianProductWeb(analysis.searchHint, analysis.brand)
     if (webResult) {
-      cacheProduct(webResult)
+      const formatted5 = await fillNutritionIfMissing(formatProduct(webResult))
+      console.log('Found via web search:', webResult.name)
       return NextResponse.json({
         success: true,
-        source: 'web_search',
-        confidence: 'estimated' as Confidence,
-        data: formatProduct(webResult),
+        source: formatted5.source,
+        confidence: formatted5.source.includes('ai_nutrition') ? 'estimated' : 'low',
+        data: formatted5,
       })
     }
   }
