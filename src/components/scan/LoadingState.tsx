@@ -8,20 +8,20 @@ interface LoadingProductProps {
 export function LoadingProduct({ status }: LoadingProductProps) {
   return (
     <div className="flex flex-col items-center py-12 gap-4">
-      <div className="w-10 h-10 rounded-full border-2 border-[#2a3545] border-t-[var(--clay)] animate-spin" />
-      <p className="text-sm text-[#7a8fa6]">{status || '🔍 Looking up product...'}</p>
+      <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] border-t-[var(--clay)] animate-spin" />
+      <p className="text-sm text-[var(--muted-2)]">{status || '🔍 Looking up product...'}</p>
     </div>
   )
 }
 
 export function LoadingAnalysis() {
   return (
-    <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-6 mb-4">
+    <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 mb-4">
       <div className="flex flex-col items-center gap-5">
         <div className="w-32 h-32 relative">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120"
             style={{ animation: 'spin 2s linear infinite' }}>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="#2a3545" strokeWidth="10" />
+            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" strokeWidth="10" />
             <circle cx="60" cy="60" r="52" fill="none" stroke="var(--clay)" strokeWidth="10"
               strokeLinecap="round" strokeDasharray="326" strokeDashoffset="244" />
           </svg>
@@ -37,7 +37,7 @@ export function LoadingAnalysis() {
               style={{ animationDelay: `${i * 0.3}s` }}>
               <div className="w-3 h-3 rounded-full bg-[var(--clay)]/20 flex-shrink-0" />
               <div className="h-2.5 rounded-full bg-[#2a3545] flex-grow" />
-              <span className="text-[11px] text-[#7a8fa6] whitespace-nowrap">{msg}</span>
+              <span className="text-[11px] text-[var(--muted-2)] whitespace-nowrap">{msg}</span>
             </div>
           ))}
         </div>

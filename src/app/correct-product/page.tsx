@@ -97,13 +97,13 @@ function CorrectProductPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-[#f0f4f8]">
+    <div className="min-h-screen bg-[#0d0f12] text-[var(--foreground)]">
       <div className="max-w-md mx-auto p-4 pb-28">
         {/* Header */}
         <div className="flex items-center justify-between py-4 mb-2">
           <button 
             onClick={() => router.back()} 
-            className="p-2 rounded-xl bg-[#161a20] text-[#7a8fa6] hover:text-[#f0f4f8] transition-colors"
+            className="p-2 rounded-xl bg-[var(--card)] text-[var(--muted-2)] hover:text-[var(--foreground)] transition-colors"
           >
             ←
           </button>
@@ -120,18 +120,18 @@ function CorrectProductPageContent() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-4"
             >
-              <p className="text-sm text-[#7a8fa6] mb-4">
+              <p className="text-sm text-[var(--muted-2)] mb-4">
                 Help improve our database by correcting wrong information.
               </p>
 
               {/* Tab Switcher */}
-              <div className="flex gap-2 p-1 bg-[#161a20] rounded-xl">
+              <div className="flex gap-2 p-1 bg-[var(--card)] rounded-xl">
                 <button
                   onClick={() => setActiveSection('basic')}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                     activeSection === 'basic' 
                       ? 'bg-[var(--clay)] text-white' 
-                      : 'text-[#7a8fa6] hover:text-[#f0f4f8]'
+                      : 'text-[var(--muted-2)] hover:text-[var(--foreground)]'
                   }`}
                 >
                   📝 Basic Info
@@ -141,7 +141,7 @@ function CorrectProductPageContent() {
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                     activeSection === 'nutrition' 
                       ? 'bg-[var(--clay)] text-white' 
-                      : 'text-[#7a8fa6] hover:text-[#f0f4f8]'
+                      : 'text-[var(--muted-2)] hover:text-[var(--foreground)]'
                   }`}
                 >
                   📊 Nutrition
@@ -151,51 +151,51 @@ function CorrectProductPageContent() {
               {activeSection === 'basic' && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-[#7a8fa6] mb-1.5">Product Name *</label>
+                    <label className="block text-xs font-bold text-[var(--muted-2)] mb-1.5">Product Name *</label>
                     <input
                       type="text"
                       value={product.name}
                       onChange={(e) => setProduct({ ...product, name: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-[var(--clay)]/50 outline-none"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] text-sm focus:border-[var(--clay)]/50 outline-none"
                       placeholder="e.g., Parle-G Chocolate"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#7a8fa6] mb-1.5">Brand</label>
+                    <label className="block text-xs font-bold text-[var(--muted-2)] mb-1.5">Brand</label>
                     <input
                       type="text"
                       value={product.brand}
                       onChange={(e) => setProduct({ ...product, brand: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-[var(--clay)]/50 outline-none"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] text-sm focus:border-[var(--clay)]/50 outline-none"
                       placeholder="e.g., Britannia"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#7a8fa6] mb-1.5">Barcode *</label>
+                    <label className="block text-xs font-bold text-[var(--muted-2)] mb-1.5">Barcode *</label>
                     <input
                       type="text"
                       value={product.barcode}
                       onChange={(e) => setProduct({ ...product, barcode: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-[var(--clay)]/50 outline-none"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] text-sm focus:border-[var(--clay)]/50 outline-none"
                       placeholder="8901234567890"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#7a8fa6] mb-1.5">Ingredients (comma separated)</label>
+                    <label className="block text-xs font-bold text-[var(--muted-2)] mb-1.5">Ingredients (comma separated)</label>
                     <textarea
                       value={product.ingredients_text}
                       onChange={(e) => setProduct({ ...product, ingredients_text: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#161a20] border border-[#2a3545] text-[#f0f4f8] text-sm h-24 resize-none focus:border-[var(--clay)]/50 outline-none"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] text-sm h-24 resize-none focus:border-[var(--clay)]/50 outline-none"
                       placeholder="Sugar, Wheat Flour, Cocoa Butter, etc."
                     />
                   </div>
 
                   <button
                     onClick={() => setActiveSection('nutrition')}
-                    className="w-full py-2.5 rounded-xl border border-[#2a3545] text-[#7a8fa6] text-sm font-bold hover:border-[var(--clay)]/30 transition-colors"
+                    className="w-full py-2.5 rounded-xl border border-[var(--border)] text-[var(--muted-2)] text-sm font-bold hover:border-[var(--clay)]/30 transition-colors"
                   >
                     Next: Add Nutrition →
                   </button>
@@ -204,8 +204,8 @@ function CorrectProductPageContent() {
 
               {activeSection === 'nutrition' && (
                 <div className="space-y-3">
-                  <div className="bg-[#161a20] border border-[#2a3545] rounded-xl p-4">
-                    <h3 className="text-sm font-bold text-[#f0f4f8] mb-3">Nutrition per 100g</h3>
+                  <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4">
+                    <h3 className="text-sm font-bold text-[var(--foreground)] mb-3">Nutrition per 100g</h3>
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         { key: 'calories', label: 'Calories', unit: 'kcal', color: 'text-orange-400' },
@@ -216,16 +216,16 @@ function CorrectProductPageContent() {
                         { key: 'sodium', label: 'Sodium', unit: 'mg', color: 'text-purple-400' },
                       ].map((field) => (
                         <div key={field.key}>
-                          <label className="block text-[10px] text-[#7a8fa6] mb-1">{field.label}</label>
+                          <label className="block text-[10px] text-[var(--muted-2)] mb-1">{field.label}</label>
                           <div className="relative">
                             <input
                               type="number"
                               value={product.nutrition?.[field.key as keyof Nutrition] || ''}
                               onChange={(e) => updateNutrition(field.key as keyof Nutrition, e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg bg-[#1e242d] border border-[#2a3545] text-[#f0f4f8] text-sm focus:border-[var(--clay)]/50 outline-none"
+                              className="w-full px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] text-sm focus:border-[var(--clay)]/50 outline-none"
                               placeholder="0"
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#7a8fa6]">
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[var(--muted-2)]">
                               {field.unit}
                             </span>
                           </div>
@@ -236,7 +236,7 @@ function CorrectProductPageContent() {
 
                   <button
                     onClick={() => setActiveSection('basic')}
-                    className="w-full py-2.5 rounded-xl border border-[#2a3545] text-[#7a8fa6] text-sm font-bold hover:border-[var(--clay)]/30 transition-colors"
+                    className="w-full py-2.5 rounded-xl border border-[var(--border)] text-[var(--muted-2)] text-sm font-bold hover:border-[var(--clay)]/30 transition-colors"
                   >
                     ← Back to Details
                   </button>
@@ -254,7 +254,7 @@ function CorrectProductPageContent() {
                 </button>
               )}
 
-              <p className="text-[11px] text-[#7a8fa6] text-center">
+              <p className="text-[11px] text-[var(--muted-2)] text-center">
                 Corrections are reviewed by our team before going live.
               </p>
             </motion.div>
@@ -266,8 +266,8 @@ function CorrectProductPageContent() {
               className="text-center py-12"
             >
               <div className="text-6xl mb-4">✅</div>
-              <h2 className="text-xl font-black text-[#f0f4f8] mb-2">Submitted!</h2>
-              <p className="text-sm text-[#7a8fa6] mb-6">
+              <h2 className="text-xl font-black text-[var(--foreground)] mb-2">Submitted!</h2>
+              <p className="text-sm text-[var(--muted-2)] mb-6">
                 Your correction has been submitted for review.
               </p>
               <div className="flex flex-col gap-3">
@@ -288,7 +288,7 @@ function CorrectProductPageContent() {
                       nutrition: {}
                     })
                   }}
-                  className="w-full py-3 rounded-xl border border-[#2a3545] text-[#7a8fa6] font-bold text-sm"
+                  className="w-full py-3 rounded-xl border border-[var(--border)] text-[var(--muted-2)] font-bold text-sm"
                 >
                   Correct Another Product
                 </button>

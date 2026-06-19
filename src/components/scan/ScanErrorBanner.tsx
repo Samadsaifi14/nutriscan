@@ -14,15 +14,15 @@ export function ScanErrorBanner({ error, onDismiss, onRetry, onPhotoMode }: Scan
       <p className="text-sm text-red-400 font-medium mb-3">❌ {error}</p>
       <div className="flex flex-wrap gap-2">
         <button onClick={onDismiss}
-          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#1e242d] border border-[#2a3545] text-[#7a8fa6] hover:border-red-500/30 transition-colors">
+          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[var(--card)] border border-[var(--border)] text-[var(--muted-2)] hover:border-red-500/30 transition-colors">
           Dismiss
         </button>
         <button onClick={onRetry}
-          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#1e242d] border border-[#2a3545] text-[#f0f4f8] hover:border-[var(--clay)]/30 transition-colors">
+          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] hover:border-[var(--clay)]/30 transition-colors">
           🔄 Try Again
         </button>
         <button onClick={onPhotoMode}
-          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#1e242d] border border-[#2a3545] text-[#f0f4f8] hover:border-[var(--clay)]/30 transition-colors">
+          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] hover:border-[var(--clay)]/30 transition-colors">
           📷 Photo Mode
         </button>
       </div>

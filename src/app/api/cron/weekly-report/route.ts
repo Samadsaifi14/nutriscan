@@ -161,7 +161,7 @@ function buildWeeklyHTML(data: {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BioYou Weekly Report</title>
+  <title>HealthOX Weekly Report</title>
 </head>
 <body style="margin:0;padding:0;background:#F2EDE4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 
@@ -169,7 +169,7 @@ function buildWeeklyHTML(data: {
 
   <!-- Header -->
   <div style="text-align:center;margin-bottom:28px;">
-    <img src="${data.baseUrl}/logo.png" alt="BioYou" width="80" height="80" style="border-radius:50%;margin-bottom:12px;" />
+    <img src="${data.baseUrl}/icon-512.png" alt="HealthOX" width="80" height="80" style="border-radius:50%;margin-bottom:12px;" />
     <h1 style="font-size:28px;font-weight:900;margin:0 0 4px;color:#2C1F0F;">HealthOX</h1>
     <p style="font-size:13px;color:#6b7280;margin:0;">Weekly Nutrition Report · Scan. Know. Choose Better.</p>
   </div>

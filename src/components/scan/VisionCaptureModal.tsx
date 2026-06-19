@@ -11,12 +11,12 @@ interface VisionCaptureProps {
 
 export function VisionCapturePanel({ notFoundBarcode, visionStatus, onCapture }: VisionCaptureProps) {
   return (
-    <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-5 mb-4">
+    <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 mb-4">
       <div className="flex items-start gap-3 mb-4">
         <span className="text-2xl">🇮🇳</span>
         <div>
-          <p className="text-sm font-semibold text-[#f0f4f8]">Product not in database</p>
-          <p className="text-xs text-[#7a8fa6] mt-0.5">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Product not in database</p>
+          <p className="text-xs text-[var(--muted-2)] mt-0.5">
             Barcode <span className="font-mono text-[var(--clay)]">{notFoundBarcode}</span> was not found.
             Photograph the nutrition label to add it to our Indian database.
           </p>
@@ -74,7 +74,7 @@ function VisionCapture({ onCapture }: { onCapture: (b64: string) => void }) {
               📸 Capture
             </button>
             <button onClick={stop}
-              className="px-4 py-3 rounded-xl bg-[#1e242d] border border-[#2a3545] text-[#7a8fa6] text-sm hover:border-[#3a4555] transition-colors">
+              className="px-4 py-3 rounded-xl bg-[var(--card)] border border-[var(--border)] text-[var(--muted-2)] text-sm hover:border-[var(--border)] transition-colors">
               Cancel
             </button>
           </div>

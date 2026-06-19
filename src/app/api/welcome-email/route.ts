@@ -52,9 +52,9 @@ export async function POST(req: NextRequest) {
         'Authorization': `Bearer ${resendApiKey}`
       },
       body: JSON.stringify({
-        from: 'BioYou <onboarding@resend.dev>',
+        from: 'HealthOX <onboarding@resend.dev>',
         to: [email],
-        subject: `Welcome to BioYou, ${firstName}! 🥗 Your journey to healthier eating starts now`,
+        subject: `Welcome to HealthOX, ${firstName}! Your journey to healthier eating starts now`,
         html,
       })
     })
@@ -94,16 +94,16 @@ function buildWelcomeHTML(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to BioYou</title>
+  <title>Welcome to HealthOX</title>
 </head>
-<body style="margin:0;padding:0;background:#f0fdf4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<body style="margin:0;padding:0;background:#F2EDE4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 
 <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
 
   <!-- Logo Header -->
   <div style="text-align:center;margin-bottom:32px;">
-    <img src="${baseUrl}/logo.png" alt="BioYou" width="88" height="88" style="border-radius:50%;margin-bottom:16px;" />
-    <h1 style="font-size:32px;font-weight:900;margin:0 0 4px;color:#1a4d32;">BioYou</h1>
+    <img src="${baseUrl}/icon-512.png" alt="HealthOX" width="88" height="88" style="border-radius:50%;margin-bottom:16px;" />
+    <h1 style="font-size:32px;font-weight:900;margin:0 0 4px;color:#2C1F0F;">HealthOX</h1>
     <p style="font-size:14px;color:#6b7280;margin:0;">Scan. Know. Choose Better.</p>
   </div>
 
@@ -118,7 +118,7 @@ function buildWelcomeHTML(
 
     <p style="font-size:15px;color:#374151;line-height:1.8;margin:0 0 20px;">
       You have just taken a small but meaningful step towards understanding what goes into
-      the food you eat every single day. At BioYou, we believe that
+      the food you eat every single day. At HealthOX, we believe that
       <strong>knowledge is the first step to better health</strong> — and you now have
       that knowledge at your fingertips.
     </p>
@@ -127,7 +127,7 @@ function buildWelcomeHTML(
     <div style="height:1px;background:linear-gradient(90deg,transparent,#e5e7eb,transparent);margin:28px 0;"></div>
 
     <!-- Our Mission -->
-    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 14px;">🌱 Why We Built BioYou</h3>
+    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 14px;">🌱 Why We Built HealthOX</h3>
 
     <p style="font-size:14px;color:#374151;line-height:1.8;margin:0 0 14px;">
       India is home to over 1.4 billion people, yet most of us eat packaged food every day
@@ -137,7 +137,7 @@ function buildWelcomeHTML(
     </p>
 
     <p style="font-size:14px;color:#374151;line-height:1.8;margin:0 0 28px;">
-      We built BioYou with one heartfelt intention — to make food transparency
+      We built HealthOX with one heartfelt intention — to make food transparency
       <strong>free, accessible, and easy for every Indian family</strong>. Just scan a product
       and instantly know if it is good for you, your children, or your parents — powered by
       Google Gemini AI and FSSAI standards.
@@ -147,7 +147,7 @@ function buildWelcomeHTML(
     <div style="height:1px;background:linear-gradient(90deg,transparent,#e5e7eb,transparent);margin:0 0 28px;"></div>
 
     <!-- Features -->
-    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 16px;">✨ What you can do with BioYou</h3>
+    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 16px;">✨ What you can do with HealthOX</h3>
 
     ${[
       { icon: '📷', title: 'Scan any packaged food', desc: 'Point your camera at a barcode or nutrition label. Works on all Indian products — even ones not in any database yet.' },
@@ -156,7 +156,7 @@ function buildWelcomeHTML(
       { icon: '📧', title: 'Weekly nutrition reports', desc: 'Every Monday morning you receive a detailed email showing your week — total calories, macros, and which products to watch out for.' },
       { icon: '🇮🇳', title: 'Help build India\'s food database', desc: 'When you scan a product not in our database, Gemini reads the label and adds it for every Indian family.' },
     ].map(f => `
-      <div style="display:flex;align-items:flex-start;gap:14px;padding:16px;background:#f0fdf4;border-radius:14px;margin-bottom:10px;border:1px solid #d1fae5;">
+      <div style="display:flex;align-items:flex-start;gap:14px;padding:16px;background:#faf7f2;border-radius:14px;margin-bottom:10px;border:1px solid #e8dfd0;">
         <span style="font-size:26px;flex-shrink:0;">${f.icon}</span>
         <div>
           <p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 4px;">${f.title}</p>
@@ -177,7 +177,7 @@ function buildWelcomeHTML(
       { num: '3', text: 'Enable weekly reports in your Profile settings so every Monday you get a full nutrition summary in your inbox.' },
     ].map(tip => `
       <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
-        <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#059669,#0ea5e9);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-size:13px;font-weight:900;">${tip.num}</div>
+        <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#C4714A,#3D5C2E);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-size:13px;font-weight:900;">${tip.num}</div>
         <p style="font-size:13px;color:#374151;line-height:1.7;margin:4px 0 0;">${tip.text}</p>
       </div>
     `).join('')}
@@ -186,7 +186,7 @@ function buildWelcomeHTML(
     <div style="height:1px;background:linear-gradient(90deg,transparent,#e5e7eb,transparent);margin:28px 0;"></div>
 
     <!-- Personal message -->
-    <div style="background:linear-gradient(135deg,rgba(5,150,105,0.06),rgba(14,165,233,0.04));border-radius:16px;padding:20px;border:1px solid rgba(5,150,105,0.15);margin-bottom:28px;">
+    <div style="background:linear-gradient(135deg,#faf7f2,#f2ede4);border-radius:16px;padding:20px;border:1px solid #e8dfd0;margin-bottom:28px;">
       <p style="font-size:14px;color:#374151;line-height:1.8;margin:0 0 10px;">
         ${firstName}, every scan you make, every meal you log, every product you add to
         our database — it all adds up to something bigger. You are not just tracking
@@ -194,14 +194,14 @@ function buildWelcomeHTML(
         Indian families.
       </p>
       <p style="font-size:14px;color:#374151;line-height:1.8;margin:0;">
-        We are genuinely rooting for you. <strong>You have got this. 💚</strong>
+        We are genuinely rooting for you. <strong>You've got this!</strong>
       </p>
     </div>
 
     <!-- CTA Button -->
     <div style="text-align:center;">
       <a href="${baseUrl}/scan"
-        style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#059669,#0ea5e9);color:white;text-decoration:none;border-radius:14px;font-size:15px;font-weight:800;box-shadow:0 8px 24px rgba(5,150,105,0.35);">
+        style="display:inline-block;padding:16px 40px;background:#C4714A;color:white;text-decoration:none;border-radius:14px;font-size:15px;font-weight:800;box-shadow:0 8px 24px rgba(196,113,74,0.35);">
         Start Scanning Now →
       </a>
       <p style="font-size:12px;color:#9ca3af;margin:12px 0 0;">
@@ -213,8 +213,8 @@ function buildWelcomeHTML(
 
   <!-- Footer -->
   <div style="background:white;border-radius:20px;padding:20px 24px;box-shadow:0 2px 12px rgba(0,0,0,0.04);text-align:center;">
-    <p style="font-size:13px;color:#374151;font-weight:600;margin:0 0 4px;">Made with 💚 for a healthier India</p>
-    <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">BioYou — Scan. Know. Choose Better.</p>
+    <p style="font-size:13px;color:#374151;font-weight:600;margin:0 0 4px;">Made with care for a healthier India</p>
+    <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">HealthOX — Scan. Know. Choose Better.</p>
     <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
       <a href="${unsubscribeWeeklyUrl}" style="font-size:11px;color:#9ca3af;text-decoration:underline;">
         Unsubscribe from weekly reports

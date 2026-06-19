@@ -130,27 +130,27 @@ export default function AdminPendingPage() {
     return (
       <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center">
         <div className="text-4xl mb-4">🔐</div>
-        <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Admin Access Only</h2>
-        <p className="text-sm text-[#7a8fa6]">This page is for authorized administrators.</p>
+        <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Admin Access Only</h2>
+        <p className="text-sm text-[var(--muted-2)]">This page is for authorized administrators.</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-[#f0f4f8] pb-24">
+    <div className="min-h-screen bg-[#0d0f12] text-[var(--foreground)] pb-24">
       {/* Header */}
       <div className="bg-gradient-to-b from-red-500/20 to-transparent px-5 pt-12 pb-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-black">⚡ Admin: Fast Track Review</h1>
           <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">Admin</span>
         </div>
-        <p className="text-sm text-[#7a8fa6] mt-1">Review 20 products in 10 minutes</p>
+        <p className="text-sm text-[var(--muted-2)] mt-1">Review 20 products in 10 minutes</p>
         
         {/* Keyboard shortcuts */}
         <div className="mt-3 flex gap-2 text-[10px]">
-          <span className="bg-[#1a1f28] px-2 py-1 rounded">A = Approve</span>
-          <span className="bg-[#1a1f28] px-2 py-1 rounded">E = Edit</span>
-          <span className="bg-[#1a1f28] px-2 py-1 rounded">R = Reject</span>
+          <span className="bg-[var(--card)] px-2 py-1 rounded">A = Approve</span>
+          <span className="bg-[var(--card)] px-2 py-1 rounded">E = Edit</span>
+          <span className="bg-[var(--card)] px-2 py-1 rounded">R = Reject</span>
         </div>
 
         {/* Filter */}
@@ -160,7 +160,7 @@ export default function AdminPendingPage() {
               key={f}
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize ${
-                filter === f ? 'bg-[var(--clay)] text-white' : 'bg-[#1a1f28] text-[#7a8fa6]'
+                filter === f ? 'bg-[var(--clay)] text-white' : 'bg-[var(--card)] text-[var(--muted-2)]'
               }`}
             >
               {f}
@@ -177,23 +177,23 @@ export default function AdminPendingPage() {
         ) : products.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-4xl mb-4">✅</div>
-            <h2 className="text-lg font-bold text-[#f0f4f8]">All Caught Up!</h2>
-            <p className="text-sm text-[#7a8fa6]">No products to review</p>
+            <h2 className="text-lg font-bold text-[var(--foreground)]">All Caught Up!</h2>
+            <p className="text-sm text-[var(--muted-2)]">No products to review</p>
           </div>
         ) : (
           <div className="space-y-4">
             {products.map(product => (
-              <div key={product.id} className="bg-[#161a20] border border-[#2a3545] rounded-2xl overflow-hidden">
+              <div key={product.id} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
                 {/* Product Info */}
                 <div className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-sm font-bold text-[#f0f4f8]">{product.name}</h3>
+                      <h3 className="text-sm font-bold text-[var(--foreground)]">{product.name}</h3>
                       {product.brand && (
-                        <p className="text-[11px] text-[#7a8fa6]">{product.brand}</p>
+                        <p className="text-[11px] text-[var(--muted-2)]">{product.brand}</p>
                       )}
                       {product.barcode && (
-                        <p className="text-[10px] text-[#7a8fa6] mt-1">_barcode: {product.barcode}</p>
+                        <p className="text-[10px] text-[var(--muted-2)] mt-1">_barcode: {product.barcode}</p>
                       )}
                     </div>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full ${
@@ -207,16 +207,16 @@ export default function AdminPendingPage() {
 
                   {/* Nutrition Preview */}
                   {product.nutrition && (
-                    <div className="mt-3 p-2 bg-[#1a1f28] rounded-lg text-[10px] flex flex-wrap gap-2">
+                    <div className="mt-3 p-2 bg-[var(--card)] rounded-lg text-[10px] flex flex-wrap gap-2">
                       {Object.entries(product.nutrition as Record<string, any>).map(([k, v]) => (
-                        v != null && <span key={k} className="text-[#7a8fa6]">{k}: {String(v)}</span>
+                        v != null && <span key={k} className="text-[var(--muted-2)]">{k}: {String(v)}</span>
                       ))}
                     </div>
                   )}
 
                   {/* Ingredients */}
                   {product.ingredients_text && (
-                    <p className="mt-2 text-[10px] text-[#7a8fa6] line-clamp-2">
+                    <p className="mt-2 text-[10px] text-[var(--muted-2)] line-clamp-2">
                       📋 {product.ingredients_text}
                     </p>
                   )}
@@ -235,7 +235,7 @@ export default function AdminPendingPage() {
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex border-t border-[#2a3545]">
+                <div className="flex border-t border-[var(--border)]">
                   <button
                     onClick={() => handleAction(product.id, 'approve')}
                     className="flex-1 py-2.5 text-sm font-bold text-[var(--clay)] hover:bg-[var(--clay)]/10"
@@ -244,13 +244,13 @@ export default function AdminPendingPage() {
                   </button>
                   <button
                     onClick={() => handleAction(product.id, 'edit')}
-                    className="flex-1 py-2.5 text-sm font-bold text-amber-400 hover:bg-amber-500/10 border-l border-[#2a3545]"
+                    className="flex-1 py-2.5 text-sm font-bold text-amber-400 hover:bg-amber-500/10 border-l border-[var(--border)]"
                   >
                     ✏️ Edit (E)
                   </button>
                   <button
                     onClick={() => handleAction(product.id, 'reject')}
-                    className="flex-1 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/10 border-l border-[#2a3545]"
+                    className="flex-1 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/10 border-l border-[var(--border)]"
                   >
                     ❌ Reject (R)
                   </button>
@@ -300,56 +300,56 @@ function EditModal({ product, onClose, onSave }: {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-      <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl w-full max-w-md max-h-[80vh] overflow-y-auto">
-        <div className="p-4 border-b border-[#2a3545] flex items-center justify-between">
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
           <h2 className="text-sm font-bold">✏️ Edit & Approve</h2>
-          <button onClick={onClose} className="text-[#7a8fa6]">✕</button>
+          <button onClick={onClose} className="text-[var(--muted-2)]">✕</button>
         </div>
         
         <div className="p-4 space-y-4">
           <div>
-            <label className="text-[11px] text-[#7a8fa6]">Name</label>
+            <label className="text-[11px] text-[var(--muted-2)]">Name</label>
             <input
               value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3 py-2 bg-[#1a1f28] border border-[#2a3545] rounded-lg text-sm mt-1"
+              className="w-full px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm mt-1"
             />
           </div>
           
           <div>
-            <label className="text-[11px] text-[#7a8fa6]">Brand</label>
+            <label className="text-[11px] text-[var(--muted-2)]">Brand</label>
             <input
               value={form.brand}
               onChange={e => setForm({ ...form, brand: e.target.value })}
-              className="w-full px-3 py-2 bg-[#1a1f28] border border-[#2a3545] rounded-lg text-sm mt-1"
+              className="w-full px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm mt-1"
             />
           </div>
 
           <div>
-            <label className="text-[11px] text-[#7a8fa6]">Nutrition (JSON)</label>
+            <label className="text-[11px] text-[var(--muted-2)]">Nutrition (JSON)</label>
             <textarea
               value={JSON.stringify(form.nutrition, null, 2)}
               onChange={e => {
                 try { setForm({ ...form, nutrition: JSON.parse(e.target.value) }) } catch {}
               }}
-              className="w-full px-3 py-2 bg-[#1a1f28] border border-[#2a3545] rounded-lg text-sm mt-1 font-mono text-xs"
+              className="w-full px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm mt-1 font-mono text-xs"
               rows={5}
             />
           </div>
 
           <div>
-            <label className="text-[11px] text-[#7a8fa6]">Ingredients</label>
+            <label className="text-[11px] text-[var(--muted-2)]">Ingredients</label>
             <textarea
               value={form.ingredients_text}
               onChange={e => setForm({ ...form, ingredients_text: e.target.value })}
-              className="w-full px-3 py-2 bg-[#1a1f28] border border-[#2a3545] rounded-lg text-sm mt-1"
+              className="w-full px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm mt-1"
               rows={3}
             />
           </div>
         </div>
 
-        <div className="p-4 border-t border-[#2a3545] flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 bg-[#1a1f28] text-[#7a8fa6] font-bold rounded-lg">
+        <div className="p-4 border-t border-[var(--border)] flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 bg-[var(--card)] text-[var(--muted-2)] font-bold rounded-lg">
             Cancel
           </button>
           <button onClick={() => onSave(form)} className="flex-1 py-2.5 bg-[var(--clay)] text-white font-bold rounded-lg">

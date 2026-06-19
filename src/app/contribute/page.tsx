@@ -233,7 +233,7 @@ function ContributePageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-[#f0f4f8] pb-24">
+    <div className="min-h-screen bg-[#0d0f12] text-[var(--foreground)] pb-24">
       
       {/* Step 1: Capture Front Label */}
       {step === 'capture_front' && (
@@ -384,28 +384,28 @@ function ReviewPage({ formData, setFormData, parsedData, correctedNutrition, set
   return (
     <div className="px-4 pt-8 pb-6">
       <h1 className="text-xl font-black mb-2">✅ Review & Correct</h1>
-      <p className="text-sm text-[#7a8fa6] mb-6">Please verify the extracted values</p>
+      <p className="text-sm text-[var(--muted-2)] mb-6">Please verify the extracted values</p>
 
       {/* Product Details */}
-      <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 mb-4">
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 mb-4">
         <div className="space-y-3">
           <div>
-            <label className="text-[11px] text-[#7a8fa6] font-bold uppercase">Product Name *</label>
+            <label className="text-[11px] text-[var(--muted-2)] font-bold uppercase">Product Name *</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 bg-[#1a1f28] border border-[#2a3545] rounded-xl text-sm mt-1"
+              className="w-full px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-xl text-sm mt-1"
               placeholder="e.g., Parle-G Glucose Biscuits"
             />
           </div>
           <div>
-            <label className="text-[11px] text-[#7a8fa6] font-bold uppercase">Brand</label>
+            <label className="text-[11px] text-[var(--muted-2)] font-bold uppercase">Brand</label>
             <input
               type="text"
               value={formData.brand}
               onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-              className="w-full px-3 py-2 bg-[#1a1f28] border border-[#2a3545] rounded-xl text-sm mt-1"
+              className="w-full px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-xl text-sm mt-1"
               placeholder="e.g., Parle"
             />
           </div>
@@ -413,7 +413,7 @@ function ReviewPage({ formData, setFormData, parsedData, correctedNutrition, set
       </div>
 
       {/* Nutrition Correction */}
-      <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 mb-4">
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 mb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold">📊 Nutrition (per 100g)</h2>
           <span className="text-[10px] text-amber-400">Tap to correct</span>
@@ -428,17 +428,17 @@ function ReviewPage({ formData, setFormData, parsedData, correctedNutrition, set
             { key: 'sugar', label: 'Sugar', unit: 'g' },
             { key: 'sodium', label: 'Sodium', unit: 'mg' },
           ].map((field) => (
-            <div key={field.key} className="flex items-center justify-between py-2 border-b border-[#2a3545] last:border-0">
-              <span className="text-sm text-[#7a8fa6]">{field.label}</span>
+            <div key={field.key} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
+              <span className="text-sm text-[var(--muted-2)]">{field.label}</span>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   value={correctedNutrition[field.key] || ''}
                   onChange={(e) => setCorrectedNutrition({ ...correctedNutrition, [field.key]: e.target.value ? parseFloat(e.target.value) : null })}
-                  className="w-20 px-2 py-1 bg-[#1a1f28] border border-[#2a3545] rounded-lg text-sm text-right"
+                  className="w-20 px-2 py-1 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm text-right"
                   placeholder="—"
                 />
-                <span className="text-xs text-[#7a8fa6] w-6">{field.unit}</span>
+                <span className="text-xs text-[var(--muted-2)] w-6">{field.unit}</span>
               </div>
             </div>
           ))}
@@ -447,17 +447,17 @@ function ReviewPage({ formData, setFormData, parsedData, correctedNutrition, set
 
       {/* Ingredients */}
       {parsedData?.rawText && (
-        <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 mb-4">
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 mb-4">
           <h2 className="text-sm font-bold mb-2">📋 Ingredients</h2>
-          <p className="text-xs text-[#7a8fa6] leading-relaxed">{parsedData.rawText}</p>
+          <p className="text-xs text-[var(--muted-2)] leading-relaxed">{parsedData.rawText}</p>
         </div>
       )}
 
       <div className="flex gap-3">
-        <button onClick={onBack} className="flex-1 py-3 bg-[#1a1f28] border border-[#2a3545] text-[#7a8fa6] font-bold rounded-xl">
+        <button onClick={onBack} className="flex-1 py-3 bg-[var(--card)] border border-[var(--border)] text-[var(--muted-2)] font-bold rounded-xl">
           ← Back
         </button>
-        <button onClick={onSubmit} disabled={loading || !formData.name} className="flex-1 py-3 bg-[var(--clay)] disabled:bg-[#2a3545] text-white font-bold rounded-xl">
+        <button onClick={onSubmit} disabled={loading || !formData.name} className="flex-1 py-3 bg-[var(--clay)] disabled:bg-[var(--card)] text-white font-bold rounded-xl">
           {loading ? 'Submitting...' : '✅ Submit'}
         </button>
       </div>
@@ -476,21 +476,21 @@ function SuccessPage({ productName, onContributeMore, onGoHome }: { productName:
       </div>
       
       <h1 className="text-2xl font-black mb-2">You're the First!</h1>
-      <p className="text-[#7a8fa6] mb-6">
+      <p className="text-[var(--muted-2)] mb-6">
         You added <span className="text-[var(--clay)] font-bold">{productName}</span> to HealthOX.
       </p>
 
       <div className="bg-gradient-to-b from-amber-500/10 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-6">
         <p className="text-amber-400 text-sm font-bold mb-2">🇮🇳 Helping 10 crore Indians!</p>
-        <p className="text-xs text-[#7a8fa6]">
+        <p className="text-xs text-[var(--muted-2)]">
           When 2 more people confirm this product, it goes live and helps everyone make healthier choices.
         </p>
       </div>
 
-      <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl p-4 mb-6">
-        <p className="text-xs text-[#7a8fa6] mb-1">Your Impact</p>
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 mb-6">
+        <p className="text-xs text-[var(--muted-2)] mb-1">Your Impact</p>
         <p className="text-2xl font-black text-[var(--clay)]">{impact}+ people</p>
-        <p className="text-[10px] text-[#7a8fa6]">will see this product when it goes live</p>
+        <p className="text-[10px] text-[var(--muted-2)]">will see this product when it goes live</p>
       </div>
 
       <button onClick={onGoHome} className="w-full py-3 bg-[var(--clay)] text-white font-bold rounded-xl mb-3">

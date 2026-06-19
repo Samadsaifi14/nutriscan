@@ -29,8 +29,12 @@ export const metadata: Metadata = {
   },
   description: 'Scan packaged foods to analyze ingredients, detect harmful additives, and get health scores. Made for India.',
   icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/icon-512.png',
   },
   robots: {
     index: true,

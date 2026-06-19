@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   const exportData = {
     exported_at: new Date().toISOString(),
-    app: 'BioYou',
+    app: 'HealthOX',
     operator: 'Samad Saifi, New Delhi, Delhi, India',
     data: {
       profile: profile || null,

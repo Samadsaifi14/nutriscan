@@ -140,18 +140,18 @@ export default function ValidatePage() {
     return (
       <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center">
         <div className="text-4xl mb-4">🔐</div>
-        <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Sign In Required</h2>
-        <p className="text-sm text-[#7a8fa6] mb-4">You need to sign in to validate products</p>
+        <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Sign In Required</h2>
+        <p className="text-sm text-[var(--muted-2)] mb-4">You need to sign in to validate products</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-[#f0f4f8] pb-24">
+    <div className="min-h-screen bg-[#0d0f12] text-[var(--foreground)] pb-24">
       {/* Header */}
       <div className="bg-gradient-to-b from-purple-500/20 to-transparent px-5 pt-12 pb-6">
         <h1 className="text-xl font-black mb-1">Validate Products</h1>
-        <p className="text-sm text-[#7a8fa6]">Help approve new products for India's database</p>
+        <p className="text-sm text-[var(--muted-2)]">Help approve new products for India's database</p>
         
         <div className="mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl">
           <p className="text-[11px] text-purple-400">
@@ -168,21 +168,21 @@ export default function ValidatePage() {
         ) : products.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-4xl mb-4">✅</div>
-            <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">All Caught Up!</h2>
-            <p className="text-sm text-[#7a8fa6]">No products pending validation</p>
+            <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">All Caught Up!</h2>
+            <p className="text-sm text-[var(--muted-2)]">No products pending validation</p>
           </div>
         ) : (
           <div className="space-y-4">
             {products.map(product => (
-              <div key={product.id} className="bg-[#161a20] border border-[#2a3545] rounded-2xl overflow-hidden">
+              <div key={product.id} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
                 {/* Product Info */}
                 <div className="p-4">
-                  <h3 className="text-sm font-bold text-[#f0f4f8]">{product.name}</h3>
+                  <h3 className="text-sm font-bold text-[var(--foreground)]">{product.name}</h3>
                   {product.brand && (
-                    <p className="text-[11px] text-[#7a8fa6] mt-1">{product.brand}</p>
+                    <p className="text-[11px] text-[var(--muted-2)] mt-1">{product.brand}</p>
                   )}
                   {product.ingredients_text && (
-                    <p className="text-[10px] text-[#7a8fa6] mt-2 line-clamp-2">
+                    <p className="text-[10px] text-[var(--muted-2)] mt-2 line-clamp-2">
                       📋 {product.ingredients_text}
                     </p>
                   )}
@@ -209,7 +209,7 @@ export default function ValidatePage() {
                 )}
 
                 {/* Vote Buttons */}
-                <div className="flex border-t border-[#2a3545]">
+                <div className="flex border-t border-[var(--border)]">
                   <button
                     onClick={() => handleVote(product.id, 'approve')}
                     disabled={voting === product.id}
@@ -220,7 +220,7 @@ export default function ValidatePage() {
                   <button
                     onClick={() => handleVote(product.id, 'reject')}
                     disabled={voting === product.id}
-                    className="flex-1 py-3 text-sm font-bold text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50 border-l border-[#2a3545]"
+                    className="flex-1 py-3 text-sm font-bold text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50 border-l border-[var(--border)]"
                   >
                     ❌ Reject
                   </button>

@@ -59,12 +59,12 @@ export async function POST(req: NextRequest) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Account Deleted</title>
 </head>
-<body style="margin:0;padding:0;background:#f0fdf4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<body style="margin:0;padding:0;background:#F2EDE4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
   <div style="background:white;border-radius:24px;padding:40px;box-shadow:0 4px 32px rgba(0,0,0,0.06);text-align:center;">
     <h2 style="font-size:24px;font-weight:900;color:#111827;margin:0 0 8px;">Account Deleted</h2>
     <p style="font-size:14px;color:#6b7280;margin:0 0 20px;">
-      All your data has been permanently removed from BioYou as requested.
+      All your data has been permanently removed from HealthOX as requested.
     </p>
     <p style="font-size:13px;color:#374151;line-height:1.7;">
       If you did not request this deletion, please contact us immediately at samadlylives00@gmail.com.
@@ -82,9 +82,9 @@ export async function POST(req: NextRequest) {
           'Authorization': `Bearer ${resendApiKey}`
         },
         body: JSON.stringify({
-          from: 'BioYou <onboarding@resend.dev>',
+          from: 'HealthOX <onboarding@resend.dev>',
           to: [email],
-          subject: 'Your BioYou account has been deleted',
+          subject: 'Your HealthOX account has been deleted',
           html,
         })
       })

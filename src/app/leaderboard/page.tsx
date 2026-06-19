@@ -77,12 +77,12 @@ export default function LeaderboardPage() {
     : null
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-[#f0f4f8] pb-24">
+    <div className="min-h-screen bg-[#0d0f12] text-[var(--foreground)] pb-24">
       {/* Header */}
       <div className="bg-gradient-to-b from-amber-500/20 to-transparent px-5 pt-12 pb-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-black">🏆 Leaderboard</h1>
-          <div className="text-sm text-[#7a8fa6]">India</div>
+          <div className="text-sm text-[var(--muted-2)]">India</div>
         </div>
         
         {/* My Rank Card */}
@@ -93,8 +93,8 @@ export default function LeaderboardPage() {
                 {getRankEmoji(currentUserRank)}
               </div>
               <div>
-                <p className="text-sm font-bold text-[#f0f4f8]">Your Rank</p>
-                <p className="text-xs text-[#7a8fa6]">India #{currentUserRank}</p>
+                <p className="text-sm font-bold text-[var(--foreground)]">Your Rank</p>
+                <p className="text-xs text-[var(--muted-2)]">India #{currentUserRank}</p>
               </div>
             </div>
           </div>
@@ -109,7 +109,7 @@ export default function LeaderboardPage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-colors ${
                 timeFilter === t 
                   ? 'bg-[var(--clay)] text-white' 
-                  : 'bg-[#1a1f28] text-[#7a8fa6]'
+                  : 'bg-[var(--card)] text-[var(--muted-2)]'
               }`}
             >
               {t === 'all' ? 'All Time' : t === 'month' ? 'This Month' : 'This Week'}
@@ -127,7 +127,7 @@ export default function LeaderboardPage() {
               <div className="w-16 h-16 rounded-full bg-[#2a3545] mx-auto mb-2 flex items-center justify-center text-2xl">
                 {users[1].image ? <img src={users[1].image} alt={users[1].name} className="w-full h-full rounded-full object-cover" /> : '🥈'}
               </div>
-              <p className="text-xs font-bold text-[#f0f4f8] truncate max-w-[80px] mx-auto">{users[1].name}</p>
+              <p className="text-xs font-bold text-[var(--foreground)] truncate max-w-[80px] mx-auto">{users[1].name}</p>
               <p className="text-[10px] text-amber-400">{users[1].total_impact} impact</p>
             </div>
             
@@ -136,7 +136,7 @@ export default function LeaderboardPage() {
               <div className="w-20 h-20 rounded-full bg-gradient-to-b from-amber-500/30 to-amber-500/10 mx-auto mb-2 flex items-center justify-center text-3xl border-2 border-amber-500">
                 {users[0].image ? <img src={users[0].image} alt={users[0].name} className="w-full h-full rounded-full object-cover" /> : '🥇'}
               </div>
-              <p className="text-sm font-black text-[#f0f4f8] truncate max-w-[100px] mx-auto">{users[0].name}</p>
+              <p className="text-sm font-black text-[var(--foreground)] truncate max-w-[100px] mx-auto">{users[0].name}</p>
               <p className="text-[10px] text-amber-400">{users[0].total_impact} impact</p>
             </div>
             
@@ -145,7 +145,7 @@ export default function LeaderboardPage() {
               <div className="w-16 h-16 rounded-full bg-[#2a3545] mx-auto mb-2 flex items-center justify-center text-2xl">
                 {users[2].image ? <img src={users[2].image} alt={users[2].name} className="w-full h-full rounded-full object-cover" /> : '🥉'}
               </div>
-              <p className="text-xs font-bold text-[#f0f4f8] truncate max-w-[80px] mx-auto">{users[2].name}</p>
+              <p className="text-xs font-bold text-[var(--foreground)] truncate max-w-[80px] mx-auto">{users[2].name}</p>
               <p className="text-[10px] text-amber-400">{users[2].total_impact} impact</p>
             </div>
           </div>
@@ -159,8 +159,8 @@ export default function LeaderboardPage() {
         ) : users.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-4xl mb-4">🌟</div>
-            <h2 className="text-lg font-bold text-[#f0f4f8] mb-2">Be the First!</h2>
-            <p className="text-sm text-[#7a8fa6]">Contribute products to top the leaderboard</p>
+            <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Be the First!</h2>
+            <p className="text-sm text-[var(--muted-2)]">Contribute products to top the leaderboard</p>
             <button 
               onClick={() => router.push('/contribute')}
               className="mt-4 px-6 py-2 bg-[var(--clay)] text-white font-bold rounded-xl"
@@ -173,11 +173,11 @@ export default function LeaderboardPage() {
             {users.slice(3).map((user, idx) => (
               <div 
                 key={user.user_id} 
-                className={`flex items-center gap-3 p-3 bg-[#161a20] border border-[#2a3545] rounded-xl ${
+                className={`flex items-center gap-3 p-3 bg-[var(--card)] border border-[var(--border)] rounded-xl ${
                   currentUserId === user.user_id ? 'border-[var(--clay)]/50' : ''
                 }`}
               >
-                <div className="w-8 text-center text-sm font-bold text-[#7a8fa6]">
+                <div className="w-8 text-center text-sm font-bold text-[var(--muted-2)]">
                   {idx + 4}
                 </div>
                 
@@ -190,15 +190,15 @@ export default function LeaderboardPage() {
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-[#f0f4f8] truncate">{user.name}</p>
-                  <p className="text-[10px] text-[#7a8fa6]">
+                  <p className="text-sm font-bold text-[var(--foreground)] truncate">{user.name}</p>
+                  <p className="text-[10px] text-[var(--muted-2)]">
                     {user.contributions_count} contributions · {user.city}
                   </p>
                 </div>
                 
                 <div className="text-right">
                   <p className="text-sm font-black text-[var(--clay)]">{user.total_impact}</p>
-                  <p className="text-[10px] text-[#7a8fa6]">impact</p>
+                  <p className="text-[10px] text-[var(--muted-2)]">impact</p>
                 </div>
               </div>
             ))}
@@ -206,8 +206,8 @@ export default function LeaderboardPage() {
         )}
 
         {/* CTA */}
-        <div className="mt-8 p-4 bg-[#161a20] border border-[#2a3545] rounded-xl text-center">
-          <p className="text-sm text-[#7a8fa6] mb-3">Want to climb the ranks?</p>
+        <div className="mt-8 p-4 bg-[var(--card)] border border-[var(--border)] rounded-xl text-center">
+          <p className="text-sm text-[var(--muted-2)] mb-3">Want to climb the ranks?</p>
           <div className="flex gap-2">
             <button 
               onClick={() => router.push('/contribute')}

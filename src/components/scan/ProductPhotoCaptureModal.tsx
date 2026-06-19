@@ -42,22 +42,22 @@ export function ProductPhotoCaptureModal({ onCapture, onClose }: ProductPhotoCap
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#161a20] border border-[#2a3545] rounded-2xl overflow-hidden w-full max-w-md">
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden w-full max-w-md">
 
-        <div className="flex justify-between items-center px-5 py-4 border-b border-[#2a3545]">
+        <div className="flex justify-between items-center px-5 py-4 border-b border-[var(--border)]">
           <div>
-            <h2 className="text-sm font-semibold text-[#f0f4f8]">🖼️ Product Photo Mode</h2>
-            <p className="text-[11px] text-[#7a8fa6]">Take a photo of the whole product</p>
+            <h2 className="text-sm font-semibold text-[var(--foreground)]">🖼️ Product Photo Mode</h2>
+            <p className="text-[11px] text-[var(--muted-2)]">Take a photo of the whole product</p>
           </div>
           <button onClick={() => { stopCamera(); onClose() }}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-[#1e242d] border border-[#2a3545] text-[#7a8fa6] hover:text-[#f0f4f8] transition-colors text-sm">
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--card)] border border-[var(--border)] text-[var(--muted-2)] hover:text-[var(--foreground)] transition-colors text-sm">
             ✕
           </button>
         </div>
 
         {!cameraStarted ? (
           <div className="p-6">
-            <p className="text-xs font-semibold text-[#f0f4f8] mb-3">Gemini AI will read and extract:</p>
+            <p className="text-xs font-semibold text-[var(--foreground)] mb-3">Gemini AI will read and extract:</p>
             <div className="space-y-2 mb-5">
               {[
                 '📦 Product name and brand',
@@ -71,7 +71,7 @@ export function ProductPhotoCaptureModal({ onCapture, onClose }: ProductPhotoCap
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <div className="w-1 h-1 rounded-full bg-[var(--clay)] flex-shrink-0" />
-                  <p className="text-[11px] text-[#7a8fa6]">{item}</p>
+                  <p className="text-[11px] text-[var(--muted-2)]">{item}</p>
                 </div>
               ))}
             </div>
@@ -106,12 +106,12 @@ export function ProductPhotoCaptureModal({ onCapture, onClose }: ProductPhotoCap
               <button onClick={handleCapture} disabled={capturing}
                 className={`w-full py-4 rounded-2xl text-white text-sm font-semibold transition-all ${
                   capturing
-                    ? 'bg-[#2a3545] text-[#7a8fa6] cursor-not-allowed'
+                    ? 'bg-[#2a3545] text-[var(--muted-2)] cursor-not-allowed'
                     : 'bg-[var(--clay)] hover:bg-[var(--clay)] shadow-lg shadow-[var(--clay)]/20 active:scale-95'
                 }`}>
                 {capturing ? '⏳ Processing…' : '📸 Capture Product'}
               </button>
-              <p className="text-[11px] text-center text-[#7a8fa6] mt-2">
+              <p className="text-[11px] text-center text-[var(--muted-2)] mt-2">
                 Gemini AI will read everything visible on the product
               </p>
             </div>

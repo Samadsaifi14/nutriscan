@@ -246,7 +246,7 @@ export default function ProfileSetupPage() {
           <div className="inline-block mb-4">
             <Logo size={56} />
           </div>
-          <h1 className="text-2xl font-black mb-1 text-[var(--moss)]">BioYou</h1>
+          <h1 className="text-2xl font-black mb-1 text-[var(--moss)]">HealthOX</h1>
           <p className="text-sm text-[var(--muted)]">
             {step === 4 ? 'Your profile is ready!' : `Step ${step} of 3`}
           </p>
@@ -605,7 +605,7 @@ export default function ProfileSetupPage() {
               />
               <div>
                 <p className="text-xs text-[var(--muted)] leading-relaxed">
-                  I consent to BioYou storing my health data (conditions, allergies, 
+                  I consent to HealthOX storing my health data (conditions, allergies, 
                   diet preferences) to personalize food analysis. View our{" "}
                   <a href="/legal/privacy" className="text-[var(--clay)] hover:text-[var(--clay)]/70 underline">Privacy Policy</a>.
                 </p>
@@ -625,7 +625,7 @@ export default function ProfileSetupPage() {
                 />
                 <div>
                   <p className="text-xs text-[var(--muted)] leading-relaxed">
-                    I confirm that I have obtained verifiable parental/guardian consent to use BioYou and for the processing of my personal data as described in the{" "}
+                    I confirm that I have obtained verifiable parental/guardian consent to use HealthOX and for the processing of my personal data as described in the{" "}
                   <a href="/legal/privacy" className="text-[var(--clay)] hover:text-[var(--clay)]/70 underline">Privacy Policy</a>.
                   </p>
                 </div>
@@ -770,7 +770,7 @@ export default function ProfileSetupPage() {
               className="w-full py-4 rounded-2xl text-white text-sm font-bold"
               style={{ ...gradientStyle, boxShadow: '0 8px 24px rgba(196,113,74,0.3)' }}
             >
-              Start Tracking with BioYou →
+              Start Tracking with HealthOX →
             </button>
           </div>
         )}
@@ -851,7 +851,7 @@ export default function ProfileSetupPage() {
               <div className="flex-1">
                 <p className="text-sm font-bold text-[var(--foreground)] mb-1">🚫 Unsubscribe from All Emails</p>
                 <p className="text-xs text-[var(--muted)] leading-relaxed">
-                  Stop all BioYou emails. You can re-enable anytime by toggling this off.
+                  Stop all HealthOX emails. You can re-enable anytime by toggling this off.
                 </p>
               </div>
               <button
@@ -879,7 +879,7 @@ export default function ProfileSetupPage() {
               <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-[color-mix(in_oklab,var(--risk),transparent_88%)] rounded-xl border border-red-200 dark:border-red-800">
                 <span className="flex-shrink-0">⚠️</span>
                 <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed">
-                  You are unsubscribed from all BioYou emails. Toggle off above to re-enable.
+                  You are unsubscribed from all HealthOX emails. Toggle off above to re-enable.
                 </p>
               </div>
             )}

@@ -43,7 +43,7 @@ export default function SignInPage() {
             <Logo size={96} priority />
           </div>
           <h1 className="text-4xl font-black tracking-tight mb-2 text-[var(--bark)] dark:text-[var(--cream)]">
-            BioYou
+            HealthOX
           </h1>
           <p className="text-sm text-[var(--muted)] leading-relaxed">
             Scan. Know. Choose Better.<br />
