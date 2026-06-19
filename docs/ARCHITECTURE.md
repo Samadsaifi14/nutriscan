@@ -31,51 +31,131 @@ BarcodeScanner (BarcodeDetector API)
 
 ▼
 
-GET /api/scan?barcode={value}
+GET /api/scan?barcode={value}  (src/app/api/scan/route.ts)
 
 │
 
-├─── Step 1: Supabase products table ──────────────── HIT → jump to SCORE
+├─── Layer 1: Supabase products cache ──── confidence: 'exact'
 
 │      SELECT * FROM products WHERE barcode = $1
 
-│      Cache hit: update last_scanned_at, scan_count
+│      Cache hit with nutrition → return immediately
+
+│      Cached via cacheProduct() — stores nutrition as column values
 
 │
 
-├─── Step 2: Open Food Facts API ──────────────────── HIT → normalise → store → SCORE
+├─── Layer 2: Open Food Facts exact ────── confidence: 'high'
 
-│      world.openfoodfacts.org/api/v2/product/{barcode}
+│      world.openfoodfacts.org/api/v0/product/{barcode}.json
 
-│      in.openfoodfacts.org/api/v2/product/{barcode}  (Indian endpoint)
+│      Has nutrition data? → cache + return
+
+│      No nutrition? → try Groq AI estimation via estimateNutritionFromName()
+
+│      Groq succeeds? → return as open_food_facts_with_ai_nutrition
+
+│      Groq fails? → save OFF metadata as offFallback, continue to Layer 3
 
 │
 
-├─── Step 3: UPC Item DB ──────────────────────────── HIT → partial data → store → SCORE
+├─── Layer 3: OFF keyword search ───────── confidence: 'high'
+
+│      Search by brand+category (analyzeBarcode → inferCategory)
+
+│      Uses fillNutritionIfMissing() — tries Groq AI first,
+
+│      falls back to static keyword estimation (Layer 9 mechanism)
+
+│      Caches nutrition with correct _per_100g field names
+
+│
+
+├─── Layer 4: UPC Item DB ──────────────── confidence: 'estimated'
 
 │      api.upcitemdb.com/prod/trial/lookup?upc={barcode}
 
-│
+│      extractNutrition() — regex parser for product descriptions
 
-├─── Step 4: Tavily Web Search ────────────────────── HIT → extract → SCORE
-
-│      Query: "{barcode} India food FSSAI nutrition"
-
-│      Indian-specific: barcode-intelligence.ts maps prefix → brand name
+│      Same fillNutritionIfMissing() — AI → static fallback
 
 │
 
-├─── Step 5: Gemini AI Estimation ─────────────────── confidence: 'estimated'
+├─── Layer 5: Indian web search ────────── confidence: 'estimated' / 'low'
 
-│      Input: barcode prefix + inferred category
+│      Tavily API: site:bigbasket.com OR site:blinkit.com OR site:amazon.in
 
-│      Output: estimated nutrition based on category averages
+│      Indian barcode prefix 890 required (analyzeBarcode.isIndian)
+
+│      Same fillNutritionIfMissing() — AI → static fallback
+
+│      Confidence downgrades to 'low' if only web data, no AI/static nutrition
 
 │
 
-└─── Step 6: Category Default ─────────────────────── confidence: 'low'
+├─── Layer 6: Community products ───────── confidence: 'high'
 
-Population average for inferred category
+│      SELECT * FROM community_products WHERE status = 'approved'
+
+│      User-contributed nutrition data from /contribute and /validate
+
+│
+
+├─── Layer 7: Groq category nutrition ──── confidence: 'estimated'
+
+│      Requires inferrable category from barcode prefix
+
+│      getCategoryNutrition() — Groq llama-3.1-8b-instant estimates
+
+│      typical nutrition for the category (biscuits, noodles, etc.)
+
+│      Merges offFallback metadata (name, brand, image) when available
+
+│
+
+├─── Layer 8: Gemini AI estimation ─────── confidence: 'low'
+
+│      Requires GEMINI_API_KEY
+
+│      estimateProductWithAI() — Gemini guesses product + nutrition
+
+│      from barcode prefix pattern alone (last resort AI)
+
+│      Merges offFallback metadata when available
+
+│
+
+└─── Layer 9: Static keyword fallback ──── confidence: 'estimated'
+
+      src/lib/scan-helpers.ts → estimateStaticNutrition()
+
+      No API key required — matches product name against 30 Indian
+
+      food categories (biscuits, noodles, chips, etc.) with realistic
+
+      defaults per 100g. Generic fallback (200 kcal, 5g protein) for
+
+      unrecognized products.
+
+      This layer runs before the final "no nutrition" warning and
+
+      guarantees every product with a recognizable name gets
+
+      estimated nutrition values.
+
+│
+
+▼
+
+All layers normalise output through formatProduct() in scan-helpers.ts:
+
+   { name, brand, nutrition: { calories, protein, carbs, fat,
+
+     saturated_fat, sugar, sodium, fiber }, ... }
+
+   Nutrition defaults: all fields use ?? null (not || 0) so the
+
+   frontend displays "--" for truly missing values.
 
 │
 
@@ -274,13 +354,23 @@ Pages & Components
 
 │
 
-├── lib/scan-helpers.ts      orchestrateLookup() — 6-step lookup chain
+├── lib/scan-helpers.ts      Parsers, formatters, AI estimation, static fallback
 
-│   ├── lib/openfoodfacts.ts    OFF + UPC Item DB + Tavily
+│   ├── parseNum / parseSodium / parseList / extractNutrition
 
-│   ├── lib/gemini.ts           Gemini 2.5 Flash vision client
+│   ├── formatProduct() / cacheProduct() / detectHarmfulAdditives()
 
-│   └── lib/barcode-intelligence.ts  Indian brand prefix map
+│   ├── searchIndianProductWeb() — Tavily Indian product search
+
+│   ├── estimateNutritionFromName() — Groq AI from product name
+
+│   ├── estimateProductWithAI() — Gemini from barcode
+
+│   ├── getCategoryNutrition() — Groq from category name
+
+│   ├── fillNutritionIfMissing() — AI → static fallback wrapper
+
+│   └── estimateStaticNutrition() — keyword-based, no API key needed
 
 │
 
