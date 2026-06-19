@@ -7,7 +7,7 @@ import {
   formatProduct, cacheProduct,
   searchIndianProductWeb,
   getCategoryNutrition, estimateNutritionFromName, estimateProductWithAI,
-  fillNutritionIfMissing, type AIEstimate,
+  fillNutritionIfMissing, estimateStaticNutrition, type AIEstimate,
 } from '@/lib/scan-helpers'
 
 type Confidence = 'exact' | 'high' | 'estimated' | 'low' | 'none'
@@ -485,6 +485,30 @@ export async function GET(req: NextRequest) {
     }
   } catch (e) {
     console.log('AI estimation failed:', e)
+  }
+
+  // Layer 9 — Static keyword-based nutrition estimation (no API key needed)
+  if (offFallback) {
+    const staticNut = estimateStaticNutrition(offFallback.name)
+    console.log('[Scan] Using static nutrition for:', offFallback.name)
+    const merged = {
+      ...offFallback,
+      calories_per_100g:      staticNut.calories,
+      protein_per_100g:       staticNut.protein,
+      carbs_per_100g:         staticNut.carbs,
+      fat_per_100g:           staticNut.fat,
+      saturated_fat_per_100g: null,
+      sugar_per_100g:         staticNut.sugar,
+      sodium_per_100g:        staticNut.sodium,
+      fiber_per_100g:         staticNut.fiber,
+    }
+    cacheProduct(merged)
+    return NextResponse.json({
+      success: true,
+      source: 'open_food_facts_with_static_nutrition',
+      confidence: 'estimated' as Confidence,
+      data: formatProduct(merged),
+    })
   }
 
   // Final — If OFF had metadata but no AI layer succeeded, return it anyway
