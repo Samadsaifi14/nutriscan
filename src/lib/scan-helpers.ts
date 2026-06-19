@@ -269,6 +269,7 @@ Return ONLY valid JSON (no markdown, no code fences):
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
         max_tokens: 500,
+        response_format: { type: 'json_object' },
       }),
     })
 
@@ -308,15 +309,9 @@ export async function estimateNutritionFromName(
   brand: string | null,
   category: string | null
 ): Promise<AIEstimate | null> {
-  const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) {
-    console.warn('[NutritionAI] GROQ_API_KEY is not set')
-    return null
-  }
   if (!productName) return null
 
-  try {
-    const prompt = `You are a food nutrition database. Estimate realistic nutrition per 100g for this product.
+  const prompt = `You are a food nutrition database. Estimate realistic nutrition per 100g for this product.
 
 Product: "${productName}"
 Brand: ${brand || 'Unknown'}
@@ -338,59 +333,94 @@ Return ONLY valid JSON (no markdown, no code fences) with realistic typical valu
   "ingredients_text": "typical ingredients for this product or null"
 }`
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1,
-        max_tokens: 500,
-      }),
+  function parseNutritionResponse(text: string): { nutrition: AIEstimate['nutrition']; ingredients_text: string | null } | null {
+    try {
+      const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+      const parsed = JSON.parse(cleaned)
+      if (!parsed.nutrition) return null
+      return {
+        nutrition: {
+          calories:      parsed.nutrition?.calories      ?? null,
+          protein:       parsed.nutrition?.protein       ?? null,
+          carbs:         parsed.nutrition?.carbs         ?? null,
+          fat:           parsed.nutrition?.fat           ?? null,
+          saturated_fat: parsed.nutrition?.saturated_fat ?? null,
+          sugar:         parsed.nutrition?.sugar         ?? null,
+          sodium:        parsed.nutrition?.sodium        ?? null,
+          fiber:         parsed.nutrition?.fiber         ?? null,
+        },
+        ingredients_text: parsed.ingredients_text || null,
+      }
+    } catch {
+      return null
+    }
+  }
+
+  // Step 1 — Try Groq
+  const groqKey = process.env.GROQ_API_KEY
+  if (groqKey) {
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${groqKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.1,
+          max_tokens: 500,
+          response_format: { type: 'json_object' },
+        }),
+      })
+
+      if (!response.ok) {
+        console.error(`[NutritionAI] Groq returned ${response.status}`)
+      } else {
+        const data = await response.json()
+        const content = data.choices?.[0]?.message?.content
+        if (content) {
+          const parsed = parseNutritionResponse(content)
+          if (parsed) {
+            console.log(`[NutritionAI] Groq estimated: "${productName}" → ${parsed.nutrition.calories ?? '?'}kcal`)
+            return { name: productName, brand, isIndian: true, ...parsed, category }
+          }
+        }
+        console.warn(`[NutritionAI] Groq response unparseable for: "${productName}"`)
+      }
+    } catch (err: any) {
+      console.error('[NutritionAI] Groq threw:', err.message)
+    }
+  } else {
+    console.warn('[NutritionAI] GROQ_API_KEY is not set')
+  }
+
+  // Step 2 — Try Gemini as fallback
+  console.log('[NutritionAI] Groq failed, trying Gemini for:', productName)
+  try {
+    const geminiResult = await callGemini(prompt, undefined, {
+      temperature: 0.2,
+      maxTokens: 1000,
+      timeoutMs: 15000,
+      maxRetries: 1,
     })
-
-    if (!response.ok) {
-      console.error(`[NutritionAI] Groq returned ${response.status}`)
-      return null
-    }
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content
-    if (!content) {
-      console.warn(`[NutritionAI] Groq response empty for: "${productName}"`)
-      return null
-    }
-
-    const cleaned = content.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
-    const parsed = JSON.parse(cleaned)
-
-    if (parsed.nutrition) {
-      console.log(`[NutritionAI] Groq estimated: "${productName}" → ${parsed.nutrition.calories ?? '?'}kcal`)
-    }
-
-    return {
-      name: productName,
-      brand,
-      isIndian: true,
-      nutrition: {
-        calories: parsed.nutrition?.calories ?? null,
-        protein: parsed.nutrition?.protein ?? null,
-        carbs: parsed.nutrition?.carbs ?? null,
-        fat: parsed.nutrition?.fat ?? null,
-        saturated_fat: parsed.nutrition?.saturated_fat ?? null,
-        sugar: parsed.nutrition?.sugar ?? null,
-        sodium: parsed.nutrition?.sodium ?? null,
-        fiber: parsed.nutrition?.fiber ?? null,
-      },
-      category,
-      ingredients_text: parsed.ingredients_text || null,
+    if (geminiResult?.text) {
+      const parsed = parseNutritionResponse(geminiResult.text)
+      if (parsed) {
+        console.log(`[NutritionAI] Gemini estimated: "${productName}" → ${parsed.nutrition.calories ?? '?'}kcal`)
+        return { name: productName, brand, isIndian: true, ...parsed, category }
+      }
+      console.warn(`[NutritionAI] Gemini response unparseable for: "${productName}"`)
+    } else {
+      console.warn('[NutritionAI] Gemini returned empty response')
     }
   } catch (err: any) {
-    console.error('[NutritionAI] Groq threw:', err.message)
-    return null
+    console.error('[NutritionAI] Gemini threw:', err.message)
   }
+
+  // Step 3 — Both failed
+  return null
 }
 
 export async function estimateProductWithAI(barcode: string, brandHint: string | null, isIndian: boolean): Promise<AIEstimate | null> {
