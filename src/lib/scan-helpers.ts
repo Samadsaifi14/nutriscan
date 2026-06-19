@@ -303,6 +303,82 @@ Return ONLY valid JSON (no markdown, no code fences):
   }
 }
 
+export async function estimateNutritionFromName(
+  productName: string,
+  brand: string | null,
+  category: string | null
+): Promise<AIEstimate | null> {
+  const apiKey = process.env.GROQ_API_KEY
+  if (!apiKey || !productName) return null
+
+  try {
+    const prompt = `You are a food nutrition database. Estimate realistic nutrition per 100g for this product.
+
+Product: "${productName}"
+Brand: ${brand || 'Unknown'}
+Category: ${category || 'Unknown'}
+Country: India
+
+Return ONLY valid JSON (no markdown, no code fences) with realistic typical values:
+{
+  "nutrition": {
+    "calories": number,
+    "protein": number,
+    "carbs": number,
+    "fat": number,
+    "saturated_fat": number or null,
+    "sugar": number or null,
+    "sodium": number or null,
+    "fiber": number or null
+  },
+  "ingredients_text": "typical ingredients for this product or null"
+}`
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 500,
+      }),
+    })
+
+    if (!response.ok) return null
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content
+    if (!content) return null
+
+    const cleaned = content.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+    const parsed = JSON.parse(cleaned)
+
+    return {
+      name: productName,
+      brand,
+      isIndian: true,
+      nutrition: {
+        calories: parsed.nutrition?.calories ?? null,
+        protein: parsed.nutrition?.protein ?? null,
+        carbs: parsed.nutrition?.carbs ?? null,
+        fat: parsed.nutrition?.fat ?? null,
+        saturated_fat: parsed.nutrition?.saturated_fat ?? null,
+        sugar: parsed.nutrition?.sugar ?? null,
+        sodium: parsed.nutrition?.sodium ?? null,
+        fiber: parsed.nutrition?.fiber ?? null,
+      },
+      category,
+      ingredients_text: parsed.ingredients_text || null,
+    }
+  } catch (err: any) {
+    console.log('Nutrition name estimation error:', err.message)
+    return null
+  }
+}
+
 export async function estimateProductWithAI(barcode: string, brandHint: string | null, isIndian: boolean): Promise<AIEstimate | null> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {

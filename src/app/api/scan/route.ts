@@ -6,7 +6,7 @@ import {
   parseNum, parseSodium, parseList, extractNutrition,
   formatProduct, cacheProduct,
   searchIndianProductWeb,
-  getCategoryNutrition, estimateProductWithAI, type AIEstimate,
+  getCategoryNutrition, estimateNutritionFromName, estimateProductWithAI, type AIEstimate,
 } from '@/lib/scan-helpers'
 
 type Confidence = 'exact' | 'high' | 'estimated' | 'low' | 'none'
@@ -105,8 +105,38 @@ export async function GET(req: NextRequest) {
           })
         }
 
-        // OFF has metadata but no nutrition — save as fallback for AI estimation
-        console.log('OFF has product but no nutrition data, will estimate via AI:', product.name)
+        // OFF has metadata but no nutrition — try AI estimation with the product name
+        console.log('OFF has product but no nutrition data, estimating via AI:', product.name)
+        const nameEstimate = await estimateNutritionFromName(product.name, product.brand, product.category)
+        if (nameEstimate?.nutrition && (nameEstimate.nutrition.calories || nameEstimate.nutrition.protein)) {
+          console.log('AI nutrition estimated from product name:', product.name)
+          return NextResponse.json({
+            success: true,
+            source: 'open_food_facts_with_ai_nutrition',
+            confidence: 'estimated' as Confidence,
+            data: {
+              ...product,
+              source: 'open_food_facts_with_ai_nutrition',
+              nutrition: {
+                calories: nameEstimate.nutrition.calories ?? null,
+                protein: nameEstimate.nutrition.protein ?? null,
+                carbs: nameEstimate.nutrition.carbs ?? null,
+                fat: nameEstimate.nutrition.fat ?? null,
+                saturated_fat: nameEstimate.nutrition.saturated_fat ?? null,
+                sugar: nameEstimate.nutrition.sugar ?? null,
+                sodium: nameEstimate.nutrition.sodium ?? null,
+                fiber: nameEstimate.nutrition.fiber ?? null,
+              },
+              serving_size_g: product.serving_size_g,
+              ingredients_text: nameEstimate.ingredients_text || product.ingredients_text,
+              allergens: product.allergens || [],
+              additives: product.additives || [],
+            },
+          })
+        }
+
+        // AI estimation failed — save as fallback for later layers
+        console.log('AI name estimation failed, will try other layers:', product.name)
         offFallback = product
       }
     }
