@@ -12,6 +12,25 @@ export async function GET(req: NextRequest) {
 
   console.log('🕐 Running weekly report cron job...')
 
+  // Clean up rate_limits table rows older than 24 hours
+  try {
+    const twentyFourHoursAgo = new Date()
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
+
+    const { error: cleanupError } = await supabaseAdmin
+      .from('rate_limits')
+      .delete()
+      .lt('window_start', twentyFourHoursAgo.toISOString())
+
+    if (cleanupError) {
+      console.error('Error cleaning up rate limits:', cleanupError.message)
+    } else {
+      console.log('✅ Cleaned up rate limit entries older than 24 hours')
+    }
+  } catch (err: any) {
+    console.error('Failed to run rate limit cleanup:', err.message)
+  }
+
   // Get ALL users who want weekly reports and have NOT unsubscribed
   // Also handle users who have null values (newly created profiles)
   const { data: users, error: usersError } = await supabaseAdmin

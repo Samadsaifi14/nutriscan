@@ -47,24 +47,29 @@ export interface UnifiedAnalysisResponse {
 }
 
 // Call Groq API directly using fetch
-async function callGroq(prompt: string, maxTokens = 2000): Promise<string | null> {
+async function callGroq(prompt: string, maxTokens = 2000, jsonMode = true): Promise<string | null> {
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) return null
 
   try {
+    const body: any = {
+      model: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: maxTokens,
+    }
+
+    if (jsonMode) {
+      body.response_format = { type: 'json_object' }
+    }
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_tokens: maxTokens,
-        response_format: { type: 'json_object' },
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
@@ -240,7 +245,7 @@ Example output: Refined wheat flour (maida), sugar, palm oil, salt, yeast, emuls
 The list should be specific to the Indian market and realistic for the named product. 8-15 ingredients is ideal.`
 
   try {
-    const content = await callGroq(prompt, 600)
+    const content = await callGroq(prompt, 600, false)
     if (!content) return ''
     return content
       .replace(/```[a-z]*\s*/gi, '')
