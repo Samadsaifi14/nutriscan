@@ -6,9 +6,9 @@ import {
   parseNum, parseSodium, parseList, extractNutrition,
   formatProduct, cacheProduct,
   searchIndianProductWeb,
-  getCategoryNutrition, estimateNutritionFromName, estimateProductWithAI,
-  fillNutritionIfMissing, estimateStaticNutrition, type AIEstimate,
+  estimateProductWithAI,
 } from '@/lib/scan-helpers'
+import { fillNutritionIfMissing, getCategoryNutrition } from '@/lib/nutrition-helpers'
 
 type Confidence = 'exact' | 'high' | 'estimated' | 'low' | 'none'
 
@@ -108,8 +108,8 @@ export async function GET(req: NextRequest) {
 
         // OFF has metadata but no nutrition — try AI estimation with the product name
         console.log('OFF has product but no nutrition data, estimating via AI:', product.name)
-        const nameEstimate = await estimateNutritionFromName(product.name, product.brand, product.category)
-        if (nameEstimate?.nutrition && (nameEstimate.nutrition.calories || nameEstimate.nutrition.protein)) {
+        const nameEstimate = await fillNutritionIfMissing(product.name, {})
+        if (nameEstimate) {
           console.log('AI nutrition estimated from product name:', product.name)
           return NextResponse.json({
             success: true,
@@ -119,17 +119,17 @@ export async function GET(req: NextRequest) {
               ...product,
               source: 'open_food_facts_with_ai_nutrition',
               nutrition: {
-                calories: nameEstimate.nutrition.calories ?? null,
-                protein: nameEstimate.nutrition.protein ?? null,
-                carbs: nameEstimate.nutrition.carbs ?? null,
-                fat: nameEstimate.nutrition.fat ?? null,
-                saturated_fat: nameEstimate.nutrition.saturated_fat ?? null,
-                sugar: nameEstimate.nutrition.sugar ?? null,
-                sodium: nameEstimate.nutrition.sodium ?? null,
-                fiber: nameEstimate.nutrition.fiber ?? null,
+                calories:      nameEstimate.calories ?? null,
+                protein:       nameEstimate.protein ?? null,
+                carbs:         nameEstimate.carbohydrates ?? null,
+                fat:           nameEstimate.fat ?? null,
+                saturated_fat: nameEstimate.saturated_fat ?? null,
+                sugar:         nameEstimate.sugar ?? null,
+                sodium:        nameEstimate.sodium ?? null,
+                fiber:         nameEstimate.fiber ?? null,
               },
               serving_size_g: product.serving_size_g,
-              ingredients_text: nameEstimate.ingredients_text || product.ingredients_text,
+              ingredients_text: product.ingredients_text,
               allergens: product.allergens || [],
               additives: product.additives || [],
             },
@@ -188,7 +188,21 @@ export async function GET(req: NextRequest) {
             source: 'open_food_facts_search',
           }
 
-          const formatted3 = await fillNutritionIfMissing(formatProduct(product))
+          const formatted3 = formatProduct(product)
+          const estimated3 = await fillNutritionIfMissing(formatted3.name, formatted3.nutrition)
+          if (estimated3) {
+            formatted3.nutrition = {
+              calories:      estimated3.calories ?? null,
+              protein:       estimated3.protein ?? null,
+              carbs:         estimated3.carbohydrates ?? null,
+              fat:           estimated3.fat ?? null,
+              saturated_fat: estimated3.saturated_fat ?? null,
+              sugar:         estimated3.sugar ?? null,
+              sodium:        estimated3.sodium ?? null,
+              fiber:         estimated3.fiber ?? null,
+            }
+            formatted3.source = 'open_food_facts_search_with_ai_nutrition'
+          }
           cacheProduct({
             ...product,
             calories_per_100g:      formatted3.nutrition.calories,
@@ -250,7 +264,21 @@ export async function GET(req: NextRequest) {
           source: 'upc_item_db',
         }
 
-        const formatted4 = await fillNutritionIfMissing(formatProduct(product))
+        const formatted4 = formatProduct(product)
+        const estimated4 = await fillNutritionIfMissing(formatted4.name, formatted4.nutrition)
+        if (estimated4) {
+          formatted4.nutrition = {
+            calories:      estimated4.calories ?? null,
+            protein:       estimated4.protein ?? null,
+            carbs:         estimated4.carbohydrates ?? null,
+            fat:           estimated4.fat ?? null,
+            saturated_fat: estimated4.saturated_fat ?? null,
+            sugar:         estimated4.sugar ?? null,
+            sodium:        estimated4.sodium ?? null,
+            fiber:         estimated4.fiber ?? null,
+          }
+          formatted4.source = 'upc_item_db_with_ai_nutrition'
+        }
         cacheProduct({
           ...product,
           calories_per_100g:      formatted4.nutrition.calories,
@@ -282,12 +310,26 @@ export async function GET(req: NextRequest) {
 
     const webResult = await searchIndianProductWeb(analysis.searchHint, analysis.brand)
     if (webResult) {
-      const formatted5 = await fillNutritionIfMissing(formatProduct(webResult))
+      const formatted5 = formatProduct(webResult)
+      const estimated5 = await fillNutritionIfMissing(formatted5.name, formatted5.nutrition)
+      if (estimated5) {
+        formatted5.nutrition = {
+          calories:      estimated5.calories ?? null,
+          protein:       estimated5.protein ?? null,
+          carbs:         estimated5.carbohydrates ?? null,
+          fat:           estimated5.fat ?? null,
+          saturated_fat: estimated5.saturated_fat ?? null,
+          sugar:         estimated5.sugar ?? null,
+          sodium:        estimated5.sodium ?? null,
+          fiber:         estimated5.fiber ?? null,
+        }
+        formatted5.source = 'web_search_with_ai_nutrition'
+      }
       console.log('Found via web search:', webResult.name)
       return NextResponse.json({
         success: true,
         source: formatted5.source,
-        confidence: formatted5.source.includes('ai_nutrition') ? 'estimated' : 'low',
+        confidence: 'estimated' as Confidence,
         data: formatted5,
       })
     }
@@ -339,49 +381,50 @@ export async function GET(req: NextRequest) {
     console.log('Community products check failed:', e)
   }
 
-  // Layer 7 — Groq category nutrition profile (free, fast fallback before Gemini)
+  // Layer 7 — Category nutrition estimation (Groq → Gemini → static)
   try {
     const analysis7 = analyzeBarcode(trimmedBarcode)
     const cat = analysis7.category || (analysis7.brand ? inferCategory(analysis7.brand, analysis7.brand) : null)
+    const categorySearchName = analysis7.brand || offFallback?.name || trimmedBarcode
     if (cat) {
-      console.log(`Trying Groq category nutrition for: ${cat}`)
-      const groqResult = await getCategoryNutrition(cat, trimmedBarcode, analysis7.brand)
+      console.log(`Trying category nutrition for: ${cat}`)
+      const groqResult = await getCategoryNutrition(categorySearchName, cat)
       if (groqResult) {
+        const mergedName7 = offFallback?.name || `${cat} product`
+        const mergedBrand7 = offFallback?.brand || analysis7.brand
+        const mergedImage7 = offFallback?.image_url || null
         await supabaseAdmin.from('products').upsert({
           barcode: trimmedBarcode,
-          name: groqResult.name,
-          brand: groqResult.brand,
+          name: mergedName7,
+          brand: mergedBrand7,
           category: cat,
           country_of_origin: analysis7.isIndian ? 'India' : null,
           image_url: null,
-          calories: groqResult.nutrition.calories,
-          protein: groqResult.nutrition.protein,
-          fat: groqResult.nutrition.fat,
-          carbohydrates: groqResult.nutrition.carbs,
-          sugar: groqResult.nutrition.sugar,
-          fiber: groqResult.nutrition.fiber,
-          sodium: groqResult.nutrition.sodium,
-          ingredients_text: groqResult.ingredients_text,
+          calories: groqResult.calories,
+          protein: groqResult.protein,
+          fat: groqResult.fat,
+          carbohydrates: groqResult.carbohydrates,
+          sugar: groqResult.sugar,
+          fiber: groqResult.fiber,
+          sodium: groqResult.sodium,
+          ingredients_text: offFallback?.ingredients_text || null,
           health_score: null,
           health_grade: null,
           nova_group: 4,
-          source: 'groq_category_estimated',
+          source: 'category_estimated',
           last_updated: new Date().toISOString(),
         }, { onConflict: 'barcode', ignoreDuplicates: false })
 
         fetch(`${req.nextUrl.origin}/api/enrich`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ barcode: trimmedBarcode, name: groqResult.name, brand: groqResult.brand, confidence: 'estimated' }),
+          body: JSON.stringify({ barcode: trimmedBarcode, name: mergedName7, brand: mergedBrand7, confidence: 'estimated' }),
         }).catch(() => {})
 
-        const mergedName7 = offFallback?.name || groqResult.name
-        const mergedBrand7 = offFallback?.brand || groqResult.brand
-        const mergedImage7 = offFallback?.image_url || null
-        console.log('Groq category estimated:', mergedName7)
+        console.log('Category estimated:', mergedName7)
         return NextResponse.json({
           success: true,
-          source: offFallback ? 'open_food_facts_with_ai_nutrition' : 'groq_category_estimated',
+          source: offFallback ? 'open_food_facts_with_ai_nutrition' : 'category_estimated',
           confidence: 'estimated' as Confidence,
           data: {
             barcode: trimmedBarcode,
@@ -390,19 +433,19 @@ export async function GET(req: NextRequest) {
             category: cat,
             country_of_origin: analysis7.isIndian ? 'India' : null,
             image_url: mergedImage7,
-            source: offFallback ? 'open_food_facts_with_ai_nutrition' : 'groq_category_estimated',
+            source: offFallback ? 'open_food_facts_with_ai_nutrition' : 'category_estimated',
             nutrition: {
-              calories: groqResult.nutrition.calories ?? null,
-              protein: groqResult.nutrition.protein ?? null,
-              carbs: groqResult.nutrition.carbs ?? null,
-              fat: groqResult.nutrition.fat ?? null,
-              saturated_fat: groqResult.nutrition.saturated_fat ?? null,
-              sugar: groqResult.nutrition.sugar ?? null,
-              sodium: groqResult.nutrition.sodium ?? null,
-              fiber: groqResult.nutrition.fiber ?? null,
+              calories:      groqResult.calories ?? null,
+              protein:       groqResult.protein ?? null,
+              carbs:         groqResult.carbohydrates ?? null,
+              fat:           groqResult.fat ?? null,
+              saturated_fat: groqResult.saturated_fat ?? null,
+              sugar:         groqResult.sugar ?? null,
+              sodium:        groqResult.sodium ?? null,
+              fiber:         groqResult.fiber ?? null,
             },
             serving_size_g: null,
-            ingredients_text: groqResult.ingredients_text || null,
+            ingredients_text: offFallback?.ingredients_text || null,
             allergens: offFallback?.allergens || [],
             additives: offFallback?.additives || [],
           },
@@ -410,7 +453,7 @@ export async function GET(req: NextRequest) {
       }
     }
   } catch (e) {
-    console.log('Groq category nutrition failed:', e)
+    console.log('Category nutrition failed:', e)
   }
 
   // Layer 8 — AI estimation using Gemini
@@ -487,28 +530,30 @@ export async function GET(req: NextRequest) {
     console.log('AI estimation failed:', e)
   }
 
-  // Layer 9 — Static keyword-based nutrition estimation (no API key needed)
-  if (offFallback) {
-    const staticNut = estimateStaticNutrition(offFallback.name)
-    console.log('[Scan] Using static nutrition for:', offFallback.name)
-    const merged = {
-      ...offFallback,
-      calories_per_100g:      staticNut.calories,
-      protein_per_100g:       staticNut.protein,
-      carbs_per_100g:         staticNut.carbs,
-      fat_per_100g:           staticNut.fat,
-      saturated_fat_per_100g: null,
-      sugar_per_100g:         staticNut.sugar,
-      sodium_per_100g:        staticNut.sodium,
-      fiber_per_100g:         staticNut.fiber,
+  // Layer 9 — Static keyword-based nutrition estimation (no API key needed, no offFallback gate)
+  if (offFallback?.name) {
+    const estimated9 = await fillNutritionIfMissing(offFallback.name, {})
+    if (estimated9) {
+      console.log('[Scan] Using static nutrition for:', offFallback.name)
+      const merged = {
+        ...offFallback,
+        calories_per_100g:      estimated9.calories,
+        protein_per_100g:       estimated9.protein,
+        carbs_per_100g:         estimated9.carbohydrates,
+        fat_per_100g:           estimated9.fat,
+        saturated_fat_per_100g: estimated9.saturated_fat,
+        sugar_per_100g:         estimated9.sugar,
+        sodium_per_100g:        estimated9.sodium,
+        fiber_per_100g:         estimated9.fiber,
+      }
+      cacheProduct(merged)
+      return NextResponse.json({
+        success: true,
+        source: 'open_food_facts_with_static_nutrition',
+        confidence: 'estimated' as Confidence,
+        data: formatProduct(merged),
+      })
     }
-    cacheProduct(merged)
-    return NextResponse.json({
-      success: true,
-      source: 'open_food_facts_with_static_nutrition',
-      confidence: 'estimated' as Confidence,
-      data: formatProduct(merged),
-    })
   }
 
   // Final — If OFF had metadata but no AI layer succeeded, return it anyway

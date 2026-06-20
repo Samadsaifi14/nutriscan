@@ -135,8 +135,8 @@ export async function POST(req: NextRequest) {
         name: a.name,
         also_known_as: a.aliases,
         found_in_product: true,
-        concern: a.concern || a.description,
-        severity: a.risk === 'critical' ? 'high' : a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low',
+        concern: a.concern,
+        severity: a.risk === 'harmful' ? 'high' : a.risk === 'high' ? 'high' : a.risk === 'moderate' ? 'medium' : 'low',
         scientific_source: 'WHO/FSSAI/EFSA',
         source_url: '',
         global_safe_limit: '',
@@ -177,7 +177,7 @@ export async function POST(req: NextRequest) {
           ingredient_warnings: activeWarnings.map(a => ({
             ingredient: a.name,
             concern: a.concern || a.description,
-            severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
+            severity: a.risk === 'harmful' || a.risk === 'high' ? 'high' : a.risk === 'moderate' ? 'medium' : 'low'
           })),
           positives: ['Ingredient analysis completed - see harmful ingredients above'],
           long_term_risks: activeWarnings.length > 0 
@@ -246,8 +246,8 @@ export async function POST(req: NextRequest) {
       name: a.name,
       also_known_as: a.aliases,
       found_in_product: true,
-      concern: a.concern || a.description,
-      severity: a.risk === 'critical' ? 'high' : a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low',
+      concern: a.concern,
+      severity: a.risk === 'harmful' ? 'high' : a.risk === 'high' ? 'high' : a.risk === 'moderate' ? 'medium' : 'low',
       scientific_source: 'WHO/FSSAI/EFSA',
       source_url: '',
       global_safe_limit: '',
@@ -321,7 +321,7 @@ export async function POST(req: NextRequest) {
             ingredient_warnings: localResult.detected_additives.map(a => ({
               ingredient: a.name,
               concern: a.concern || a.description,
-              severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
+              severity: a.risk === 'harmful' || a.risk === 'high' ? 'high' : a.risk === 'moderate' ? 'medium' : 'low'
             })),
             summary: localResult.summary,
             concerns: [],
@@ -357,7 +357,7 @@ export async function POST(req: NextRequest) {
             ingredient_warnings: localResult.detected_additives.map(a => ({
               ingredient: a.name,
               concern: a.concern || a.description,
-              severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
+              severity: a.risk === 'harmful' || a.risk === 'high' ? 'high' : a.risk === 'moderate' ? 'medium' : 'low'
             })),
             summary: cachedAnalysis.summary || localResult.summary,
             concerns: cachedAnalysis.concerns || [],
@@ -457,7 +457,7 @@ export async function POST(req: NextRequest) {
       ingredient_warnings: fullAnalysisWarnings.map(a => ({
         ingredient: a.name,
         concern: a.concern || a.description,
-        severity: a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low'
+        severity: a.risk === 'harmful' || a.risk === 'high' ? 'high' : a.risk === 'moderate' ? 'medium' : 'low'
       })),
       positives: aiEnhancement?.positives || [`Local scoring: ${localResult.score}/10 (${localResult.grade})`],
       long_term_risks: aiEnhancement?.long_term_risks || (localDetectedAdditives.length > 0 ? 

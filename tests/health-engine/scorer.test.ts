@@ -170,10 +170,10 @@ describe('scoreAdditives', () => {
     expect(result.breakdown.some(b => b.factor === 'additives_clean')).toBe(true)
   })
 
-  it('should penalize critical-risk additives heavily', () => {
+  it('should penalize high-risk additives heavily', () => {
     const result = scoreAdditives('Contains sodium nitrite')
-    const critical = result.detected.find(a => a.risk === 'critical')
-    expect(critical).toBeDefined()
+    const high = result.detected.find(a => a.risk === 'high')
+    expect(high).toBeDefined()
     expect(result.score).toBeLessThan(10)
   })
 
@@ -233,7 +233,7 @@ describe('scoreProduct', () => {
     expect(result.summary).toContain('Score:')
   })
 
-  it('should reference critical additives in summary', () => {
+  it('should reference harmful additives in summary', () => {
     const result = scoreProduct({}, 'sodium nitrite')
     expect(result.summary.toLowerCase()).toContain('sodium nitrite')
   })

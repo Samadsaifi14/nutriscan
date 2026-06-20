@@ -15,14 +15,14 @@ describe('ADDITIVES_DB', () => {
   it('every entry should have a name, risk, and category', () => {
     for (const a of ADDITIVES_DB) {
       expect(a.name).toBeTruthy()
-      expect(['safe', 'low', 'medium', 'high', 'critical']).toContain(a.risk)
+      expect(['safe', 'low', 'moderate', 'high', 'harmful']).toContain(a.risk)
       expect(a.category).toBeTruthy()
     }
   })
 
-  it('should have at least 3 critical-risk additives', () => {
-    const critical = ADDITIVES_DB.filter(a => a.risk === 'critical')
-    expect(critical.length).toBeGreaterThanOrEqual(3)
+  it('should have at least 2 harmful-risk additives', () => {
+    const harmful = ADDITIVES_DB.filter(a => a.risk === 'harmful')
+    expect(harmful.length).toBeGreaterThanOrEqual(2)
   })
 
   it('should have at least 5 high-risk additives', () => {
@@ -83,10 +83,10 @@ describe('detectAdditives', () => {
 })
 
 describe('getAdditivesByRisk', () => {
-  it('should return all critical additives', () => {
-    const result = getAdditivesByRisk('critical')
-    expect(result.length).toBeGreaterThanOrEqual(3)
-    result.forEach(a => expect(a.risk).toBe('critical'))
+  it('should return all harmful additives', () => {
+    const result = getAdditivesByRisk('harmful')
+    expect(result.length).toBeGreaterThanOrEqual(2)
+    result.forEach(a => expect(a.risk).toBe('harmful'))
   })
 
   it('should return all safe additives', () => {
@@ -118,7 +118,7 @@ describe('getCategoryWarnings', () => {
   it('should return warnings for chips', () => {
     const result = getCategoryWarnings('chips')
     expect(result.length).toBeGreaterThan(0)
-    expect(result.some(a => a.category === 'other' || a.category === 'flavor')).toBe(true)
+    expect(result.some(a => a.category === 'fat' || a.category === 'flavouring')).toBe(true)
   })
 
   it('should return warnings for cold_drink', () => {

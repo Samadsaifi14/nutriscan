@@ -88,8 +88,8 @@ export function buildLocalAnalysis(input: ClientAnalysisInput): ClientAnalysisOu
 
   const harmful_ingredients = result.detected_additives.map(a => ({
     name: a.name,
-    concern: a.concern || a.description || 'Potentially harmful additive',
-    severity: (a.risk === 'critical' || a.risk === 'high' ? 'high' : a.risk === 'medium' ? 'medium' : 'low') as 'high' | 'medium' | 'low',
+    concern: a.concern || 'Potentially harmful additive',
+    severity: (a.risk === 'harmful' || a.risk === 'high' ? 'high' : a.risk === 'moderate' ? 'medium' : 'low') as 'high' | 'medium' | 'low',
     found_in_product: true,
   }))
 
