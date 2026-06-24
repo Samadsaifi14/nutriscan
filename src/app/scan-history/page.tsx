@@ -56,7 +56,7 @@ export default function ScanHistoryPage() {
     return groups
   }, [sessions])
 
-  const scoreColorVar = (s: number) => s >= 7 ? 'var(--moss)' : s >= 5 ? 'var(--clay)' : 'var(--rust)'
+  const scoreColorVar = (s: number) => s >= 7 ? 'var(--moss)' : s >= 5 ? 'var(--amber)' : 'var(--rust)'
 
   return (
     <div className="min-h-screen bg-[var(--background)] flex flex-col">

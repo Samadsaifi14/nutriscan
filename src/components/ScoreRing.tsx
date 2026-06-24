@@ -9,7 +9,7 @@ export default function ScoreRing({ score, size = 44 }: ScoreRingProps) {
   const r = size * 0.38
   const circ = 2 * Math.PI * r
   const dash = (Math.min(Math.max(score, 0), 10) / 10) * circ
-  const col = score >= 7 ? 'var(--moss)' : score >= 5 ? 'var(--clay)' : 'var(--risk-red)'
+  const col = score >= 7 ? 'var(--moss)' : score >= 5 ? 'var(--amber)' : 'var(--risk-red)'
 
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>

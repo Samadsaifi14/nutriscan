@@ -45,7 +45,7 @@ export default function BottomNav() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 0 0 3px var(--background), 0 0 0 5px rgba(196,113,74,0.27)',
-                fontSize: 18,
+                fontSize: 22,
               }}>
                 <span>\uD83D\uDCF7</span>
               </div>
@@ -64,8 +64,8 @@ export default function BottomNav() {
             textDecoration: 'none',
           }}>
             {on && <div style={{ width: 18, height: 2, borderRadius: 2, background: 'var(--clay)', marginBottom: 2 }} />}
-            <span style={{ fontSize: 13, color: on ? 'var(--clay)' : 'var(--muted)', lineHeight: 1.35 }}>{t.icon}</span>
-            {t.label && <span style={{ fontSize: 6, color: on ? 'var(--clay)' : 'var(--muted)', fontWeight: on ? 600 : 400 }}>{t.label}</span>}
+            <span style={{ fontSize: 18, color: on ? 'var(--clay)' : 'var(--muted)', lineHeight: 1.35 }}>{t.icon}</span>
+            {t.label && <span style={{ fontSize: 8, color: on ? 'var(--clay)' : 'var(--muted)', fontWeight: on ? 600 : 400 }}>{t.label}</span>}
           </Link>
         )
       })}

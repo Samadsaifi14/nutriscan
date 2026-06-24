@@ -133,7 +133,7 @@ function SearchPageContent() {
                         {p.health_score != null && (
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             p.health_score >= 7 ? 'bg-[var(--moss)]/15 text-[var(--moss)]' :
-                            p.health_score >= 5 ? 'bg-[var(--clay)]/15 text-[var(--clay)]' :
+                            p.health_score >= 5 ? 'bg-[var(--amber)]/15 text-[var(--amber)]' :
                             'bg-[var(--rust)]/15 text-[var(--rust)]'
                           }`}>
                             {p.health_score}/10

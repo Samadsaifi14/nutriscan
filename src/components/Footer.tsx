@@ -25,7 +25,7 @@ export function Footer() {
           ))}
         </div>
         <p className="text-[10px]" style={{ color: 'var(--muted-2)' }}>
-          &copy; {new Date().getFullYear()} HealthOX. All rights reserved.
+          &copy; {new Date().getFullYear()} Bio You. All rights reserved.
         </p>
         <p className="text-[10px] mt-1" style={{ color: 'var(--muted-2)' }}>
           As an Amazon Associate, we earn from qualifying purchases.

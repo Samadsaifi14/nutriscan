@@ -90,7 +90,7 @@ export default function LeaderboardPage() {
       {currentUser && (
         <div className="mx-3 mt-3 mb-1 p-3 rounded-xl border border-[var(--clay)] bg-[var(--surface)] flex items-center gap-3 flex-shrink-0">
           <span className="text-sm font-bold text-[var(--clay)]">#{currentUserIdx + 1}</span>
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--clay)] to-[var(--clayDim)] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--clay)] to-[var(--clay-dim)] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
             {(currentUser.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
@@ -129,7 +129,7 @@ export default function LeaderboardPage() {
                 <span className={`text-xs font-bold w-5 text-center ${i < 3 ? 'text-base' : 'text-[var(--muted)]'}`}>
                   {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                 </span>
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--clay)] to-[var(--clayDim)] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--clay)] to-[var(--clay-dim)] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
                   {(u.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">

@@ -393,7 +393,7 @@ async function handleLogMeal(mealType: string) {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-  const scoreColor = (s: number) => s >= 7 ? '#4C6B39' : s >= 5 ? '#D98C2A' : '#BE4230'
+  const scoreColor = (s: number) => s >= 7 ? 'var(--moss)' : s >= 5 ? 'var(--amber)' : 'var(--rust)'
   const scoreLabel = (s: number) => s >= 7 ? 'Good' : s >= 5 ? 'Moderate' : 'Needs Improvement'
   const severityStyle = (sev: string) => {
     if (sev === 'high') return { dot: 'bg-[var(--rust)]', badge: 'bg-[var(--rust)]/15 text-[var(--rust)] border border-[var(--rust)]/25' }
@@ -931,7 +931,7 @@ async function handleLogMeal(mealType: string) {
                   <div className="flex-1">
                     <div className="flex justify-between mb-1">
                       <span className="text-[11px] text-[var(--muted-2)]">Current</span>
-                      <span className={`text-[11px] font-bold ${apiAlternatives.current_score >= 7 ? 'text-[var(--moss)]' : apiAlternatives.current_score >= 5 ? 'text-[var(--clay)]' : 'text-[var(--rust)]'}`}>
+                      <span className={`text-[11px] font-bold ${apiAlternatives.current_score >= 7 ? 'text-[var(--moss)]' : apiAlternatives.current_score >= 5 ? 'text-[var(--amber)]' : 'text-[var(--rust)]'}`}>
                         {apiAlternatives.current_score}/10
                       </span>
                     </div>

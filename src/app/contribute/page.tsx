@@ -1,519 +1,378 @@
-// src/app/contribute/page.tsx
 "use client"
-
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import toast from 'react-hot-toast'
 import { createClient } from '@supabase/supabase-js'
-import { parseIndianNutritionLabel, type ParsedNutrition } from '@/lib/ocr/indian-label-parser'
+import { parseIndianNutritionLabel } from '@/lib/ocr/indian-label-parser'
 import { enhanceImage, hasGlare } from '@/lib/ocr/image-enhancer'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-interface CapturedImage {
-  dataUrl: string
-}
-
-interface ParsedData {
-  nutrition: ParsedNutrition
-  rawText: string
-}
+const STEPS = ['Info', 'Ingr', 'Nutr', 'Review']
 
 function ContributePageContent() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
   const barcode = searchParams?.get('barcode') || ''
-  
-  const [step, setStep] = useState<'capture_front' | 'capture_nutrition' | 'review' | 'done'>('capture_front')
+
+  const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [capturedImages, setCapturedImages] = useState<{
-    front: CapturedImage | null
-    nutrition: CapturedImage | null
-  }>({ front: null, nutrition: null })
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    brand: '',
-  })
-  
-  const [parsedData, setParsedData] = useState<ParsedData | null>(null)
-  const [correctedNutrition, setCorrectedNutrition] = useState<any>(null)
+  const [capturedImages, setCapturedImages] = useState<{ front: string | null; nutrition: string | null }>({ front: null, nutrition: null })
+  const [formData, setFormData] = useState({ name: '', brand: '', category: '' })
+  const [parsedData, setParsedData] = useState<any>(null)
+  const [correctedNutrition, setCorrectedNutrition] = useState<any>({})
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin?callbackUrl=/contribute')
-    }
+    if (status === 'unauthenticated') router.push('/auth/signin?callbackUrl=/contribute')
   }, [status, router])
 
-  // Auto-start camera on mount
-  useEffect(() => {
-    if (status === 'authenticated' && step === 'capture_front') {
-      // Camera starts automatically
-    }
-  }, [status, step])
-
-  async function handlePhotoCapture(imageDataUrl: string) {
-    if (step === 'capture_front') {
-      setCapturedImages({ ...capturedImages, front: { dataUrl: imageDataUrl } })
-      
-      // Pre-fill brand from barcode
-      if (barcode && barcode.startsWith('890')) {
-        // Could lookup brand from barcode-intelligence
-        setFormData({ ...formData, brand: '' })
+  const openCamera = (type: 'front' | 'nutrition') => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.capture = 'environment'
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = async () => {
+        const dataUrl = reader.result as string
+        if (type === 'front') {
+          setCapturedImages(prev => ({ ...prev, front: dataUrl }))
+        } else {
+          setCapturedImages(prev => ({ ...prev, nutrition: dataUrl }))
+          await processNutritionLabel(dataUrl)
+        }
       }
-      
-      // Move to nutrition capture
-      setStep('capture_nutrition')
-      
-    } else if (step === 'capture_nutrition') {
-      setCapturedImages({ ...capturedImages, nutrition: { dataUrl: imageDataUrl } })
-      
-      // Process the nutrition label with OCR
-      await processNutritionLabel(imageDataUrl)
-      setStep('review')
+      reader.readAsDataURL(file)
     }
+    input.click()
   }
 
   async function processNutritionLabel(imageDataUrl: string) {
     setLoading(true)
-    
     try {
-      // Step 1: Check for glare
+      const enhanced = await enhanceImage(imageDataUrl)
       const glareDetected = await hasGlare(imageDataUrl)
-      if (glareDetected) {
-        toast.error('⚠️ Glare detected! Please retake the photo without flash.')
-        setLoading(false)
-        return
-      }
+      if (glareDetected) toast.error('Glare detected! Please retake without flash.')
 
-      // Step 2: Enhance image for better OCR
-      let enhancedDataUrl = imageDataUrl
-      try {
-        const enhanced = await enhanceImage(imageDataUrl)
-        enhancedDataUrl = enhanced.dataUrl
-      } catch (e) {
-        console.log('Enhancement failed, using original', e)
-      }
-
-      // Step 3: Use AI to extract text from the enhanced image
       const response = await fetch('/api/scan-product-photo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: enhancedDataUrl })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: enhanced.dataUrl })
       })
-      
       const json = await response.json()
-      
+
       if (json.success && json.data) {
         const data = json.data
         const nutritionText = (data.ingredients_text || '') + ' ' + JSON.stringify(data.nutrition_per_100g || {})
         const parsed = parseIndianNutritionLabel(nutritionText)
-        
-        setParsedData({
-          nutrition: parsed,
-          rawText: data.ingredients_text || ''
-        })
-        
-        // Set initial corrected values from parsed data
+        setParsedData({ nutrition: parsed, rawText: data.ingredients_text || '' })
+
         const np = data.nutrition_per_100g || {}
         setCorrectedNutrition({
-          calories: np.calories || null,
-          protein: np.protein || null,
-          fat: np.fat || null,
-          saturated_fat: null,
-          trans_fat: null,
+          calories: np.calories || null, protein: np.protein || null,
+          fat: np.fat || null, saturated_fat: null, trans_fat: null,
           carbohydrates: np.carbs || np.carbohydrates || null,
-          sugar: np.sugar || null,
-          fiber: np.fiber || null,
-          sodium: np.sodium || null,
+          sugar: np.sugar || null, fiber: np.fiber || null, sodium: np.sodium || null,
         })
-        
-        // Pre-fill name if available
-        if (data.name && !formData.name) {
-          setFormData({ ...formData, name: data.name, brand: data.brand || '' })
-        }
+        if (data.name && !formData.name) setFormData(prev => ({ ...prev, name: data.name, brand: data.brand || '' }))
       }
-    } catch (err) {
-      console.error('OCR error:', err)
-      toast.error('Could not read nutrition label')
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { console.error('OCR error:', err); toast.error('Could not read nutrition label') }
+    finally { setLoading(false) }
   }
 
   async function handleSubmit() {
     const userId = (session?.user as any)?.id
-    if (!userId) {
-      toast.error('Please sign in to contribute')
-      return
-    }
-
-    if (!capturedImages.front || !capturedImages.nutrition) {
-      toast.error('Please capture both photos')
-      return
-    }
-
-    if (!formData.name.trim()) {
-      toast.error('Product name is required')
-      return
-    }
-
+    if (!userId) { toast.error('Please sign in'); return }
+    if (!capturedImages.front || !capturedImages.nutrition) { toast.error('Please add both photos'); return }
+    if (!formData.name.trim()) { toast.error('Product name is required'); return }
     setLoading(true)
-
     try {
-      // Upload images
-      const userIdStr = userId as string
-      const timestamp = Date.now()
-      
-      const frontUrl = await uploadImage(capturedImages.front.dataUrl, `front_${timestamp}.jpg`, userIdStr)
-      const nutritionUrl = await uploadImage(capturedImages.nutrition.dataUrl, `nutrition_${timestamp}.jpg`, userIdStr)
-
-      // Save to community_products - status = 'unverified' (shows immediately with badge)
+      const ts = Date.now()
+      const frontUrl = await uploadImage(capturedImages.front, `front_${ts}.jpg`, userId)
+      const nutritionUrl = await uploadImage(capturedImages.nutrition, `nutrition_${ts}.jpg`, userId)
       const { error } = await supabase.from('community_products').insert({
-        barcode: barcode || null,
-        name: formData.name,
-        brand: formData.brand || null,
-        front_label_url: frontUrl,
-        nutrition_label_url: nutritionUrl,
-        ingredients_text: parsedData?.rawText || null,
-        nutrition: correctedNutrition,
-        submitted_by: userId,
-        status: 'unverified', // Shows with warning badge immediately!
+        barcode: barcode || null, name: formData.name, brand: formData.brand || null,
+        front_label_url: frontUrl, nutrition_label_url: nutritionUrl,
+        ingredients_text: parsedData?.rawText || null, nutrition: correctedNutrition,
+        submitted_by: userId, status: 'unverified',
       })
-
       if (error) throw error
-
-      // Update user stats
       await supabase.rpc('increment_contributions', { user_id: userId })
-
-      // Check for new badges
-      try {
-        const badgeRes = await fetch('/api/profile/badges', { method: 'POST' })
-        const badgeJson = await badgeRes.json()
-        if (badgeJson.newBadges?.length > 0) {
-          const badgeNames = badgeJson.newBadges.map((b: any) => `${b.emoji} ${b.name}`).join(', ')
-          setTimeout(() => toast.success(`🏅 New badge earned: ${badgeNames}`), 500)
-        }
-      } catch {}
-
-      // Show impact immediately
-      setStep('done')
-      setLoading(false)
-
-    } catch (error: any) {
-      console.error('Submit error:', error)
-      toast.error(error.message || 'Failed to submit')
-      setLoading(false)
-    }
+      try { await fetch('/api/profile/badges', { method: 'POST' }) } catch {}
+      setStep(4)
+    } catch (err: any) { toast.error(err.message || 'Failed to submit') }
+    finally { setLoading(false) }
   }
 
   async function uploadImage(dataUrl: string, filename: string, userId: string): Promise<string> {
     const response = await fetch(dataUrl)
     const blob = await response.blob()
-    
-    const { data, error } = await supabase.storage
-      .from('community-products')
-      .upload(`${userId}/${filename}`, blob, { cacheControl: '3600', upsert: false })
-
+    const { error } = await supabase.storage.from('community-products').upload(`${userId}/${filename}`, blob, { cacheControl: '3600', upsert: false })
     if (error) throw error
-
-    const { data: urlData } = supabase.storage
-      .from('community-products')
-      .getPublicUrl(`${userId}/${filename}`)
-
-    return urlData.publicUrl
+    const { data } = supabase.storage.from('community-products').getPublicUrl(`${userId}/${filename}`)
+    return data.publicUrl
   }
 
-  if (status === 'loading') {
-    return <LoadingScreen />
-  }
+  if (status === 'loading') return <div className="min-h-screen bg-[var(--background)] flex items-center justify-center"><div className="w-6 h-6 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" /></div>
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-[var(--foreground)] pb-24">
-      
-      {/* Step 1: Capture Front Label */}
-      {step === 'capture_front' && (
-        <CameraCapturePage
-          title="📷 Scan Front of Package"
-          description="Take a photo of the front of the product packet"
-          onCapture={handlePhotoCapture}
-          onSkip={() => { setStep('capture_nutrition') }}
-        />
-      )}
-
-      {/* Step 2: Capture Nutrition Label */}
-      {step === 'capture_nutrition' && (
-        <CameraCapturePage
-          title="📷 Scan Nutrition Label"
-          description="Take a photo of the nutrition facts table on the back"
-          onCapture={handlePhotoCapture}
-          onSkip={() => { 
-            setParsedData({ 
-              nutrition: {
-                calories: null,
-                protein: null,
-                fat: null,
-                saturated_fat: null,
-                trans_fat: null,
-                carbohydrates: null,
-                sugar: null,
-                fiber: null,
-                sodium: null,
-                serving_size: null,
-                ingredients_text: null,
-                fssai_license: null,
-                mrp: null,
-                confidence: {}
-              }, 
-              rawText: '' 
-            })
-            setCorrectedNutrition({})
-            setStep('review')
-          }}
-        />
-      )}
-
-      {/* Step 3: Review & Correct */}
-      {step === 'review' && (
-        <ReviewPage
-          formData={formData}
-          setFormData={setFormData}
-          parsedData={parsedData}
-          correctedNutrition={correctedNutrition}
-          setCorrectedNutrition={setCorrectedNutrition}
-          onSubmit={handleSubmit}
-          onBack={() => setStep('capture_nutrition')}
-          loading={loading}
-          barcode={barcode}
-        />
-      )}
-
-      {/* Step 4: Success */}
-      {step === 'done' && (
-        <SuccessPage 
-          productName={formData.name}
-          onContributeMore={() => {
-            setStep('capture_front')
-            setCapturedImages({ front: null, nutrition: null })
-            setFormData({ name: '', brand: '' })
-            setParsedData(null)
-            setCorrectedNutrition(null)
-          }}
-          onGoHome={() => router.push('/dashboard')}
-        />
-      )}
-    </div>
-  )
-}
-
-// Camera Capture Component
-function CameraCapturePage({ title, description, onCapture, onSkip }: {
-  title: string
-  description: string
-  onCapture: (data: string) => void
-  onSkip?: () => void
-}) {
-  const [stream, setStream] = useState<MediaStream | null>(null)
-  const [showCamera, setShowCamera] = useState(true)
-  const videoRef = useRef<HTMLVideoElement>(null)
-
-  useEffect(() => {
-    startCamera()
-    return () => {
-      if (stream) stream.getTracks().forEach(t => t.stop())
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  async function startCamera() {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      })
-      setStream(mediaStream)
-      if (videoRef.current) videoRef.current.srcObject = mediaStream
-    } catch (err) {
-      console.error('Camera error:', err)
-      toast.error('Could not access camera')
-    }
-  }
-
-  function capture() {
-    if (!videoRef.current) return
-    const canvas = document.createElement('canvas')
-    canvas.width = videoRef.current.videoWidth
-    canvas.height = videoRef.current.videoHeight
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.drawImage(videoRef.current, 0, 0)
-    if (stream) stream.getTracks().forEach(t => t.stop())
-    onCapture(canvas.toDataURL('image/jpeg', 0.85))
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      <div className="flex-1 relative">
-        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-11/12 h-2/3 border-2 border-white/40 rounded-lg" />
-        </div>
-        <div className="absolute bottom-4 left-4 right-4">
-          <p className="text-white text-center bg-black/60 px-4 py-2 rounded-lg text-sm">{description}</p>
-        </div>
-      </div>
-      <div className="p-4 bg-black flex gap-3">
-        {onSkip && (
-          <button onClick={onSkip} className="flex-1 py-3 bg-gray-700 text-white font-bold rounded-xl">
-            Skip / Don't have
-          </button>
-        )}
-        <button onClick={capture} className="flex-1 py-3 bg-[var(--clay)] text-white font-bold rounded-xl">
-          📸 Capture
+    <div className="min-h-screen bg-[var(--background)] flex flex-col">
+      {/* TopBar */}
+      <div className="h-11 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0">
+        <button onClick={() => step > 0 ? setStep(s => Math.max(0, s - 1)) : router.back()} className="text-base text-[var(--sand)]">
+          {step > 0 || (step === 0 && !barcode) ? '' : ''}←
         </button>
-      </div>
-    </div>
-  )
-}
-
-// Review & Correction Page
-function ReviewPage({ formData, setFormData, parsedData, correctedNutrition, setCorrectedNutrition, onSubmit, onBack, loading, barcode }: any) {
-  return (
-    <div className="px-4 pt-8 pb-6">
-      <h1 className="text-xl font-black mb-2">✅ Review & Correct</h1>
-      <p className="text-sm text-[var(--muted-2)] mb-6">Please verify the extracted values</p>
-
-      {/* Product Details */}
-      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 mb-4">
-        <div className="space-y-3">
-          <div>
-            <label className="text-[11px] text-[var(--muted-2)] font-bold uppercase">Product Name *</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-xl text-sm mt-1"
-              placeholder="e.g., Parle-G Glucose Biscuits"
-            />
-          </div>
-          <div>
-            <label className="text-[11px] text-[var(--muted-2)] font-bold uppercase">Brand</label>
-            <input
-              type="text"
-              value={formData.brand}
-              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-              className="w-full px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-xl text-sm mt-1"
-              placeholder="e.g., Parle"
-            />
-          </div>
-        </div>
+        <span className="text-sm font-bold text-[var(--foreground)]">Add Product</span>
+        <span className="text-xs text-[var(--sand)]">{step < 4 ? `Step ${step + 1} of 4` : 'Done'}</span>
       </div>
 
-      {/* Nutrition Correction */}
-      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold">📊 Nutrition (per 100g)</h2>
-          <span className="text-[10px] text-amber-400">Tap to correct</span>
+      {/* Progress bar */}
+      {step < 4 && (
+        <div className="px-4 pt-3 pb-2 flex-shrink-0">
+          <div style={{ display: 'flex', gap: 0, position: 'relative', marginBottom: 10 }}>
+            <div style={{ position: 'absolute', top: 9, left: '10%', right: '10%', height: 2, background: 'var(--surface-3)', zIndex: 0 }} />
+            <div style={{ position: 'absolute', top: 9, left: '10%', width: `${(step / 3) * 80}%`, height: 2, background: 'var(--clay)', zIndex: 1, transition: 'width .3s' }} />
+            {STEPS.map((s, i) => (
+              <div key={s} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center', zIndex: 2 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: i === step ? 'var(--clay)' : i < step ? 'var(--moss)' : 'var(--surface-3)',
+                  border: `0.5px solid ${i === step ? 'var(--clay)' : 'var(--border-2)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <span style={{ fontSize: 6.5, color: i <= step ? '#fff' : 'var(--muted)', fontWeight: 700 }}>{i + 1}</span>
+                </div>
+                <span style={{ fontSize: 6, color: i === step ? 'var(--clay)' : 'var(--muted)' }}>{s}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        
-        <div className="space-y-2">
-          {[
-            { key: 'calories', label: 'Energy', unit: 'kcal' },
-            { key: 'protein', label: 'Protein', unit: 'g' },
-            { key: 'fat', label: 'Total Fat', unit: 'g' },
-            { key: 'carbohydrates', label: 'Carbs', unit: 'g' },
-            { key: 'sugar', label: 'Sugar', unit: 'g' },
-            { key: 'sodium', label: 'Sodium', unit: 'mg' },
-          ].map((field) => (
-            <div key={field.key} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
-              <span className="text-sm text-[var(--muted-2)]">{field.label}</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={correctedNutrition[field.key] || ''}
-                  onChange={(e) => setCorrectedNutrition({ ...correctedNutrition, [field.key]: e.target.value ? parseFloat(e.target.value) : null })}
-                  className="w-20 px-2 py-1 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm text-right"
-                  placeholder="—"
-                />
-                <span className="text-xs text-[var(--muted-2)] w-6">{field.unit}</span>
+      )}
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-4 pt-1 pb-6 space-y-4">
+
+        {/* ═══ STEP 0 — Info ═══ */}
+        {step === 0 && (
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
+            <h2 className="text-sm font-bold text-[var(--foreground)] mb-1">Product Information</h2>
+            <p className="text-xs text-[var(--sand)] mb-4">Tell us about the product</p>
+
+            <div className="space-y-3">
+              <div>
+                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Product name *</span>
+                <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
+                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g. Maggi 2-Minute Noodles"
+                    className="w-full bg-transparent text-xs text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]" />
+                </div>
+              </div>
+              <div>
+                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Brand name *</span>
+                <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
+                  <input type="text" value={formData.brand} onChange={e => setFormData({ ...formData, brand: e.target.value })}
+                    placeholder="e.g. Nestlé India"
+                    className="w-full bg-transparent text-xs text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]" />
+                </div>
+              </div>
+              <div>
+                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Barcode</span>
+                <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
+                  <input type="text" defaultValue={barcode} placeholder="Scan or enter barcode"
+                    className="w-full bg-transparent text-xs text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]" />
+                </div>
+              </div>
+              <div>
+                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Category *</span>
+                <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
+                  <span className="text-xs text-[var(--muted)]">Select...</span>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
+
+            <button onClick={() => {
+              if (!formData.name.trim()) { toast.error('Product name is required'); return }
+              setStep(1)
+            }} className="w-full mt-4 h-9 rounded-lg bg-[var(--clay)] text-white text-xs font-bold">
+              Continue →
+            </button>
+          </div>
+        )}
+
+        {/* ═══ STEP 1 — Photo / Ingredient Capture ═══ */}
+        {step === 1 && (
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
+            <h2 className="text-sm font-bold text-[var(--foreground)] mb-1">Front Label Photo</h2>
+            <p className="text-xs text-[var(--sand)] mb-4">Upload product front image</p>
+
+            <div onClick={() => openCamera('front')} style={{
+              height: 60, borderRadius: 10, border: '1.5px dashed var(--border-2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12, cursor: 'pointer'
+            }}>
+              {capturedImages.front ? (
+                <div className="flex items-center gap-2">
+                  <span style={{ fontSize: 15 }}>✅</span>
+                  <span className="text-xs text-[var(--clay)]">Photo captured</span>
+                </div>
+              ) : (
+                <>
+                  <span style={{ fontSize: 15 }}>📷</span>
+                  <span className="text-xs text-[var(--sand)]">Add product photo</span>
+                </>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setStep(0)} className="flex-1 h-9 rounded-lg border border-[var(--border-2)] text-[var(--sand)] text-xs font-bold bg-[var(--surface-2)]">← Back</button>
+              <button onClick={() => { if (!capturedImages.front) { toast.error('Please add a photo'); return }; setStep(2) }}
+                className="flex-1 h-9 rounded-lg bg-[var(--clay)] text-white text-xs font-bold">Continue →</button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ STEP 2 — Nutrition Label Capture ═══ */}
+        {step === 2 && (
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
+            <h2 className="text-sm font-bold text-[var(--foreground)] mb-1">Nutrition Label Photo</h2>
+            <p className="text-xs text-[var(--sand)] mb-4">Upload the nutrition table</p>
+
+            <div onClick={() => openCamera('nutrition')} style={{
+              height: 60, borderRadius: 10, border: '1.5px dashed var(--border-2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12, cursor: 'pointer'
+            }}>
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-[var(--sand)]">Processing...</span>
+                </div>
+              ) : capturedImages.nutrition ? (
+                <div className="flex items-center gap-2">
+                  <span style={{ fontSize: 15 }}>✅</span>
+                  <span className="text-xs text-[var(--clay)]">Nutrition parsed</span>
+                </div>
+              ) : (
+                <>
+                  <span style={{ fontSize: 15 }}>📷</span>
+                  <span className="text-xs text-[var(--sand)]">Add nutrition photo</span>
+                </>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setStep(1)} className="flex-1 h-9 rounded-lg border border-[var(--border-2)] text-[var(--sand)] text-xs font-bold bg-[var(--surface-2)]">← Back</button>
+              <button onClick={() => { if (!capturedImages.nutrition) { toast.error('Please add a nutrition photo'); return }; setStep(3) }}
+                className="flex-1 h-9 rounded-lg bg-[var(--clay)] text-white text-xs font-bold">Review →</button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ STEP 3 — Review ═══ */}
+        {step === 3 && (
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
+            <h2 className="text-sm font-bold text-[var(--foreground)] mb-1">Review & Correct</h2>
+            <p className="text-xs text-[var(--sand)] mb-4">Verify the extracted values</p>
+
+            <div className="space-y-3 mb-4">
+              <div>
+                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Product name</span>
+                <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
+                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full bg-transparent text-xs text-[var(--foreground)] outline-none" />
+                </div>
+              </div>
+              <div>
+                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Brand</span>
+                <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
+                  <input type="text" value={formData.brand} onChange={e => setFormData({ ...formData, brand: e.target.value })}
+                    className="w-full bg-transparent text-xs text-[var(--foreground)] outline-none" />
+                </div>
+              </div>
+            </div>
+
+            {parsedData?.rawText && (
+              <div className="mb-4 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--border-2)]">
+                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Extracted Ingredients</span>
+                <p className="text-[10px] text-[var(--sand)] leading-relaxed">{parsedData.rawText}</p>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <span className="text-[11px] text-[var(--sand)] font-bold block mb-2">Nutrition (per 100g)</span>
+              <div className="space-y-2">
+                {[
+                  { key: 'calories', label: 'Energy', unit: 'kcal' },
+                  { key: 'protein', label: 'Protein', unit: 'g' },
+                  { key: 'fat', label: 'Total Fat', unit: 'g' },
+                  { key: 'carbohydrates', label: 'Carbs', unit: 'g' },
+                  { key: 'sugar', label: 'Sugar', unit: 'g' },
+                  { key: 'sodium', label: 'Sodium', unit: 'mg' },
+                ].map(f => (
+                  <div key={f.key} className="flex items-center justify-between py-1.5 border-b border-[var(--border-2)] last:border-0">
+                    <span className="text-xs text-[var(--sand)]">{f.label}</span>
+                    <div className="flex items-center gap-2">
+                      <input type="number" value={correctedNutrition[f.key] || ''}
+                        onChange={e => setCorrectedNutrition({ ...correctedNutrition, [f.key]: e.target.value ? parseFloat(e.target.value) : null })}
+                        className="w-20 h-7 px-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border-2)] text-xs text-right text-[var(--foreground)] outline-none" placeholder="—" />
+                      <span className="text-[10px] text-[var(--muted)] w-5">{f.unit}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setStep(2)} className="flex-1 h-9 rounded-lg border border-[var(--border-2)] text-[var(--sand)] text-xs font-bold bg-[var(--surface-2)]">← Back</button>
+              <button onClick={handleSubmit} disabled={loading || !formData.name}
+                className="flex-1 h-9 rounded-lg bg-[var(--clay)] text-white text-xs font-bold disabled:opacity-50">
+                {loading ? 'Submitting...' : '✓ Submit Product'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ STEP 4 — Success ═══ */}
+        {step === 4 && (
+          <div className="text-center pt-8">
+            <div style={{
+              width: 52, height: 52, borderRadius: '50%',
+              background: 'var(--clay)', margin: '0 auto 16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22
+            }}>
+              <span>🎉</span>
+            </div>
+            <p className="text-sm font-bold text-[var(--foreground)] mb-1">You're the First!</p>
+            <p className="text-xs text-[var(--sand)] mb-6">
+              You added <span className="text-[var(--clay)] font-bold">{formData.name}</span> to Bio You.
+            </p>
+            <div style={{
+              background: 'var(--surface-2)', borderRadius: 10,
+              border: '0.5px solid var(--border-2)', padding: 10,
+              marginBottom: 12
+            }}>
+              <p className="text-[10px] text-[var(--sand)] mb-1">Your Impact</p>
+              <p className="text-xs font-bold text-[var(--clay)]">Help the community!</p>
+              <p className="text-[10px] text-[var(--sand)]">Others can now validate this product</p>
+            </div>
+            <button onClick={() => router.push('/dashboard')}
+              className="w-full h-9 rounded-lg bg-[var(--clay)] text-white text-xs font-bold mb-3">
+              Back to Dashboard
+            </button>
+          </div>
+        )}
+
       </div>
-
-      {/* Ingredients */}
-      {parsedData?.rawText && (
-        <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 mb-4">
-          <h2 className="text-sm font-bold mb-2">📋 Ingredients</h2>
-          <p className="text-xs text-[var(--muted-2)] leading-relaxed">{parsedData.rawText}</p>
-        </div>
-      )}
-
-      <div className="flex gap-3">
-        <button onClick={onBack} className="flex-1 py-3 bg-[var(--card)] border border-[var(--border)] text-[var(--muted-2)] font-bold rounded-xl">
-          ← Back
-        </button>
-        <button onClick={onSubmit} disabled={loading || !formData.name} className="flex-1 py-3 bg-[var(--clay)] disabled:bg-[var(--card)] text-white font-bold rounded-xl">
-          {loading ? 'Submitting...' : '✅ Submit'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// Success Page with Impact
-function SuccessPage({ productName, onContributeMore, onGoHome }: { productName: string; onContributeMore: () => void; onGoHome: () => void }) {
-  const [impact] = useState(Math.floor(Math.random() * 1000) + 100) // Simulated
-
-  return (
-    <div className="px-4 pt-12 pb-6 text-center">
-      <div className="w-24 h-24 rounded-full bg-gradient-to-b from-[var(--clay)] to-[color-mix(in_oklab,var(--clay),black_15%)] mx-auto mb-6 flex items-center justify-center text-6xl">
-        🎉
-      </div>
-      
-      <h1 className="text-2xl font-black mb-2">You're the First!</h1>
-      <p className="text-[var(--muted-2)] mb-6">
-        You added <span className="text-[var(--clay)] font-bold">{productName}</span> to HealthOX.
-      </p>
-
-      <div className="bg-gradient-to-b from-amber-500/10 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-6">
-        <p className="text-amber-400 text-sm font-bold mb-2">🇮🇳 Helping 10 crore Indians!</p>
-        <p className="text-xs text-[var(--muted-2)]">
-          When 2 more people confirm this product, it goes live and helps everyone make healthier choices.
-        </p>
-      </div>
-
-      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 mb-6">
-        <p className="text-xs text-[var(--muted-2)] mb-1">Your Impact</p>
-        <p className="text-2xl font-black text-[var(--clay)]">{impact}+ people</p>
-        <p className="text-[10px] text-[var(--muted-2)]">will see this product when it goes live</p>
-      </div>
-
-      <button onClick={onGoHome} className="w-full py-3 bg-[var(--clay)] text-white font-bold rounded-xl mb-3">
-        Back to Home
-      </button>
-      <button onClick={onContributeMore} className="text-sm text-[var(--clay)] font-bold">
-        Add another product →
-      </button>
-    </div>
-  )
-}
-
-function LoadingScreen() {
-  return (
-    <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
     </div>
   )
 }
 
 export default function ContributePage() {
   return (
-    <Suspense fallback={<LoadingScreen />}>
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)] flex items-center justify-center"><div className="w-6 h-6 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" /></div>}>
       <ContributePageContent />
     </Suspense>
   )
