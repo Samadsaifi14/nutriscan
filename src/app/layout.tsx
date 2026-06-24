@@ -3,7 +3,6 @@ import { Syne, DM_Sans } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
 import BottomNav from '@/components/BottomNav'
-import FloatingScanButton from '@/components/FloatingScanButton'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 import { Footer } from '@/components/Footer'
@@ -24,8 +23,8 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: 'HealthOX — Scan. Know. Choose Better.',
-    template: '%s | HealthOX',
+    default: 'Bio You — Scan. Know. Choose Better.',
+    template: '%s | Bio You',
   },
   description: 'Scan packaged foods to analyze ingredients, detect harmful additives, and get health scores. Made for India.',
   icons: {
@@ -64,7 +63,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
             <Footer />
             <BottomNav />
-            <FloatingScanButton />
             <ServiceWorkerRegister />
             <CookieBanner />
           </ErrorBoundary>

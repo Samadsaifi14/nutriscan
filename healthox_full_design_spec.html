@@ -1,0 +1,852 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+button{font-family:inherit}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#332D25;border-radius:3px}
+@keyframes scanline{0%{top:10%}50%{top:80%}100%{top:10%}}
+@keyframes pulseRing{0%,100%{opacity:.6}50%{opacity:1}}
+</style>
+
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const {useState,useRef,useCallback}=React;
+const C={bg:'#0A0806',surface:'#131110',surf2:'#1B1815',surf3:'#252018',clay:'#D0823A',clayDim:'#78471C',clayBg:'rgba(208,130,58,0.10)',moss:'#4C6B39',mossBg:'rgba(76,107,57,0.12)',rust:'#BE4230',rustBg:'rgba(190,66,48,0.12)',amber:'#D98C2A',amberBg:'rgba(217,140,42,0.12)',sand:'#A89A82',cream:'#EAE2D4',muted:'#58524A',border:'#221E18',border2:'#2E2922'};
+
+const r=(n,c=C.cream,w=400)=>({fontSize:n,color:c,fontWeight:w,lineHeight:1.35});
+const row=(g=6)=>({display:'flex',alignItems:'center',gap:g});
+const col=(g=6)=>({display:'flex',flexDirection:'column',gap:g});
+const card=(p=8)=>({background:C.surf2,borderRadius:10,border:`0.5px solid ${C.border2}`,padding:p});
+const pill=(bg=C.surf3,co=C.sand)=>({padding:'2px 7px',borderRadius:20,background:bg,color:co,fontSize:6.5,fontWeight:500,border:`0.5px solid ${C.border2}`,whiteSpace:'nowrap',display:'inline-flex',alignItems:'center'});
+
+const PAGES=[
+  {id:'home',label:'Home',group:'Core'},{id:'dashboard',label:'Dashboard',group:'Core'},
+  {id:'scan',label:'Scan',group:'Core'},{id:'results',label:'Results',group:'Core'},
+  {id:'search',label:'Search',group:'Core'},{id:'history',label:'History',group:'Content'},
+  {id:'favorites',label:'Favorites',group:'Content'},{id:'insights',label:'Insights',group:'Content'},
+  {id:'leaderboard',label:'Leaderboard',group:'Content'},{id:'validate',label:'Validate',group:'Utility'},
+  {id:'contribute',label:'Contribute',group:'Utility'},{id:'profile',label:'Profile Setup',group:'Auth'},
+  {id:'signin',label:'Sign In',group:'Auth'},{id:'admin',label:'Admin',group:'Admin'},
+  {id:'legal',label:'Legal',group:'Legal'},
+];
+
+const ANN={
+  home:{desc:'Public landing. No BottomNav. Transparent TopBar transitions to filled on scroll.',items:[
+    {n:1,e:'TopBar',s:'Logo left + "Sign in" pill right · bg transparent on hero · fills on scroll · 44px'},
+    {n:2,e:'Hero',s:'Full-bleed clay radial gradient · H1 24/800 cream · subtext 14/400 sand · 260px height'},
+    {n:3,e:'3D Phone Mockup',s:'Positioned right 55%+ of hero · perspective-rotated · 0.2 opacity fade'},
+    {n:4,e:'Primary CTA',s:'"📷 Start Scanning" · clay fill · 44px height · border-radius 22px · max-w 280px centered'},
+    {n:5,e:'Value Pills',s:'3 chips row: ✓ 120+ additives · ✓ Indian brands · ✓ FSSAI · overflow scroll'},
+    {n:6,e:'Feature Cards',s:'Vertical stack 3 cards · 32px icon tile clayBg · title 14/700 · body 12 sand/1.6'},
+    {n:7,e:'Footer',s:'Privacy · Terms · Cookies · v2.x · borderTop border · 8px sand centered'},
+  ]},
+  dashboard:{desc:'Home screen. Personalised greeting, health ring, stats row, bar chart, recent scans, alerts.',items:[
+    {n:1,e:'PersonalHeader',s:'Avatar 28px left · "Good morning, [name]" center · Bell icon right · 44px'},
+    {n:2,e:'Daily ScoreRing',s:'90px ring · score/10 · clay≥7 moss/amber/rust · "Today\'s Health Score" caption 11px sand'},
+    {n:3,e:'QuickStats Row',s:'3-col grid: Calories | Scans | Streak · surf2 card · val 12/700 · label 6px sand'},
+    {n:4,e:'WeeklyChart',s:'7 bars inside surf2 card · today = clay · rest = surf3 · 52px height · day labels 6px'},
+    {n:5,e:'RecentScans',s:'Horizontal scroll · 80px PCardCompact · 44px tall · paddingLeft 12 · scrollbar hidden'},
+    {n:6,e:'NutrientAlert',s:'3px rust left-border card · rustBg · only if threshold exceeded · not permanent UI'},
+    {n:7,e:'BottomNav',s:'56px · Home|Search|FAB|History|Profile · active = 2px clay pill above icon'},
+  ]},
+  scan:{desc:'Full-screen camera. All chrome overlaid with gradient masks. No standard TopBar/BottomNav frame.',items:[
+    {n:1,e:'Camera Feed',s:'position absolute inset 0 · grid-texture bg simulation · actual camera stream fills this'},
+    {n:2,e:'Scan Frame',s:'Centered · barcode: 260×130px · photo: 240×240px · 4 clay L-corner markers · no fill'},
+    {n:3,e:'Animated Scan Line',s:'1.5px clay gradient line · scans top→bottom → loop · keyframe animation inside frame'},
+    {n:4,e:'Top Overlay',s:'gradient to-transparent overlay · Back pill left · "Scan Product" center 9/700 · Flash right'},
+    {n:5,e:'Mode Selector',s:'3-pill toggle: Barcode | Photo | Manual · pill group bg rgba black · active = clay fill'},
+    {n:6,e:'Shutter Row',s:'Gallery icon (left 32px) · 60px clay FAB center · Settings icon right · centered row'},
+    {n:7,e:'Context Label',s:'Below scan frame · 12px sand · dynamically changes by selected mode'},
+  ]},
+  results:{desc:'4-tab analysis. Sticky product header stays fixed while content scrolls beneath tabs.',items:[
+    {n:1,e:'TopBar',s:'← back · "Analysis Result" center · Bookmark + Share icons right · 44px'},
+    {n:2,e:'StickyProductCard',s:'50px product image · name/brand/NOVA tag · 44px ScoreRing · colored 3px left border'},
+    {n:3,e:'TabBar',s:'Overview|Ingredients|Nutrition|Alternatives · 36px · clay 2px bottom underline active'},
+    {n:4,e:'Score Breakdown',s:'3 sub-score cards with 4px progress bars: Nutrition / Ingredients / Processing'},
+    {n:5,e:'Additives List',s:'3px risk-color left border cards · name + note + risk pill (harmful/moderate/low)'},
+    {n:6,e:'Ingredients List',s:'Flat rows · rust = harmful · amber = moderate · cream = safe · borderBottom divider'},
+    {n:7,e:'Alternatives',s:'PCard rows with healthier score ring · "Healthier options" section header'},
+  ]},
+  search:{desc:'Discovery hub. Sticky search bar + mic. Filter chips scroll horizontally. Results below.',items:[
+    {n:1,e:'SearchBar',s:'Full-width 34px · surf2 bg · 🔍 left · mic right · border-radius 10 · no label'},
+    {n:2,e:'FilterChips',s:'Horizontal scroll: All|Healthy|Low Cal|Vegan|Gluten-free · active clay · 8px gap'},
+    {n:3,e:'Category Grid',s:'2-col cards with icon + label · fire icon accent · 6 visible before scroll'},
+    {n:4,e:'Recent List',s:'Standard PCard rows · "See all" action in SectionHeader · borderBottom dividers'},
+  ]},
+  history:{desc:'Chronological scan log grouped by date pill. Export button in header.',items:[
+    {n:1,e:'TopBar',s:'← back · "Scan History" center · ⬇️ Export icon right · 44px'},
+    {n:2,e:'Date Group Pills',s:'surf2 pill chip "Today / Yesterday / DD Mon" · 8px top margin · not a full-row bar'},
+    {n:3,e:'PCard Rows',s:'Horizontal product cards · 3px left border (rust/amber/moss) · score ring right'},
+  ]},
+  favorites:{desc:'Saved products in 2-column card grid. Empty state CTA if nothing saved.',items:[
+    {n:1,e:'TopBar',s:'"Saved" title · Settings ⚙️ icon right · 44px · no back arrow (tab root)'},
+    {n:2,e:'2-Col Grid',s:'Cards: 48px product image centered · name 7.5/600 · ScoreRing 32px below'},
+    {n:3,e:'EmptyState',s:'Clay icon 48px · "No saved products yet" · "Scan to add" clay outline button'},
+  ]},
+  insights:{desc:'Analytics: monthly average ring, additive exposure bars, 2×2 nutrient grid.',items:[
+    {n:1,e:'TopBar',s:'"Insights" center · 📅 Calendar right for period range · 44px'},
+    {n:2,e:'MonthlyCard',s:'70px ring left · score 18/700 + trend pill right · inside surf2 card · 12px pad'},
+    {n:3,e:'Additive Bars',s:'3 rows inside card: name + colored 4px bar + count × · risk color: rust/amber/moss'},
+    {n:4,e:'Nutrient Grid',s:'2×2 grid · top-border accent per nutrient · val 11/700 · label 7 cream · sub 6.5 sand'},
+  ]},
+  leaderboard:{desc:'Community ranking. Period tabs top. Your sticky rank card. Scrollable user rows.',items:[
+    {n:1,e:'Period Tabs',s:'Weekly|Monthly|All time · clay 2px underline active · 32px height · no background fill'},
+    {n:2,e:'My Rank Card',s:'clay border 1px card · rank# bold clay · Avatar · pts + trend pill · sticky below tabs'},
+    {n:3,e:'User Rows',s:'Medal emoji / #rank · Avatar 28px · name + scan count · pts right · borderBottom 0.5px'},
+  ]},
+  validate:{desc:'Community validation form. Product preview read-only. Toggle each field. Optional note.',items:[
+    {n:1,e:'Product Preview',s:'40px thumb + name/barcode · read-only surf2 card · top of form'},
+    {n:2,e:'Toggle Rows',s:'"[Field] correct?" + green moss toggle on right · stacked 6px gap · one per field'},
+    {n:3,e:'Notes Textarea',s:'56px surf2 area · sand label · optional · border2 border'},
+    {n:4,e:'Submit Button',s:'Clay fill 36px · "Submit Validation" 8/700 white'},
+  ]},
+  contribute:{desc:'4-step product submission wizard. Progress bar tracks steps. Per-step form content.',items:[
+    {n:1,e:'Step Progress',s:'4 circles row · active = clay fill · completed = moss · inactive = surf3 · 3px bar between'},
+    {n:2,e:'Form Fields',s:'sand label 7.5px · 32px surf2 input · border2 · stacked 10px gap'},
+    {n:3,e:'Photo Upload Zone',s:'1.5px dashed border2 · 60px height · 📷 icon + label · tap opens camera/gallery'},
+    {n:4,e:'Continue Button',s:'Clay 36px full-width · "Continue →" steps 1–3 · "✓ Finish" on step 4'},
+  ]},
+  profile:{desc:'4-step onboarding: Basic info → Goals → Diet → Conditions. Back arrow on steps 2–4.',items:[
+    {n:1,e:'Progress Bar',s:'Full-width 3px bar · clay fill · smooth transition · "Step X of 4" 7px sand below'},
+    {n:2,e:'Step Title',s:'H2 13/700 cream · subtext 7.5 sand · marginBottom 14px'},
+    {n:3,e:'Checkbox/Radio Rows',s:'Custom 14px checkbox (square) or radio (circle) + label · surf2 card · 36px tap target'},
+    {n:4,e:'Back Navigation',s:'← in TopBar left · hidden on step 1 · onClick decrements step state'},
+  ]},
+  signin:{desc:'Centered auth card. No BottomNav, no TopBar. Full-height centered flex layout.',items:[
+    {n:1,e:'Logo Block',s:'52px rounded tile gradient clay→clayDim · "HealthOX" 14/800 · tagline 8 sand · centered'},
+    {n:2,e:'Google Button',s:'surf3 bg + border2 border · "G" icon 12px + text 8/500 · 36px height · borderRadius 10'},
+    {n:3,e:'Divider Row',s:'"or" 7px muted · flex-1 0.5px border2 lines each side · 4px vertical margin'},
+    {n:4,e:'Email Input',s:'Label 7.5 sand · 32px surf2 input · marginTop 4 · no placeholder text color override'},
+    {n:5,e:'Magic Link Button',s:'Clay fill 34px · "Send magic link →" 8/700 white'},
+  ]},
+  admin:{desc:'Admin-only product approval queue. Stat cards show pipeline counts. Row actions per submission.',items:[
+    {n:1,e:'Stat Cards',s:'3-col: Pending (amber top) | Approved (moss top) | Rejected (rust top) · val 11/700'},
+    {n:2,e:'Product Rows',s:'32px thumb + name/submitter/time · borderBottom 0.5 · Approve+Reject+More row'},
+    {n:3,e:'Action Buttons',s:'Approve 26px mossBg+moss border · Reject 26px rustBg+rust border · More surf3 ⋯'},
+  ]},
+  legal:{desc:'Legal docs with horizontal pill-tab nav between 4 docs. Clean reading layout.',items:[
+    {n:1,e:'Legal Tabs',s:'Pill-style: Privacy|Terms|Cookies|Disclaimer · active = surf3+border2 · horizontal scroll'},
+    {n:2,e:'Content Blocks',s:'Heading 9/700 cream + body 7.5/400 sand/1.6 · 10px gap between sections'},
+  ]},
+};
+
+// ─── ATOMS ────────────────────────────────────────────────────────────────────
+const StatusBar=()=>React.createElement('div',{style:{height:28,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 14px',flexShrink:0}},
+  React.createElement('span',{style:r(7.5,C.cream,600)},'9:41'),
+  React.createElement('div',{style:row(4)},
+    React.createElement('span',{style:r(6,C.cream)},'●●●'),
+    React.createElement('span',{style:r(6.5,C.cream)},'WiFi'),
+    React.createElement('span',{style:r(7,C.cream)},'▌')
+  )
+);
+
+const TopBar=({left,title,right,noBorder})=>React.createElement('div',{style:{height:44,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 12px',borderBottom:noBorder?'none':`0.5px solid ${C.border}`,background:C.bg,flexShrink:0}},
+  React.createElement('div',{style:row(6)},left||React.createElement('div',{style:{width:20}})),
+  title&&React.createElement('span',{style:r(9,C.cream,700)},title),
+  React.createElement('div',{style:row(5)},right||React.createElement('div',{style:{width:20}}))
+);
+
+const BNav=({active='home'})=>{
+  const tabs=[{id:'home',ic:'⌂',l:'Home'},{id:'search',ic:'⊙',l:'Search'},{id:'scan',ic:null,l:''},{id:'history',ic:'◷',l:'History'},{id:'profile',ic:'◎',l:'Profile'}];
+  return React.createElement('div',{style:{height:56,background:C.surface,borderTop:`0.5px solid ${C.border2}`,display:'flex',alignItems:'center',flexShrink:0}},
+    tabs.map(t=>{
+      if(t.id==='scan') return React.createElement('div',{key:'fab',style:{flex:1,display:'flex',justifyContent:'center',position:'relative',height:'100%',alignItems:'center'}},
+        React.createElement('div',{style:{position:'absolute',bottom:10,width:46,height:46,borderRadius:'50%',background:`linear-gradient(135deg,${C.clay} 0%,${C.clayDim} 100%)`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 0 0 3px ${C.bg},0 0 0 5px ${C.clay}44`,fontSize:18}},
+          React.createElement('span',null,'📷'))
+      );
+      const on=active===t.id;
+      return React.createElement('div',{key:t.id,style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2,paddingTop:on?0:4}},
+        on&&React.createElement('div',{style:{width:18,height:2,borderRadius:2,background:C.clay,marginBottom:2}}),
+        React.createElement('span',{style:r(13,on?C.clay:C.muted)},t.ic),
+        React.createElement('span',{style:r(6,on?C.clay:C.muted,on?600:400)},t.l)
+      );
+    })
+  );
+};
+
+const Ring=({score=7.2,size=80})=>{
+  const rs=size*0.38,ci=2*Math.PI*rs,col=score>=7?C.moss:score>=5?C.amber:C.rust;
+  return React.createElement('div',{style:{position:'relative',width:size,height:size,flexShrink:0}},
+    React.createElement('svg',{width:size,height:size,style:{position:'absolute',top:0,left:0}},
+      React.createElement('circle',{cx:size/2,cy:size/2,r:rs,fill:'none',stroke:C.border2,strokeWidth:size*0.09}),
+      React.createElement('circle',{cx:size/2,cy:size/2,r:rs,fill:'none',stroke:col,strokeWidth:size*0.09,strokeDasharray:ci,strokeDashoffset:ci*(1-score/10),strokeLinecap:'round',transform:`rotate(-90 ${size/2} ${size/2})`})
+    ),
+    React.createElement('div',{style:{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',textAlign:'center'}},
+      React.createElement('div',{style:r(size*0.22,C.cream,700)},score),
+      React.createElement('div',{style:r(size*0.11,C.sand)},'/10')
+    )
+  );
+};
+
+const SH=({title,action})=>React.createElement('div',{style:{...row(),justifyContent:'space-between',padding:'0 12px',marginBottom:5,marginTop:8}},
+  React.createElement('span',{style:r(6.5,C.muted,700)},title.toUpperCase()),
+  action&&React.createElement('span',{style:r(7,C.clay,600)},action+' ›')
+);
+
+const Av=({s='SQ',sz=28})=>React.createElement('div',{style:{width:sz,height:sz,borderRadius:'50%',background:`linear-gradient(135deg,${C.clay},${C.clayDim})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:sz*0.32,fontWeight:700,color:'#fff',flexShrink:0}},s);
+
+const IBtn=({ch,active})=>React.createElement('div',{style:{width:28,height:28,borderRadius:8,background:active?C.clayBg:C.surf2,border:`0.5px solid ${active?C.clay:C.border2}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:active?C.clay:C.sand,cursor:'pointer'}},ch);
+
+const PC=({name,brand,score,tag})=>{
+  const co=score>=7?C.moss:score>=5?C.amber:C.rust;
+  return React.createElement('div',{style:{...row(8),...card(8),margin:'0 12px 6px',position:'relative',overflow:'hidden'}},
+    React.createElement('div',{style:{position:'absolute',left:0,top:0,bottom:0,width:3,background:co,borderRadius:'10px 0 0 10px'}}),
+    React.createElement('div',{style:{width:36,height:36,borderRadius:8,background:C.surf3,border:`0.5px solid ${C.border}`,flexShrink:0,marginLeft:4}}),
+    React.createElement('div',{style:{...col(2),flex:1}},
+      React.createElement('span',{style:r(8,C.cream,600)},name),
+      React.createElement('span',{style:r(7,C.sand)},brand),
+      tag&&React.createElement('span',{style:{...pill(),marginTop:2}},tag)
+    ),
+    React.createElement(Ring,{score,size:34})
+  );
+};
+
+const PCc=({name,score})=>{
+  const co=score>=7?C.moss:score>=5?C.amber:C.rust;
+  return React.createElement('div',{style:{...card(8),width:82,flexShrink:0,textAlign:'center',...col(4),alignItems:'center'}},
+    React.createElement('div',{style:{width:46,height:46,borderRadius:10,background:C.surf3,border:`0.5px solid ${C.border}`}}),
+    React.createElement('span',{style:{...r(7,C.cream,600),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',width:'100%'}},name),
+    React.createElement('span',{style:{...pill(`${co}22`,co)}},score+'/10')
+  );
+};
+
+// ─── PAGES ────────────────────────────────────────────────────────────────────
+const HomePage=()=>React.createElement('div',{style:{...col(0),height:'100%',overflowY:'auto',background:C.bg}},
+  // TopBar
+  React.createElement('div',{style:{height:72,display:'flex',alignItems:'flex-end',justifyContent:'space-between',padding:'0 14px 10px',flexShrink:0}},
+    React.createElement('div',{style:row(5)},
+      React.createElement('div',{style:{width:18,height:18,borderRadius:6,background:`linear-gradient(135deg,${C.clay},${C.moss})`}}),
+      React.createElement('span',{style:r(10,C.cream,800)},'HealthOX')
+    ),
+    React.createElement('div',{style:{...pill(C.clay,'#fff'),fontSize:7.5,padding:'4px 10px'}},'Sign in')
+  ),
+  // Hero
+  React.createElement('div',{style:{minHeight:230,background:`radial-gradient(ellipse at 75% 20%,${C.clayBg} 0%,transparent 65%),${C.bg}`,padding:'10px 14px 18px',position:'relative',flexShrink:0}},
+    React.createElement('div',{style:{position:'absolute',right:10,top:10,width:72,height:130,opacity:.12,borderRadius:16,border:`1.5px solid ${C.clay}`,transform:'perspective(280px) rotateY(-18deg) rotateX(4deg)'}}),
+    React.createElement('div',{style:{...pill(C.clayBg,C.clay),width:'fit-content',marginBottom:8}},'AI-Powered Food Scanner'),
+    React.createElement('h1',{style:{...r(16,C.cream,800),marginBottom:6,lineHeight:1.2}},'Know every\n',React.createElement('span',{style:{color:C.clay}},'ingredient.')),
+    React.createElement('p',{style:{...r(7.5,C.sand),marginBottom:12,lineHeight:1.55,maxWidth:160}},'Scan any packaged food for instant health scores, additive alerts & personalised insights.'),
+    React.createElement('div',{style:{height:36,borderRadius:20,background:C.clay,display:'flex',alignItems:'center',justifyContent:'center',maxWidth:200,marginBottom:10}},
+      React.createElement('span',{style:r(8,'#fff',700)},'📷  Start Scanning')
+    ),
+    React.createElement('div',{style:{...row(5),flexWrap:'wrap'}},
+      ['✓ 120+ additives','✓ Indian brands','✓ FSSAI'].map(v=>React.createElement('span',{key:v,style:pill()},v))
+    )
+  ),
+  // Features
+  React.createElement('div',{style:{padding:'12px 12px',...col(7)}},
+    React.createElement(SH,{title:'Why HealthOX'}),
+    ...[{ic:'📊',t:'Health Score',d:'AI-powered 1-10 rating. Nutrition + processing + ingredients.'},{ic:'🧪',t:'Additive Scanner',d:'120+ harmful additives detected with risk explanations.'},{ic:'🇮🇳',t:'India-First DB',d:'50+ Indian brands. FSSAI & ICMR 2020 aligned.'}].map(f=>
+      React.createElement('div',{key:f.t,style:{...card(10),...row(10)}},
+        React.createElement('div',{style:{width:32,height:32,borderRadius:10,background:C.clayBg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}},f.ic),
+        React.createElement('div',{style:col(2)},
+          React.createElement('span',{style:r(8.5,C.cream,700)},f.t),
+          React.createElement('span',{style:{...r(7,C.sand),lineHeight:1.5}},f.d)
+        )
+      )
+    )
+  ),
+  React.createElement('div',{style:{padding:'8px 14px 16px',borderTop:`0.5px solid ${C.border}`,textAlign:'center',marginTop:4}},
+    React.createElement('span',{style:r(6.5,C.muted)},'Privacy · Terms · Cookies · v2.1.0')
+  )
+);
+
+const DashboardPage=()=>React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+  React.createElement(StatusBar),
+  React.createElement('div',{style:{height:44,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 12px',borderBottom:`0.5px solid ${C.border}`,flexShrink:0}},
+    React.createElement(Av,{s:'SQ',sz:28}),
+    React.createElement('span',{style:r(8,C.sand)},'Good morning, Samad'),
+    React.createElement(IBtn,{ch:'🔔'})
+  ),
+  React.createElement('div',{style:{flex:1,overflowY:'auto'}},
+    // Score ring
+    React.createElement('div',{style:{textAlign:'center',padding:'14px 0 8px'}},
+      React.createElement('span',{style:r(7,C.sand)},"Today's Health Score"),
+      React.createElement('div',{style:{display:'flex',justifyContent:'center',marginTop:8}},React.createElement(Ring,{score:7.2,size:88})),
+      React.createElement('div',{style:{...pill(C.mossBg,C.moss),width:'fit-content',margin:'8px auto 0',fontSize:7}},'✓ Good overall — 3 items scanned')
+    ),
+    // Stats
+    React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,padding:'0 12px',marginBottom:10}},
+      ...[{l:'Calories',v:'1,840',s:'/ 2,200'},{l:'Scans',v:'3',s:'today'},{l:'Streak',v:'7 🔥',s:'days'}].map(s=>
+        React.createElement('div',{key:s.l,style:{...card(8),textAlign:'center'}},
+          React.createElement('div',{style:r(11,C.cream,700)},s.v),
+          React.createElement('div',{style:r(6,C.cream)},s.l),
+          React.createElement('div',{style:r(6,C.muted)},s.s)
+        )
+      )
+    ),
+    // Chart
+    React.createElement(SH,{title:'This week',action:'Full report'}),
+    React.createElement('div',{style:{...card(10),margin:'0 12px',marginBottom:10}},
+      React.createElement('div',{style:{display:'flex',alignItems:'flex-end',gap:4,height:52}},
+        ...[{d:'M',h:70},{d:'T',h:85},{d:'W',h:60},{d:'T',h:92},{d:'F',h:45},{d:'S',h:78},{d:'S',h:72,today:true}].map((b,i)=>
+          React.createElement('div',{key:i,style:{flex:1,...col(2),alignItems:'center'}},
+            React.createElement('div',{style:{width:'100%',height:`${b.h}%`,borderRadius:4,background:b.today?C.clay:C.surf3,border:`0.5px solid ${b.today?C.clay+'60':C.border2}`}}),
+            React.createElement('span',{style:r(5.5,b.today?C.clay:C.muted)},b.d)
+          )
+        )
+      )
+    ),
+    // Recent
+    React.createElement(SH,{title:'Recent scans',action:'See all'}),
+    React.createElement('div',{style:{display:'flex',gap:8,overflowX:'auto',padding:'0 12px 8px'}},
+      ...[{name:'Maggi',score:4.2},{name:'Amul Butter',score:6.8},{name:'Tropicana',score:5.5},{name:'KitKat',score:3.9}].map(p=>React.createElement(PCc,{key:p.name,...p}))
+    ),
+    // Alert
+    React.createElement('div',{style:{...card(10),margin:'8px 12px 12px',borderLeft:`3px solid ${C.rust}`,background:C.rustBg}},
+      React.createElement('div',{style:row(8)},
+        React.createElement('span',{style:{fontSize:12}},'⚠️'),
+        React.createElement('div',{style:col(2)},
+          React.createElement('span',{style:r(8,C.cream,600)},'High sodium alert'),
+          React.createElement('span',{style:r(7,C.sand)},'3 products exceeded daily limit')
+        )
+      )
+    )
+  ),
+  React.createElement(BNav,{active:'home'})
+);
+
+const ScanPage=({})=>{
+  const[mode,setMode]=useState('barcode');
+  return React.createElement('div',{style:{position:'relative',height:'100%',background:'#080604'}},
+    React.createElement('div',{style:{position:'absolute',inset:0,backgroundImage:'repeating-linear-gradient(0deg,#0f0d0b 0,#0f0d0b 1px,#0b0908 1px,#0b0908 22px),repeating-linear-gradient(90deg,#0f0d0b 0,#0f0d0b 1px,#0b0908 1px,#0b0908 22px)'}}),
+    // Scan frame
+    React.createElement('div',{style:{position:'absolute',top:'40%',left:'50%',transform:'translate(-50%,-50%)',width:mode==='barcode'?168:170,height:mode==='barcode'?90:168}},
+      ...[[0,0,'10px 0 0 0'],[1,0,'0 10px 0 0'],[0,1,'0 0 0 10px'],[1,1,'0 0 10px 0']].map(([r1,b1,br],i)=>
+        React.createElement('div',{key:i,style:{position:'absolute',right:r1?0:undefined,left:r1?undefined:0,bottom:b1?0:undefined,top:b1?undefined:0,width:16,height:16,border:`2px solid ${C.clay}`,borderRadius:br}})
+      ),
+      React.createElement('div',{style:{position:'absolute',left:0,right:0,top:'40%',height:1.5,background:`linear-gradient(90deg,transparent,${C.clay},transparent)`,animation:'scanline 2s ease-in-out infinite'}})
+    ),
+    // Context
+    React.createElement('div',{style:{position:'absolute',top:'55%',left:'50%',transform:'translateX(-50%)',marginTop:mode==='photo'?80:40,textAlign:'center',whiteSpace:'nowrap'}},
+      React.createElement('span',{style:r(7,C.sand)},mode==='barcode'?'Point at barcode':mode==='photo'?'Frame the product label':'Enter barcode manually')
+    ),
+    // Top overlay
+    React.createElement('div',{style:{position:'absolute',top:0,left:0,right:0,background:'linear-gradient(to bottom,rgba(8,6,4,0.9),transparent)',paddingBottom:20}},
+      React.createElement(StatusBar),
+      React.createElement('div',{style:{height:44,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 12px'}},
+        React.createElement('div',{style:{...pill('rgba(0,0,0,0.55)',C.sand),fontSize:8}},'← Back'),
+        React.createElement('span',{style:r(9,'#fff',700)},'Scan Product'),
+        React.createElement('div',{style:{...pill('rgba(0,0,0,0.55)',C.sand),fontSize:8}},'⚡ Flash')
+      )
+    ),
+    // Bottom
+    React.createElement('div',{style:{position:'absolute',bottom:0,left:0,right:0,background:'linear-gradient(to top,rgba(8,6,4,0.96),transparent)',padding:'24px 14px 20px'}},
+      React.createElement('div',{style:{display:'flex',gap:4,justifyContent:'center',marginBottom:16,background:'rgba(0,0,0,0.55)',borderRadius:24,padding:4,border:`0.5px solid ${C.border2}`}},
+        ['Barcode','Photo','Manual'].map(m=>
+          React.createElement('button',{key:m,onClick:()=>setMode(m.toLowerCase()),style:{flex:1,padding:'5px 0',borderRadius:20,background:mode===m.toLowerCase()?C.clay:'transparent',border:'none',cursor:'pointer',color:mode===m.toLowerCase()?'#fff':C.sand,fontSize:7.5,fontWeight:600}},m)
+        )
+      ),
+      React.createElement('div',{style:{...row(18),justifyContent:'center'}},
+        React.createElement('div',{style:{width:30,height:30,borderRadius:8,background:'rgba(255,255,255,0.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13}},'🖼️'),
+        React.createElement('div',{style:{width:58,height:58,borderRadius:'50%',background:C.clay,border:`4px solid ${C.clay}44`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}},'📷'),
+        React.createElement('div',{style:{width:30,height:30,borderRadius:8,background:'rgba(255,255,255,0.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13}},'⚙️')
+      )
+    )
+  );
+};
+
+const ResultsPage=()=>{
+  const[tab,setTab]=useState('overview');
+  const tabs=['Overview','Ingredients','Nutrition','Alternatives'];
+  return React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+    React.createElement(StatusBar),
+    React.createElement('div',{style:{height:44,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 12px',borderBottom:`0.5px solid ${C.border}`,background:C.bg,flexShrink:0}},
+      React.createElement('span',{style:r(11,C.sand)},'←'),
+      React.createElement('span',{style:r(9,C.cream,700)},'Analysis Result'),
+      React.createElement('div',{style:row(5)},React.createElement(IBtn,{ch:'🔖'}),React.createElement(IBtn,{ch:'↑'}))
+    ),
+    // Sticky product card
+    React.createElement('div',{style:{background:C.surface,borderBottom:`0.5px solid ${C.border}`,padding:'8px 12px',...row(10),flexShrink:0}},
+      React.createElement('div',{style:{width:46,height:46,borderRadius:10,background:C.surf3,border:`0.5px solid ${C.border}`,flexShrink:0}}),
+      React.createElement('div',{style:{...col(2),flex:1}},
+        React.createElement('span',{style:r(8.5,C.cream,700)},'Maggi 2-Minute Noodles'),
+        React.createElement('span',{style:r(7,C.sand)},'Nestlé India · Instant Noodles'),
+        React.createElement('div',{style:row(4)},
+          React.createElement('span',{style:pill(C.rustBg,C.rust)},'NOVA 4'),
+          React.createElement('span',{style:pill()},'70g · ₹14')
+        )
+      ),
+      React.createElement(Ring,{score:4.2,size:42})
+    ),
+    // Tabs
+    React.createElement('div',{style:{display:'flex',background:C.surface,borderBottom:`0.5px solid ${C.border}`,flexShrink:0}},
+      tabs.map(t=>React.createElement('button',{key:t,onClick:()=>setTab(t.toLowerCase()),style:{flex:1,height:34,border:'none',cursor:'pointer',background:'transparent',color:tab===t.toLowerCase()?C.clay:C.muted,fontSize:7,fontWeight:tab===t.toLowerCase()?700:400,borderBottom:tab===t.toLowerCase()?`2px solid ${C.clay}`:'2px solid transparent'}},t))
+    ),
+    // Tab content
+    React.createElement('div',{style:{flex:1,overflowY:'auto',paddingTop:6}},
+      tab==='overview'&&React.createElement(React.Fragment,null,
+        React.createElement(SH,{title:'Score breakdown'}),
+        ...[{l:'Nutritional Value',s:3.8,n:'High sodium, low fibre'},{l:'Ingredient Quality',s:4.5,n:'12 items, 3 additives'},{l:'Processing Level',s:3.0,n:'Ultra-processed NOVA 4'}].map(s=>
+          React.createElement('div',{key:s.l,style:{...card(8),margin:'0 12px 6px'}},
+            React.createElement('div',{style:{...row(),justifyContent:'space-between',marginBottom:4}},
+              React.createElement('span',{style:r(8,C.cream,500)},s.l),
+              React.createElement('span',{style:r(8,C.rust,700)},s.s+'/10')
+            ),
+            React.createElement('div',{style:{height:4,borderRadius:4,background:C.surf3,marginBottom:4}},
+              React.createElement('div',{style:{width:`${s.s*10}%`,height:'100%',borderRadius:4,background:C.rust}})
+            ),
+            React.createElement('span',{style:r(7,C.sand)},s.n)
+          )
+        ),
+        React.createElement(SH,{title:'Additives detected'}),
+        ...[{n:'MSG (E621)',r:'moderate',d:'Flavour enhancer'},{n:'Tartrazine (E102)',r:'harmful',d:'Artificial yellow dye'}].map(a=>
+          React.createElement('div',{key:a.n,style:{...card(8),margin:'0 12px 6px',borderLeft:`3px solid ${a.r==='harmful'?C.rust:C.amber}`}},
+            React.createElement('div',{style:row()},
+              React.createElement('div',{style:{...col(2),flex:1}},
+                React.createElement('span',{style:r(8,C.cream,600)},a.n),
+                React.createElement('span',{style:r(7,C.sand)},a.d)
+              ),
+              React.createElement('span',{style:pill(a.r==='harmful'?C.rustBg:C.amberBg,a.r==='harmful'?C.rust:C.amber)},a.r)
+            )
+          )
+        )
+      ),
+      tab==='ingredients'&&React.createElement(React.Fragment,null,
+        React.createElement(SH,{title:'All ingredients (12)'}),
+        ...['Wheat flour (60%)','Palm oil','Salt','MSG (E621) ⚠️','Tartrazine (E102) 🚫','Onion powder','Garlic powder','Mixed spices','Citric acid','Malic acid','INS 508','Calcium carbonate'].map((ing,i)=>
+          React.createElement('div',{key:i,style:{padding:'5px 12px',borderBottom:`0.5px solid ${C.border}`}},
+            React.createElement('span',{style:r(8,ing.includes('⚠️')?C.amber:ing.includes('🚫')?C.rust:C.cream)},ing)
+          )
+        )
+      ),
+      tab==='nutrition'&&React.createElement(React.Fragment,null,
+        React.createElement(SH,{title:'Nutrition facts (per 70g serving)'}),
+        ...['Calories,286 kcal,false','Total Fat,11.2g,false','Sat. Fat,5.1g,false','Sodium,910mg ⚠️,true','Total Carbs,40.2g,false','Sugar,1.8g,false','Protein,6.4g,false','Fibre,1.2g,false'].map(row2=>{
+          const[k,v,warn]=row2.split(',');
+          return React.createElement('div',{key:k,style:{display:'flex',justifyContent:'space-between',padding:'5px 12px',borderBottom:`0.5px solid ${C.border}`}},
+            React.createElement('span',{style:r(8,C.sand)},k),
+            React.createElement('span',{style:r(8,warn==='true'?C.amber:C.cream,600)},v)
+          );
+        })
+      ),
+      tab==='alternatives'&&React.createElement(React.Fragment,null,
+        React.createElement(SH,{title:'Healthier options'}),
+        React.createElement(PC,{name:'Bambino Vermicelli',brand:'Bambino',score:6.8,tag:'Semolina'}),
+        React.createElement(PC,{name:'Soba Noodles',brand:'Organic India',score:7.5,tag:'Buckwheat'}),
+        React.createElement(PC,{name:'Whole Wheat Pasta',brand:'Durum',score:8.0,tag:'High fibre'})
+      )
+    )
+  );
+};
+
+const SearchPage=()=>{
+  const[f,setF]=useState('all');
+  return React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+    React.createElement(StatusBar),
+    React.createElement('div',{style:{padding:'6px 12px',background:C.surface,borderBottom:`0.5px solid ${C.border}`,flexShrink:0}},
+      React.createElement('div',{style:{...row(8),height:34,background:C.surf2,borderRadius:10,border:`0.5px solid ${C.border2}`,padding:'0 10px'}},
+        React.createElement('span',{style:r(10,C.muted)},'🔍'),
+        React.createElement('span',{style:r(8,C.muted)},'Search products, brands...'),
+        React.createElement('span',{style:{...r(11,C.muted),marginLeft:'auto'}},'🎤')
+      )
+    ),
+    React.createElement('div',{style:{display:'flex',gap:6,padding:'6px 12px',borderBottom:`0.5px solid ${C.border}`,overflowX:'auto',flexShrink:0}},
+      ['All','Healthy','Low Cal','Vegan','Gluten-free','Indian'].map(fi=>
+        React.createElement('button',{key:fi,onClick:()=>setF(fi.toLowerCase()),style:{...pill(f===fi.toLowerCase()?C.clay:C.surf2,f===fi.toLowerCase()?'#fff':C.sand),border:`0.5px solid ${f===fi.toLowerCase()?C.clay:C.border2}`,cursor:'pointer',fontSize:7}},fi)
+      )
+    ),
+    React.createElement('div',{style:{flex:1,overflowY:'auto'}},
+      React.createElement(SH,{title:'Popular categories'}),
+      React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,padding:'0 12px',marginBottom:10}},
+        ...['🍪 Biscuits','🥔 Chips','🥣 Cereals','🧃 Juices','💪 Protein','🫙 Sauces'].map(c=>
+          React.createElement('div',{key:c,style:{...card(8),...row(6)}},
+            React.createElement('span',{style:r(11)},' '),
+            React.createElement('span',{style:r(8,C.cream)},c)
+          )
+        )
+      ),
+      React.createElement(SH,{title:'Recent scans',action:'See all'}),
+      React.createElement(PC,{name:'Britannia Good Day',brand:'Britannia',score:5.8,tag:'Biscuit'}),
+      React.createElement(PC,{name:"Lay's Classic",brand:'PepsiCo',score:4.1,tag:'Chips'}),
+      React.createElement(PC,{name:'Dahi 400g',brand:'Amul',score:8.2,tag:'Dairy'})
+    ),
+    React.createElement(BNav,{active:'search'})
+  );
+};
+
+const HistoryPage=()=>React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+  React.createElement(StatusBar),
+  React.createElement(TopBar,{title:'Scan History',left:React.createElement('span',{style:r(9,C.sand)},'←'),right:React.createElement(IBtn,{ch:'⬇️'})}),
+  React.createElement('div',{style:{flex:1,overflowY:'auto'}},
+    ...[{date:'Today',items:[{name:'Maggi Noodles',brand:'Nestlé',score:4.2},{name:'Amul Butter',brand:'Amul',score:6.8}]},{date:'Yesterday',items:[{name:'Tropicana OJ',brand:'PepsiCo',score:5.5},{name:'Horlicks',brand:'GSK',score:6.0},{name:'KitKat',brand:'Nestlé',score:3.9}]}].map(g=>
+      React.createElement('div',{key:g.date},
+        React.createElement('div',{style:{padding:'8px 12px 4px'}},React.createElement('span',{style:pill()},g.date)),
+        ...g.items.map(p=>React.createElement(PC,{key:p.name,...p}))
+      )
+    )
+  ),
+  React.createElement(BNav,{active:'history'})
+);
+
+const FavoritesPage=()=>React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+  React.createElement(StatusBar),
+  React.createElement(TopBar,{title:'Saved',right:React.createElement(IBtn,{ch:'⚙️'})}),
+  React.createElement('div',{style:{flex:1,overflowY:'auto',padding:'8px 0'}},
+    React.createElement(SH,{title:'4 products saved'}),
+    React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,padding:'0 12px'}},
+      ...[{n:'Amul Butter',s:6.8},{n:'Dahi 400g',s:8.2},{n:'Oats Horlicks',s:6.0},{n:'Sunflower Oil',s:7.1}].map(p=>
+        React.createElement('div',{key:p.n,style:{...card(8),...col(6),alignItems:'center',textAlign:'center'}},
+          React.createElement('div',{style:{width:48,height:48,borderRadius:12,background:C.surf3,border:`0.5px solid ${C.border}`}}),
+          React.createElement('span',{style:r(7.5,C.cream,600)},p.n),
+          React.createElement(Ring,{score:p.s,size:32})
+        )
+      )
+    )
+  ),
+  React.createElement(BNav,{active:'history'})
+);
+
+const InsightsPage=()=>React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+  React.createElement(StatusBar),
+  React.createElement(TopBar,{title:'Insights',right:React.createElement(IBtn,{ch:'📅'})}),
+  React.createElement('div',{style:{flex:1,overflowY:'auto'}},
+    React.createElement('div',{style:{...card(12),margin:'10px 12px',...row(14)}},
+      React.createElement(Ring,{score:6.4,size:68}),
+      React.createElement('div',{style:col(4)},
+        React.createElement('span',{style:r(7,C.sand)},'Monthly average'),
+        React.createElement('span',{style:r(13,C.cream,700)},'6.4 / 10'),
+        React.createElement('span',{style:pill(C.amberBg,C.amber)},'↑ 0.3 vs last month')
+      )
+    ),
+    React.createElement(SH,{title:'Additive exposure'}),
+    React.createElement('div',{style:{...card(10),margin:'0 12px'}},
+      ...[{n:'MSG',c:8,ri:'moderate'},{n:'Artificial colour',c:5,ri:'harmful'},{n:'Preservatives',c:12,ri:'low'}].map(a=>
+        React.createElement('div',{key:a.n,style:{...row(),marginBottom:8}},
+          React.createElement('span',{style:{...r(7.5,C.cream),flex:1}},a.n),
+          React.createElement('div',{style:{width:70,height:4,borderRadius:4,background:C.surf3,marginRight:8}},
+            React.createElement('div',{style:{width:`${(a.c/15)*100}%`,height:'100%',borderRadius:4,background:a.ri==='harmful'?C.rust:a.ri==='moderate'?C.amber:C.moss}})
+          ),
+          React.createElement('span',{style:r(7,C.sand)},a.c+'×')
+        )
+      )
+    ),
+    React.createElement(SH,{title:'Nutrient averages'}),
+    React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,padding:'0 12px 12px'}},
+      ...[{l:'Avg. Sodium',v:'786mg',s:'37% RDA',c:C.amber},{l:'Avg. Sugar',v:'22g',s:'44% RDA',c:C.rust},{l:'Avg. Protein',v:'14g',s:'28% RDA',c:C.moss},{l:'Avg. Fibre',v:'4.2g',s:'17% RDA',c:C.clay}].map(s=>
+        React.createElement('div',{key:s.l,style:{...card(8),borderTop:`2px solid ${s.c}`}},
+          React.createElement('div',{style:r(9,s.c,700)},s.v),
+          React.createElement('div',{style:r(7,C.cream)},s.l),
+          React.createElement('div',{style:r(6.5,C.sand)},s.s)
+        )
+      )
+    )
+  ),
+  React.createElement(BNav,{active:'home'})
+);
+
+const LeaderboardPage=()=>{
+  const[per,setPer]=useState(0);
+  return React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+    React.createElement(StatusBar),
+    React.createElement(TopBar,{title:'Leaderboard',right:React.createElement(IBtn,{ch:'👥'})}),
+    React.createElement('div',{style:{display:'flex',borderBottom:`0.5px solid ${C.border}`,flexShrink:0}},
+      ['Weekly','Monthly','All time'].map((t,i)=>
+        React.createElement('button',{key:t,onClick:()=>setPer(i),style:{flex:1,height:32,border:'none',cursor:'pointer',background:'transparent',color:per===i?C.clay:C.muted,fontSize:7.5,fontWeight:per===i?700:400,borderBottom:per===i?`2px solid ${C.clay}`:'2px solid transparent'}},t)
+      )
+    ),
+    React.createElement('div',{style:{...card(10),margin:'8px 12px',...row(10),border:`1px solid ${C.clay}`,flexShrink:0}},
+      React.createElement('span',{style:r(11,C.clay,700)},'#12'),
+      React.createElement(Av,{s:'SQ',sz:28}),
+      React.createElement('div',{style:{...col(2),flex:1}},
+        React.createElement('span',{style:r(8,C.cream,600)},'You'),
+        React.createElement('span',{style:r(7,C.sand)},'342 pts · 89 scans')
+      ),
+      React.createElement('span',{style:pill(C.clayBg,C.clay)},'↑ 3 places')
+    ),
+    React.createElement('div',{style:{flex:1,overflowY:'auto'}},
+      ...[{rank:1,n:'Priya S.',pts:920,sc:234,m:'🥇'},{rank:2,n:'Rahul K.',pts:876,sc:218,m:'🥈'},{rank:3,n:'Anjali M.',pts:834,sc:201,m:'🥉'},{rank:4,n:'Dev P.',pts:788,sc:190,m:null},{rank:5,n:'Sneha R.',pts:756,sc:183,m:null}].map(u=>
+        React.createElement('div',{key:u.rank,style:{...row(10),padding:'7px 12px',borderBottom:`0.5px solid ${C.border}`}},
+          React.createElement('span',{style:r(u.m?12:8,u.m?undefined:C.muted,600)},u.m||`#${u.rank}`),
+          React.createElement(Av,{s:u.n.split(' ').map(w=>w[0]).join(''),sz:28}),
+          React.createElement('div',{style:{...col(2),flex:1}},
+            React.createElement('span',{style:r(8,C.cream,600)},u.n),
+            React.createElement('span',{style:r(7,C.sand)},u.sc+' scans')
+          ),
+          React.createElement('span',{style:r(9,C.clay,700)},u.pts+' pts')
+        )
+      )
+    ),
+    React.createElement(BNav,{active:'home'})
+  );
+};
+
+const ValidatePage=()=>React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+  React.createElement(StatusBar),
+  React.createElement(TopBar,{title:'Validate Product',left:React.createElement('span',{style:r(9,C.sand)},'←')}),
+  React.createElement('div',{style:{flex:1,overflowY:'auto',padding:'10px 12px'}},
+    React.createElement('div',{style:{...card(10),...row(10),marginBottom:10}},
+      React.createElement('div',{style:{width:42,height:42,borderRadius:8,background:C.surf3,border:`0.5px solid ${C.border}`,flexShrink:0}}),
+      React.createElement('div',{style:col(2)},
+        React.createElement('span',{style:r(8.5,C.cream,700)},'Maggi 2-Minute Noodles'),
+        React.createElement('span',{style:r(7,C.sand)},'Barcode: 8901058000256')
+      )
+    ),
+    ...[['Product name correct?',true],['Brand name correct?',true],['Ingredients list accurate?',false]].map(([l,on])=>
+      React.createElement('div',{key:l,style:{...card(10),...row(),justifyContent:'space-between',marginBottom:6}},
+        React.createElement('span',{style:r(8,C.cream)},l),
+        React.createElement('div',{style:{width:32,height:18,borderRadius:20,background:on?C.moss:C.surf3,position:'relative',border:`0.5px solid ${on?C.moss:C.border2}`}},
+          React.createElement('div',{style:{position:'absolute',top:2,left:on?16:2,width:14,height:14,borderRadius:'50%',background:'#fff',transition:'left .2s'}})
+        )
+      )
+    ),
+    React.createElement('div',{style:{marginBottom:10}},
+      React.createElement('span',{style:r(7.5,C.sand)},'Additional notes (optional)'),
+      React.createElement('div',{style:{height:54,borderRadius:10,background:C.surf2,border:`0.5px solid ${C.border2}`,marginTop:4}})
+    ),
+    React.createElement('div',{style:{height:36,borderRadius:10,background:C.clay,display:'flex',alignItems:'center',justifyContent:'center'}},
+      React.createElement('span',{style:r(8,'#fff',700)},'Submit Validation')
+    )
+  )
+);
+
+const ContributePage=()=>{
+  const[step,setStep]=useState(1);
+  return React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+    React.createElement(StatusBar),
+    React.createElement(TopBar,{title:'Add Product',left:React.createElement('span',{style:{...r(9,C.sand),cursor:'pointer'},onClick:()=>setStep(s=>Math.max(1,s-1))},'←')}),
+    React.createElement('div',{style:{flex:1,overflowY:'auto',padding:'10px 14px'}},
+      // Progress steps
+      React.createElement('div',{style:{...row(0),marginBottom:14,position:'relative'}},
+        React.createElement('div',{style:{position:'absolute',top:9,left:'10%',right:'10%',height:2,background:C.surf3,zIndex:0}}),
+        React.createElement('div',{style:{position:'absolute',top:9,left:'10%',width:`${(step-1)/3*80}%`,height:2,background:C.clay,zIndex:1,transition:'width .3s'}}),
+        ...['Info','Ingr','Nutr','Review'].map((s,i)=>
+          React.createElement('div',{key:s,style:{flex:1,...col(3),alignItems:'center',zIndex:2}},
+            React.createElement('div',{style:{width:20,height:20,borderRadius:'50%',background:i+1===step?C.clay:i+1<step?C.moss:C.surf3,border:`0.5px solid ${i+1===step?C.clay:C.border2}`,display:'flex',alignItems:'center',justifyContent:'center'}},
+              React.createElement('span',{style:r(6.5,i+1<=step?'#fff':C.muted,700)},i+1)
+            ),
+            React.createElement('span',{style:r(6,i+1===step?C.clay:C.muted)},s)
+          )
+        )
+      ),
+      ...[{l:'Product name *',ph:'e.g. Maggi 2-Minute Noodles'},{l:'Brand name *',ph:'e.g. Nestlé India'},{l:'Barcode',ph:'Scan or enter barcode'},{l:'Category *',ph:'Select...'}].map(f=>
+        React.createElement('div',{key:f.l,style:{marginBottom:10}},
+          React.createElement('span',{style:r(7.5,C.sand)},f.l),
+          React.createElement('div',{style:{height:32,borderRadius:8,background:C.surf2,border:`0.5px solid ${C.border2}`,marginTop:4,padding:'0 8px',display:'flex',alignItems:'center'}},
+            React.createElement('span',{style:r(7.5,C.muted)},f.ph)
+          )
+        )
+      ),
+      React.createElement('div',{style:{height:58,borderRadius:10,border:`1.5px dashed ${C.border2}`,display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:12}},
+        React.createElement('span',{style:{fontSize:15}},'📷'),
+        React.createElement('span',{style:r(7.5,C.sand)},'Add product photo')
+      ),
+      React.createElement('div',{onClick:()=>setStep(s=>Math.min(4,s+1)),style:{height:36,borderRadius:10,background:C.clay,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}},
+        React.createElement('span',{style:r(8,'#fff',700)},step<4?'Continue →':'✓ Submit Product')
+      )
+    )
+  );
+};
+
+const ProfilePage=()=>{
+  const[step,setStep]=useState(1);
+  const steps=[
+    {title:'Basic info',sub:'Personalise your experience',fields:['Name','Age','Gender','Height (cm)','Weight (kg)']},
+    {title:'Health goals',sub:'Select all that apply.',opts:['Lose weight','Build muscle','Eat cleaner','Manage diabetes','Reduce sodium','Heart health']},
+    {title:'Diet preferences',sub:'We\'ll filter accordingly.',opts:['Vegetarian','Vegan','Jain','Keto','Gluten-free','Dairy-free']},
+    {title:'Health conditions',sub:'We\'ll flag risky ingredients.',opts:['None','Diabetes (T2)','Hypertension','High cholesterol','Lactose intolerance','Celiac disease']},
+  ];
+  const s=steps[step-1];
+  return React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+    React.createElement(StatusBar),
+    React.createElement(TopBar,{title:'Set up profile',left:step>1&&React.createElement('span',{style:{...r(9,C.sand),cursor:'pointer'},onClick:()=>setStep(v=>v-1)},'←')}),
+    React.createElement('div',{style:{padding:'10px 14px 0',flexShrink:0}},
+      React.createElement('div',{style:{height:3,borderRadius:3,background:C.surf3}},
+        React.createElement('div',{style:{width:`${(step/4)*100}%`,height:'100%',borderRadius:3,background:C.clay,transition:'width .3s'}})
+      ),
+      React.createElement('span',{style:{...r(7,C.sand),marginTop:4,display:'block'}},'Step '+step+' of 4')
+    ),
+    React.createElement('div',{style:{flex:1,overflowY:'auto',padding:'10px 14px'}},
+      React.createElement('div',{style:r(13,C.cream,700)},s.title),
+      React.createElement('p',{style:{...r(7.5,C.sand),marginBottom:12,marginTop:3,lineHeight:1.5}},s.sub),
+      s.fields&&s.fields.map(f=>
+        React.createElement('div',{key:f,style:{marginBottom:9}},
+          React.createElement('span',{style:r(7.5,C.sand)},f),
+          React.createElement('div',{style:{height:32,borderRadius:8,background:C.surf2,border:`0.5px solid ${C.border2}`,marginTop:3}})
+        )
+      ),
+      s.opts&&s.opts.map((o,i)=>
+        React.createElement('div',{key:o,style:{...card(9),...row(8),marginBottom:6}},
+          React.createElement('div',{style:{width:14,height:14,borderRadius:step===2?4:'50%',border:`1.5px solid ${i===0||(step===3&&i===0)||i===0?C.clay:C.border2}`,background:i===0?C.clay:'transparent',flexShrink:0}}),
+          React.createElement('span',{style:r(8,C.cream)},o)
+        )
+      ),
+      React.createElement('div',{onClick:()=>setStep(v=>Math.min(4,v+1)),style:{height:36,borderRadius:10,background:C.clay,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',marginTop:12}},
+        React.createElement('span',{style:r(8,'#fff',700)},step<4?'Continue →':'✓ Finish Setup')
+      )
+    )
+  );
+};
+
+const SignInPage=()=>React.createElement('div',{style:{height:'100%',background:C.bg,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:20}},
+  React.createElement('div',{style:{...col(6),alignItems:'center',marginBottom:22}},
+    React.createElement('div',{style:{width:52,height:52,borderRadius:16,background:`linear-gradient(135deg,${C.clay},${C.clayDim})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}},'🥦'),
+    React.createElement('span',{style:r(14,C.cream,800)},'HealthOX'),
+    React.createElement('span',{style:r(8,C.sand)},"Know what's in your food")
+  ),
+  React.createElement('div',{style:{...card(16),width:'100%',...col(10)}},
+    React.createElement('span',{style:r(10,C.cream,700)},'Sign in or create account'),
+    React.createElement('div',{style:{height:36,borderRadius:10,background:C.surf3,border:`0.5px solid ${C.border2}`,display:'flex',alignItems:'center',justifyContent:'center',gap:8}},
+      React.createElement('span',{style:r(11,C.cream,700)},'G'),
+      React.createElement('span',{style:r(8,C.cream,500)},'Continue with Google')
+    ),
+    React.createElement('div',{style:{...row(8)}},
+      React.createElement('div',{style:{flex:1,height:.5,background:C.border2}}),
+      React.createElement('span',{style:r(7,C.muted)},'or'),
+      React.createElement('div',{style:{flex:1,height:.5,background:C.border2}})
+    ),
+    React.createElement('div',null,
+      React.createElement('span',{style:r(7.5,C.sand)},'Email address'),
+      React.createElement('div',{style:{height:32,borderRadius:8,background:C.surf2,border:`0.5px solid ${C.border2}`,marginTop:4}})
+    ),
+    React.createElement('div',{style:{height:34,borderRadius:10,background:C.clay,display:'flex',alignItems:'center',justifyContent:'center'}},
+      React.createElement('span',{style:r(8,'#fff',700)},'Send magic link →')
+    )
+  ),
+  React.createElement('span',{style:{...r(7,C.muted),marginTop:14,textAlign:'center',lineHeight:1.6}},'By signing in you agree to our Terms & Privacy Policy')
+);
+
+const AdminPage=()=>React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+  React.createElement(StatusBar),
+  React.createElement(TopBar,{title:'Pending Approvals',left:React.createElement('span',{style:r(9,C.sand)},'←'),right:React.createElement(IBtn,{ch:'🔍'})}),
+  React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,padding:'8px 12px',flexShrink:0}},
+    ...[{l:'Pending',v:'14',c:C.amber},{l:'Approved',v:'892',c:C.moss},{l:'Rejected',v:'34',c:C.rust}].map(s=>
+      React.createElement('div',{key:s.l,style:{...card(8),textAlign:'center',borderTop:`2px solid ${s.c}`}},
+        React.createElement('div',{style:r(11,s.c,700)},s.v),
+        React.createElement('div',{style:r(6.5,C.sand)},s.l)
+      )
+    )
+  ),
+  React.createElement('div',{style:{flex:1,overflowY:'auto'}},
+    ...['Patanjali Dant Kanti','Haldiram Bhujia','ITC Bingo Chips','Kissan Fruit Jam'].map((n,i)=>
+      React.createElement('div',{key:n,style:{padding:'8px 12px',borderBottom:`0.5px solid ${C.border}`}},
+        React.createElement('div',{style:{...row(8),marginBottom:7}},
+          React.createElement('div',{style:{width:32,height:32,borderRadius:8,background:C.surf3,border:`0.5px solid ${C.border}`,flexShrink:0}}),
+          React.createElement('div',{style:{...col(2),flex:1}},
+            React.createElement('span',{style:r(8,C.cream,600)},n),
+            React.createElement('span',{style:r(7,C.sand)},`user_${400+i*83} · ${(i+2)}h ago`)
+          )
+        ),
+        React.createElement('div',{style:row(6)},
+          React.createElement('div',{style:{flex:1,height:26,borderRadius:8,background:C.mossBg,border:`0.5px solid ${C.moss}`,display:'flex',alignItems:'center',justifyContent:'center'}},
+            React.createElement('span',{style:r(7.5,C.moss,600)},'✓ Approve')
+          ),
+          React.createElement('div',{style:{flex:1,height:26,borderRadius:8,background:C.rustBg,border:`0.5px solid ${C.rust}`,display:'flex',alignItems:'center',justifyContent:'center'}},
+            React.createElement('span',{style:r(7.5,C.rust,600)},'✕ Reject')
+          ),
+          React.createElement('div',{style:{width:26,height:26,borderRadius:8,background:C.surf3,display:'flex',alignItems:'center',justifyContent:'center'}},
+            React.createElement('span',{style:r(11,C.sand)},'⋯')
+          )
+        )
+      )
+    )
+  )
+);
+
+const LegalPage=()=>{
+  const[lt,setLt]=useState(0);
+  return React.createElement('div',{style:{...col(0),height:'100%',background:C.bg}},
+    React.createElement(StatusBar),
+    React.createElement(TopBar,{title:['Privacy Policy','Terms of Use','Cookie Policy','Disclaimer'][lt],left:React.createElement('span',{style:r(9,C.sand)},'←')}),
+    React.createElement('div',{style:{display:'flex',gap:5,padding:'7px 12px',borderBottom:`0.5px solid ${C.border}`,overflowX:'auto',flexShrink:0}},
+      ['Privacy','Terms','Cookies','Disclaimer'].map((t,i)=>
+        React.createElement('button',{key:t,onClick:()=>setLt(i),style:{...pill(lt===i?C.surf3:'transparent',lt===i?C.cream:C.muted),border:`0.5px solid ${lt===i?C.border2:'transparent'}`,cursor:'pointer',fontSize:7}},t)
+      )
+    ),
+    React.createElement('div',{style:{flex:1,overflowY:'auto',padding:'10px 14px'}},
+      ...['1. Information We Collect','2. How We Use Your Data','3. Data Storage & Security','4. Third-Party Services','5. Your Rights & Choices'].map(h=>
+        React.createElement('div',{key:h,style:{marginBottom:12}},
+          React.createElement('span',{style:r(9,C.cream,700)},h),
+          React.createElement('p',{style:{...r(7.5,C.sand),lineHeight:1.65,marginTop:5}},'We collect information you provide when creating an account. This includes name, email, and health profile data to provide personalized food health insights across the HealthOX platform.')
+        )
+      )
+    )
+  );
+};
+
+// ─── PAGES MAP ────────────────────────────────────────────────────────────────
+const PMAP={home:HomePage,dashboard:DashboardPage,scan:ScanPage,results:ResultsPage,search:SearchPage,history:HistoryPage,favorites:FavoritesPage,insights:InsightsPage,leaderboard:LeaderboardPage,validate:ValidatePage,contribute:ContributePage,profile:ProfilePage,signin:SignInPage,admin:AdminPage,legal:LegalPage};
+
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
+function App(){
+  const[page,setPage]=useState('dashboard');
+  const phoneRef=useRef(null);
+  const onMove=useCallback(e=>{
+    const el=phoneRef.current;if(!el)return;
+    const rect=el.getBoundingClientRect();
+    const x=((e.clientX-rect.left)/rect.width-.5)*10;
+    const y=((e.clientY-rect.top)/rect.height-.5)*-10;
+    el.style.transform=`perspective(900px) rotateX(${y}deg) rotateY(${x}deg) translateZ(6px)`;
+  },[]);
+  const onLeave=useCallback(()=>{
+    if(phoneRef.current)phoneRef.current.style.transform='perspective(900px) rotateX(0) rotateY(0) translateZ(0)';
+  },[]);
+  const groups=[...new Set(PAGES.map(p=>p.group))];
+  const PC2=PMAP[page];
+  const ann=ANN[page];
+
+  return React.createElement('div',{style:{display:'flex',gap:10,fontFamily:'system-ui,-apple-system,sans-serif',padding:'10px 8px',minHeight:600,background:'#070503',borderRadius:12}},
+    // Sidebar
+    React.createElement('div',{style:{width:100,flexShrink:0,...col(1)}},
+      React.createElement('div',{style:{...r(7,C.clay,800),letterSpacing:1,paddingBottom:6,borderBottom:`0.5px solid ${C.border}`}},'HEALTHOX'),
+      groups.map(g=>React.createElement('div',{key:g},
+        React.createElement('div',{style:{...r(5.5,C.muted,700),padding:'7px 0 3px',letterSpacing:.8}},g.toUpperCase()),
+        PAGES.filter(p=>p.group===g).map(p=>
+          React.createElement('button',{key:p.id,onClick:()=>setPage(p.id),style:{width:'100%',textAlign:'left',padding:'4px 7px',borderRadius:6,background:page===p.id?C.clayBg:'transparent',border:`0.5px solid ${page===p.id?C.clayDim:'transparent'}`,color:page===p.id?C.clay:C.sand,fontSize:7.5,fontWeight:page===p.id?600:400,cursor:'pointer',marginBottom:2}},p.label)
+        )
+      ))
+    ),
+    // Phone
+    React.createElement('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',gap:8,flexShrink:0}},
+      React.createElement('div',{ref:phoneRef,onMouseMove:onMove,onMouseLeave:onLeave,style:{width:240,height:506,background:C.bg,borderRadius:38,border:`2px solid #2C271F`,position:'relative',overflow:'hidden',boxShadow:`0 24px 70px rgba(0,0,0,.85),0 0 0 1px ${C.border},inset 0 1px 0 rgba(255,255,255,.03)`,transition:'transform .1s ease',flexShrink:0}},
+        React.createElement('div',{style:{position:'absolute',top:8,left:'50%',transform:'translateX(-50%)',width:70,height:22,background:'#000',borderRadius:11,zIndex:200,boxShadow:`0 0 0 1px ${C.border}`}}),
+        PC2&&React.createElement(PC2)
+      ),
+      React.createElement('div',{style:r(6,C.muted)},'Hover to tilt · click pages to interact'),
+      // Token strip
+      React.createElement('div',{style:{...card(7),width:240}},
+        React.createElement('div',{style:{...r(6.5,C.sand,600),marginBottom:5}},'Design tokens'),
+        React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:5}},
+          [['bg',C.bg],['surface',C.surface],['clay',C.clay],['moss',C.moss],['rust',C.rust],['amber',C.amber],['sand',C.sand],['cream',C.cream]].map(([n,hex])=>
+            React.createElement('div',{key:n,style:row(4)},
+              React.createElement('div',{style:{width:10,height:10,borderRadius:3,background:hex,border:`0.5px solid ${C.border2}`}}),
+              React.createElement('span',{style:r(6,C.muted)},n)
+            )
+          )
+        )
+      )
+    ),
+    // Annotations
+    ann&&React.createElement('div',{style:{flex:1,minWidth:0,...col(7)}},
+      React.createElement('div',{style:r(9,C.cream,700)},PAGES.find(p=>p.id===page)?.label),
+      React.createElement('div',{style:{...r(7.5,C.sand),lineHeight:1.55,marginBottom:10}},ann.desc),
+      ann.items.map(it=>
+        React.createElement('div',{key:it.n,style:{...card(9),...row(8),alignItems:'flex-start',marginBottom:5}},
+          React.createElement('div',{style:{width:17,height:17,borderRadius:'50%',background:C.clayBg,border:`1px solid ${C.clay}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1}},
+            React.createElement('span',{style:r(6,C.clay,700)},it.n)
+          ),
+          React.createElement('div',{style:{...col(2),flex:1}},
+            React.createElement('span',{style:r(7.5,C.cream,700)},it.e),
+            React.createElement('span',{style:{...r(6.5,C.sand),lineHeight:1.5}},it.s)
+          )
+        )
+      ),
+      // Layout rules card
+      React.createElement('div',{style:{...card(9),marginTop:6,borderLeft:`2px solid ${C.clay}`}},
+        React.createElement('div',{style:{...r(7,C.clay,700),marginBottom:6}},'Global layout rules'),
+        ...['StatusBar 28px · cream text · always visible','TopBar 44px · bg C.bg · 0.5px border-bottom','Content starts at top 72px (28+44)','BottomNav 56px fixed · FAB 46px floats +10px above','Bottom content padding 80px · clears nav + FAB','Cards border-radius 10px · border 0.5px border2','Side gutters 12px · section gap 8–12px','3D tilt: perspective 900px · ±10° max on phone frame','Score ring: 88px dashboard · 44px compact · 34px list'].map(rx=>
+          React.createElement('div',{key:rx,style:{...row(5),marginTop:4}},
+            React.createElement('div',{style:{width:3,height:3,borderRadius:'50%',background:C.clay,flexShrink:0}}),
+            React.createElement('span',{style:r(6.5,C.sand)},rx)
+          )
+        )
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>

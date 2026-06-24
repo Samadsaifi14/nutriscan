@@ -1,4 +1,3 @@
-// src/app/leaderboard/page.tsx
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -21,20 +20,21 @@ interface LeaderboardUser {
   badges: string[]
 }
 
+const PERIODS = ['Weekly', 'Monthly', 'All time']
+
 export default function LeaderboardPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const [users, setUsers] = useState<LeaderboardUser[]>([])
   const [loading, setLoading] = useState(true)
-  const [timeFilter, setTimeFilter] = useState<'all' | 'month' | 'week'>('all')
+  const [period, setPeriod] = useState(0)
 
   useEffect(() => {
     fetchLeaderboard()
-  }, [timeFilter])
+  }, [period])
 
   async function fetchLeaderboard() {
     setLoading(true)
-    
     let query = supabase
       .from('user_profiles')
       .select('*')
@@ -44,10 +44,6 @@ export default function LeaderboardPage() {
     const { data, error } = await query
 
     if (!error && data) {
-      // Fetch user details from auth
-      const userIds = data.map(u => u.user_id)
-      
-      // For now, just use the profile data with placeholder names
       setUsers(data.map(u => ({
         user_id: u.user_id,
         name: u.name || 'Anonymous',
@@ -59,171 +55,94 @@ export default function LeaderboardPage() {
         badges: u.badges || [],
       })))
     }
-    
     setLoading(false)
   }
 
-  function getRankEmoji(rank: number): string {
-    if (rank === 1) return '🥇'
-    if (rank === 2) return '🥈'
-    if (rank === 3) return '🥉'
-    return `${rank}`
-  }
-
-  // Get current user's rank
   const currentUserId = (session?.user as any)?.id
-  const currentUserRank = currentUserId
-    ? users.findIndex(u => u.user_id === currentUserId) + 1 
-    : null
+  const currentUserIdx = currentUserId ? users.findIndex(u => u.user_id === currentUserId) : -1
+  const currentUser = currentUserIdx >= 0 ? users[currentUserIdx] : null
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-[var(--foreground)] pb-24">
-      {/* Header */}
-      <div className="bg-gradient-to-b from-amber-500/20 to-transparent px-5 pt-12 pb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-black">🏆 Leaderboard</h1>
-          <div className="text-sm text-[var(--muted-2)]">India</div>
-        </div>
-        
-        {/* My Rank Card */}
-        {session && currentUserRank && currentUserRank <= 50 && (
-          <div className="bg-gradient-to-r from-[var(--clay)]/20 to-purple-500/20 border border-[var(--clay)]/30 rounded-xl p-4 mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--clay)]/30 flex items-center justify-center text-xl font-bold">
-                {getRankEmoji(currentUserRank)}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-[var(--foreground)]">Your Rank</p>
-                <p className="text-xs text-[var(--muted-2)]">India #{currentUserRank}</p>
-              </div>
-            </div>
-          </div>
-        )}
+    <div className="min-h-screen bg-[var(--background)] flex flex-col">
 
-        {/* Time filter */}
-        <div className="flex gap-2">
-          {(['all', 'month', 'week'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTimeFilter(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-colors ${
-                timeFilter === t 
-                  ? 'bg-[var(--clay)] text-white' 
-                  : 'bg-[var(--card)] text-[var(--muted-2)]'
-              }`}
-            >
-              {t === 'all' ? 'All Time' : t === 'month' ? 'This Month' : 'This Week'}
-            </button>
-          ))}
-        </div>
+      {/* TopBar */}
+      <div className="h-11 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0">
+        <span />
+        <span className="text-sm font-bold text-[var(--foreground)]">Leaderboard</span>
+        <span className="text-sm text-[var(--sand)]">👥</span>
       </div>
 
-      <div className="px-5 pt-4">
-        {/* Top 3 Podium */}
-        {users.length >= 3 && (
-          <div className="flex justify-center items-end gap-4 mb-8 pt-4">
-            {/* 2nd */}
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-[#2a3545] mx-auto mb-2 flex items-center justify-center text-2xl">
-                {users[1].image ? <img src={users[1].image} alt={users[1].name} className="w-full h-full rounded-full object-cover" /> : '🥈'}
-              </div>
-              <p className="text-xs font-bold text-[var(--foreground)] truncate max-w-[80px] mx-auto">{users[1].name}</p>
-              <p className="text-[10px] text-amber-400">{users[1].total_impact} impact</p>
-            </div>
-            
-            {/* 1st */}
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-b from-amber-500/30 to-amber-500/10 mx-auto mb-2 flex items-center justify-center text-3xl border-2 border-amber-500">
-                {users[0].image ? <img src={users[0].image} alt={users[0].name} className="w-full h-full rounded-full object-cover" /> : '🥇'}
-              </div>
-              <p className="text-sm font-black text-[var(--foreground)] truncate max-w-[100px] mx-auto">{users[0].name}</p>
-              <p className="text-[10px] text-amber-400">{users[0].total_impact} impact</p>
-            </div>
-            
-            {/* 3rd */}
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-[#2a3545] mx-auto mb-2 flex items-center justify-center text-2xl">
-                {users[2].image ? <img src={users[2].image} alt={users[2].name} className="w-full h-full rounded-full object-cover" /> : '🥉'}
-              </div>
-              <p className="text-xs font-bold text-[var(--foreground)] truncate max-w-[80px] mx-auto">{users[2].name}</p>
-              <p className="text-[10px] text-amber-400">{users[2].total_impact} impact</p>
-            </div>
-          </div>
-        )}
+      {/* Period tabs */}
+      <div className="flex border-b border-[var(--border)] flex-shrink-0">
+        {PERIODS.map((t, i) => (
+          <button key={t} onClick={() => setPeriod(i)}
+            className={`flex-1 h-8 text-[10px] font-bold border-b-2 transition-colors ${
+              period === i
+                ? 'text-[var(--clay)] border-[var(--clay)]'
+                : 'text-[var(--muted)] border-transparent'
+            }`}>
+            {t}
+          </button>
+        ))}
+      </div>
 
-        {/* Rest of leaderboard */}
+      {/* My rank card */}
+      {currentUser && (
+        <div className="mx-3 mt-3 mb-1 p-3 rounded-xl border border-[var(--clay)] bg-[var(--surface)] flex items-center gap-3 flex-shrink-0">
+          <span className="text-sm font-bold text-[var(--clay)]">#{currentUserIdx + 1}</span>
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--clay)] to-[var(--clayDim)] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+            {(currentUser.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-xs font-bold text-[var(--foreground)]">{currentUser.name}</span>
+            <span className="text-[10px] text-[var(--sand)] block">{currentUser.total_impact} pts · {currentUser.contributions_count} scans</span>
+          </div>
+          <span className="text-[9px] px-2 py-0.5 rounded-full bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/25 w-fit">↑ 3 places</span>
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-3 pt-2 pb-4">
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="h-11 bg-[var(--surface)] border border-[var(--border)] rounded-xl animate-pulse" />
+            ))}
           </div>
         ) : users.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-4">🌟</div>
-            <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Be the First!</h2>
-            <p className="text-sm text-[var(--muted-2)]">Contribute products to top the leaderboard</p>
-            <button 
-              onClick={() => router.push('/contribute')}
-              className="mt-4 px-6 py-2 bg-[var(--clay)] text-white font-bold rounded-xl"
-            >
+          <div className="text-center py-16">
+            <span className="text-4xl block mb-3">🌟</span>
+            <p className="text-sm font-bold text-[var(--foreground)] mb-1">Be the first!</p>
+            <p className="text-xs text-[var(--sand)] mb-4">Contribute products to join</p>
+            <button onClick={() => router.push('/contribute')}
+              className="px-5 py-2 bg-[var(--clay)] text-white font-bold rounded-xl text-xs">
               Start Contributing
             </button>
           </div>
         ) : (
-          <div className="space-y-2">
-            {users.slice(3).map((user, idx) => (
-              <div 
-                key={user.user_id} 
-                className={`flex items-center gap-3 p-3 bg-[var(--card)] border border-[var(--border)] rounded-xl ${
-                  currentUserId === user.user_id ? 'border-[var(--clay)]/50' : ''
-                }`}
-              >
-                <div className="w-8 text-center text-sm font-bold text-[var(--muted-2)]">
-                  {idx + 4}
+          <div className="space-y-0.5">
+            {users.map((u, i) => (
+              <div key={u.user_id}
+                className={`flex items-center gap-3 px-3 py-2 border-b border-[var(--border)] ${
+                  currentUserId === u.user_id ? 'bg-[var(--clay)]/5' : ''
+                }`}>
+                <span className={`text-xs font-bold w-5 text-center ${i < 3 ? 'text-base' : 'text-[var(--muted)]'}`}>
+                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                </span>
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--clay)] to-[var(--clayDim)] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                  {(u.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
-                
-                <div className="w-10 h-10 rounded-full bg-[#2a3545] flex items-center justify-center overflow-hidden">
-                  {user.image ? (
-                    <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-lg">👤</span>
-                  )}
-                </div>
-                
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-[var(--foreground)] truncate">{user.name}</p>
-                  <p className="text-[10px] text-[var(--muted-2)]">
-                    {user.contributions_count} contributions · {user.city}
-                  </p>
+                  <span className="text-xs font-bold text-[var(--foreground)]">{u.name}</span>
+                  <span className="text-[10px] text-[var(--sand)] block">{u.contributions_count} scans</span>
                 </div>
-                
-                <div className="text-right">
-                  <p className="text-sm font-black text-[var(--clay)]">{user.total_impact}</p>
-                  <p className="text-[10px] text-[var(--muted-2)]">impact</p>
-                </div>
+                <span className="text-xs font-bold text-[var(--clay)]">{u.total_impact} pts</span>
               </div>
             ))}
           </div>
         )}
-
-        {/* CTA */}
-        <div className="mt-8 p-4 bg-[var(--card)] border border-[var(--border)] rounded-xl text-center">
-          <p className="text-sm text-[var(--muted-2)] mb-3">Want to climb the ranks?</p>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => router.push('/contribute')}
-              className="flex-1 py-2.5 bg-[var(--clay)] text-white font-bold rounded-lg text-sm"
-            >
-              📝 Contribute
-            </button>
-            <button 
-              onClick={() => router.push('/validate')}
-              className="flex-1 py-2.5 bg-purple-500 text-white font-bold rounded-lg text-sm"
-            >
-              ✅ Validate
-            </button>
-          </div>
-        </div>
       </div>
+
     </div>
   )
 }

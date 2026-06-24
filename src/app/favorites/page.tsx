@@ -1,8 +1,10 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import RouteErrorBoundary from '@/components/RouteErrorBoundary'
+import ScoreRing from '@/components/ScoreRing'
 
 interface Favorite {
   id: string
@@ -12,9 +14,11 @@ interface Favorite {
   protein_per_100g?: number
   carbs_per_100g?: number
   fat_per_100g?: number
+  health_score?: number | null
 }
 
 export default function FavoritesPage() {
+  const router = useRouter()
   const qc = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -32,77 +36,78 @@ export default function FavoritesPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['favorites'] })
-      toast.success('Removed from favorites')
+      toast.success('Removed')
     },
   })
 
-  async function logFavorite(f: Favorite) {
-    const res = await fetch('/api/log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        product_name: f.product_name,
-        barcode: f.barcode,
-        quantity_g: 100,
-        calories_per_100g: f.calories_per_100g ?? 0,
-        protein_per_100g: f.protein_per_100g ?? 0,
-        carbs_per_100g: f.carbs_per_100g ?? 0,
-        fat_per_100g: f.fat_per_100g ?? 0,
-        meal_type: 'snack',
-      }),
-    })
-    const json = await res.json()
-    if (json.success) toast.success('Meal logged!')
-    else toast.error(json.error || 'Failed to log')
-  }
-
   return (
     <RouteErrorBoundary>
-      <div className="min-h-screen bg-[var(--background)] px-4 pt-10 pb-24">
-        <h1 className="text-2xl font-black mb-1">Meal favorites</h1>
-        <p className="text-sm text-[var(--muted)] mb-6">One-tap logging for foods you eat often</p>
+      <div className="min-h-screen bg-[var(--background)] flex flex-col">
 
-        {isLoading && <p className="text-sm text-[var(--muted)]">Loading...</p>}
+        {/* TopBar */}
+        <div className="h-11 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0">
+          <span className="text-sm font-bold text-[var(--foreground)]">Saved</span>
+          <span className="text-sm text-[var(--sand)]">⚙️</span>
+        </div>
 
-        {!isLoading && (!data || data.length === 0) && (
-          <p className="text-sm text-[var(--muted)]">
-            Save favorites from scan results using the star button (coming from results page), or log meals from history.
-          </p>
-        )}
-
-        <ul className="space-y-2">
-          {(data || []).map((f) => (
-            <li
-              key={f.id}
-              className="p-4 rounded-xl bg-[var(--card)] border border-[var(--card-border)] flex items-center justify-between gap-3"
-            >
-              <div>
-                <p className="font-semibold">{f.product_name}</p>
-                {f.calories_per_100g != null && (
-                  <p className="text-xs text-[var(--muted)]">{f.calories_per_100g} kcal / 100g</p>
-                )}
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-3 pt-3 pb-4">
+          {isLoading ? (
+            <div className="grid grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 animate-pulse flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-[var(--surface-2)]" />
+                  <div className="h-3 bg-[var(--surface-2)] rounded w-3/4" />
+                </div>
+              ))}
+            </div>
+          ) : !data || data.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <span className="text-4xl block mb-4">🔖</span>
+              <p className="text-sm font-bold text-[var(--foreground)] mb-1">No saved products yet</p>
+              <p className="text-xs text-[var(--sand)] mb-4">Save products from scan results</p>
+              <button onClick={() => router.push('/scan')}
+                className="px-5 py-2 border border-[var(--clay)] text-[var(--clay)] font-bold rounded-xl text-xs bg-transparent">
+                📷 Scan to add
+              </button>
+            </div>
+          ) : (
+            <>
+              <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider px-1 mb-2 block">
+                {data.length} product{data.length !== 1 ? 's' : ''} saved
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                {data.map((f) => (
+                  <div key={f.id}
+                    className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 flex flex-col items-center text-center gap-2">
+                    <div className="w-12 h-12 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center">
+                      <span className="text-lg">🏷️</span>
+                    </div>
+                    <span className="text-xs font-bold text-[var(--foreground)] leading-tight line-clamp-2">{f.product_name}</span>
+                    {f.health_score != null ? (
+                      <ScoreRing score={Number(f.health_score)} size={32} />
+                    ) : (
+                      <span className="text-[10px] text-[var(--sand)]">No score</span>
+                    )}
+                    <div className="flex gap-1.5 mt-1">
+                      {f.barcode && (
+                        <button onClick={() => router.push(`/results?barcode=${f.barcode}`)}
+                          className="text-[9px] px-2 py-1 rounded-md bg-[var(--clay)]/10 text-[var(--clay)] font-medium">
+                          View
+                        </button>
+                      )}
+                      <button onClick={() => remove.mutate(f.id)}
+                        className="text-[9px] px-2 py-1 rounded-md bg-[var(--surface-2)] text-[var(--sand)] font-medium border border-[var(--border-2)]">
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => logFavorite(f)}
-                  className="px-3 py-2 bg-[var(--clay)] text-white text-xs font-semibold rounded-lg"
-                  aria-label={`Log ${f.product_name} as meal`}
-                >
-                  Log
-                </button>
-                <button
-                  type="button"
-                  onClick={() => remove.mutate(f.id)}
-                  className="px-3 py-2 bg-[var(--card-border)] text-xs rounded-lg"
-                  aria-label={`Remove ${f.product_name} from favorites`}
-                >
-                  Remove
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+            </>
+          )}
+        </div>
+
       </div>
     </RouteErrorBoundary>
   )

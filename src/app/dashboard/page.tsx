@@ -4,9 +4,9 @@ import RouteErrorBoundary from '@/components/RouteErrorBoundary'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Scan, RefreshCw, ChevronRight, Flame, Target, Award } from 'lucide-react'
 import { SkeletonDashboard } from '@/components/Skeleton'
 import { event, AnalyticsEvents } from '@/lib/analytics'
+import ScoreRing from '@/components/ScoreRing'
 
 interface DashboardData {
   totalCalories:    number
@@ -16,38 +16,6 @@ interface DashboardData {
   dailyCalorieGoal: number
   mealCount:        number
   profile:          any
-}
-
-// ── Calorie Ring ──────────────────────────────────────────────────────────────
-function CalorieRing({ consumed, goal }: { consumed: number; goal: number }) {
-  const pct  = Math.min(consumed / goal, 1)
-  const r    = 54
-  const circ = 2 * Math.PI * r
-  const dash = pct * circ
-  const color = pct > 1 ? '#B43C28' : pct > 0.85 ? '#E8956E' : '#3D5C2E'
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="relative w-32 h-32">
-        <svg width="128" height="128" viewBox="0 0 128 128" className="-rotate-90">
-          <circle cx="64" cy="64" r={r} fill="none"
-            className="stroke-[var(--card-border)]" strokeWidth="10" />
-          <circle cx="64" cy="64" r={r} fill="none"
-            stroke={color} strokeWidth="10" strokeLinecap="round"
-            strokeDasharray={`${dash} ${circ - dash}`}
-            style={{ transition: 'stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)' }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-black tabular-nums text-[var(--foreground)]">{consumed}</span>
-          <span className="text-[10px] text-[var(--muted)] font-medium">kcal</span>
-        </div>
-      </div>
-      <p className="text-xs text-[var(--muted)] font-medium text-center">
-        {Math.max(0, goal - consumed)} kcal left
-      </p>
-    </div>
-  )
 }
 
 export default function DashboardPage() {
@@ -60,7 +28,7 @@ export default function DashboardPage() {
 
   const userId = (session as any)?.userId
 
-  const { data, isLoading, refetch, isRefetching } = useQuery<DashboardData>({
+  const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ['dashboard', userId],
     queryFn: async () => {
       const res = await fetch('/api/dashboard')
@@ -109,257 +77,157 @@ export default function DashboardPage() {
 
   if (status === 'loading' || isLoading) return <SkeletonDashboard />
 
-  const userName   = session?.user?.name?.split(' ')[0] || 'there'
-  const isNewUser  = !data?.profile?.profile_completed
-  const hasNoLogs  = (data?.mealCount ?? 0) === 0
-  const consumed   = data?.totalCalories ?? 0
-  const goal       = data?.dailyCalorieGoal ?? 2000
-  const streak     = streakData?.streak ?? 0
+  const userName  = session?.user?.name?.split(' ')[0] || 'there'
+  const consumed  = data?.totalCalories ?? 0
+  const goal      = data?.dailyCalorieGoal ?? 2000
+  const streak    = streakData?.streak ?? 0
   const bestStreak = streakData?.best ?? 0
-  const pct        = Math.round(Math.min(consumed / goal, 1) * 100)
 
   const now  = new Date()
   const hour = now.getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
+  const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const weekValues = [70, 85, 60, 92, 45, 78, 72]
+
   return (
     <RouteErrorBoundary>
-    <div className="min-h-screen bg-[var(--background)]">
-
-      {/* ── Header — matches skeleton gradient ──────────────────── */}
-      <div className="px-5 pt-12 pb-8 relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #C4714A 0%, #2C1F0F 100%)' }}>
-        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10" />
-        <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/5" />
-        <div className="relative">
-          <p className="text-cream/70 text-sm font-medium">
-            {now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
-          <div className="flex items-start justify-between mt-0.5">
-            <div>
-              <h1 className="text-2xl font-black text-white">
-                {greeting}, {userName}! {isNewUser ? '👋' : '💪'}
-              </h1>
-              {isNewUser && (
-                <p className="text-cream/70 text-sm mt-0.5 opacity-90">
-                  Set up your profile for personalised advice
-                </p>
-              )}
-            </div>
-            <div className="flex gap-2 mt-1">
-              <button type="button" onClick={() => router.push('/insights')}
-                className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold">
-                Insights
-              </button>
-              <button type="button" onClick={() => refetch()} disabled={isRefetching}
-                aria-label="Refresh dashboard"
-                className="p-2 rounded-xl bg-white/15 hover:bg-white/25 transition-colors text-white disabled:opacity-50">
-                <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
-
-          {/* Profile CTA — matches skeleton's h-16 block */}
-          {isNewUser ? (
-            <button onClick={() => router.push('/profile-setup')}
-              className="mt-4 w-full flex items-center gap-3 px-4 py-3 bg-white/15 hover:bg-white/25 border border-white/25 rounded-2xl transition-colors text-left">
-              <span className="text-xl">✨</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">Complete your profile</p>
-                <p className="text-xs text-cream/70 opacity-80">Get personalised calorie goals & health scores</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-white/70" />
-            </button>
-          ) : (
-            <div className="mt-4 flex items-center gap-3 px-4 py-3 bg-white/10 rounded-2xl">
-              <Flame className="w-5 h-5 text-orange-300 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-xs text-cream/70 opacity-80">Logging streak</p>
-                <p className="text-sm font-black text-white">{streak} day{streak !== 1 ? 's' : ''} 🔥</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-cream/70 opacity-80">Best</p>
-                <p className="text-sm font-black text-white">{bestStreak}</p>
-              </div>
-            </div>
-          )}
+    <div style={{ minHeight: '100svh', background: 'var(--background)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          background: 'linear-gradient(135deg, var(--clay), #78471C)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0,
+        }}>
+          {session?.user?.name?.charAt(0) || 'Y'}
+        </div>
+        <span style={{ fontSize: 8, color: 'var(--muted)' }}>{greeting}, {userName}</span>
+        <div style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: 'var(--surface-2)', border: '0.5px solid var(--border-2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, color: 'var(--sand)', cursor: 'pointer',
+        }}>
+          <span>\uD83D\uDD14</span>
         </div>
       </div>
 
-      <div className="px-4 py-5 max-w-2xl mx-auto space-y-4">
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ textAlign: 'center', padding: '14px 0 8px' }}>
+          <span style={{ fontSize: 7, color: 'var(--muted)' }}>Today&apos;s Health Score</span>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+            <ScoreRing score={7.2} size={88} />
+          </div>
+          <div style={{
+            padding: '2px 7px', borderRadius: 20, background: 'rgba(76,107,57,0.12)',
+            color: 'var(--moss)', width: 'fit-content', margin: '8px auto 0',
+            fontSize: 7, border: '0.5px solid var(--border-2)', whiteSpace: 'nowrap',
+          }}>
+            ✓ Good overall — {data?.mealCount || 0} items scanned
+          </div>
+        </div>
 
-        {/* ── 3-col stat strip — matches skeleton grid ───────────── */}
-        <div className="grid grid-cols-3 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, padding: '0 12px', marginBottom: 10 }}>
           {[
-            { label: 'Calories', value: consumed, unit: 'kcal', color: 'text-[var(--clay)]' },
-            { label: 'Protein',  value: data?.totalProtein ?? 0, unit: 'g', color: 'text-[var(--moss)]' },
-            { label: 'Meals',    value: data?.mealCount ?? 0, unit: '', color: 'text-[var(--clay)]' },
+            { l: 'Calories', v: consumed.toString(), s: `/ ${goal}` },
+            { l: 'Scans', v: (data?.mealCount ?? 0).toString(), s: 'today' },
+            { l: 'Streak', v: `${streak} \uD83D\uDD25`, s: 'days' },
           ].map(s => (
-            <div key={s.label} className="bg-[var(--card)] rounded-2xl p-4 border border-[var(--card-border)] text-center">
-              <p className={`text-2xl font-black tabular-nums ${s.color}`}>
-                {s.value}<span className="text-xs font-medium text-[var(--muted)]">{s.unit}</span>
-              </p>
-              <p className="text-xs text-[var(--muted)] font-medium mt-1">{s.label}</p>
+            <div key={s.l} style={{
+              background: 'var(--surface-2)', borderRadius: 10,
+              border: '0.5px solid var(--border-2)', padding: 8, textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 11, color: 'var(--foreground)', fontWeight: 700 }}>{s.v}</div>
+              <div style={{ fontSize: 6, color: 'var(--foreground)' }}>{s.l}</div>
+              <div style={{ fontSize: 6, color: 'var(--muted)' }}>{s.s}</div>
             </div>
           ))}
         </div>
 
-        {/* ── Ring + Goal side by side — matches skeleton 2-col ──── */}
-        <div className="grid grid-cols-2 gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', marginBottom: 5, marginTop: 8 }}>
+          <span style={{ fontSize: 6.5, color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.08em' }}>THIS WEEK</span>
+          <span style={{ fontSize: 7, color: 'var(--clay)', fontWeight: 600 }}>Full report ›</span>
+        </div>
 
-          {/* Calorie Ring */}
-          <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)] flex flex-col items-center">
-            <p className="text-xs font-semibold text-[var(--muted)] mb-4 self-start">Today's Calories</p>
-            <CalorieRing consumed={consumed} goal={goal} />
-          </div>
-
-          {/* Goal breakdown */}
-          <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)] flex flex-col justify-between">
-            <p className="text-xs font-semibold text-[var(--muted)] mb-3">Daily Goal</p>
-            <div className="space-y-3">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-[var(--muted)]">Progress</span>
-                  <span className="font-bold text-[var(--foreground)]">{pct}%</span>
+        <div style={{
+          background: 'var(--surface-2)', borderRadius: 10,
+          border: '0.5px solid var(--border-2)', padding: 10,
+          margin: '0 12px', marginBottom: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 52 }}>
+            {weekDays.map((d, i) => {
+              const today = i === 6
+              return (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+                  <div style={{
+                    width: '100%', height: `${weekValues[i]}%`, borderRadius: 4,
+                    background: today ? 'var(--clay)' : 'var(--surface-3)',
+                    border: `0.5px solid ${today ? 'rgba(196,113,74,0.38)' : 'var(--border-2)'}`,
+                  }} />
+                  <span style={{ fontSize: 5.5, color: today ? 'var(--clay)' : 'var(--muted)' }}>{d}</span>
                 </div>
-                <div className="h-2 rounded-full bg-[var(--card-border)] overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--clay)] transition-all duration-700"
-                    style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 bg-[color-mix(in_oklab,var(--clay),transparent_92%)] rounded-xl text-center">
-                  <p className="text-sm font-black text-[var(--clay)] tabular-nums">{consumed}</p>
-                  <p className="text-[10px] text-[var(--muted)]">eaten</p>
-                </div>
-                <div className="p-2 bg-[color-mix(in_oklab,var(--card),black_4%)] rounded-xl text-center">
-                  <p className="text-sm font-black text-[var(--foreground)] tabular-nums">{Math.max(0, goal - consumed)}</p>
-                  <p className="text-[10px] text-[var(--muted)]">left</p>
-                </div>
-              </div>
-              <p className="text-[10px] text-[var(--muted)] text-center">Goal: {goal} kcal/day</p>
-            </div>
+              )
+            })}
           </div>
         </div>
 
-        {/* ── Macros card — matches skeleton SkeletonCard ────────── */}
-        <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)]">
-          <p className="text-sm font-bold text-[var(--foreground)] mb-4">Macronutrients</p>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Protein', value: data?.totalProtein ?? 0, unit: 'g', color: 'text-[var(--moss)]', bg: 'bg-[color-mix(in_oklab,var(--moss),transparent_92%)]' },
-              { label: 'Carbs',   value: data?.totalCarbs   ?? 0, unit: 'g', color: 'text-[var(--clay)]', bg: 'bg-[color-mix(in_oklab,var(--clay),transparent_92%)]' },
-              { label: 'Fat',     value: data?.totalFat     ?? 0, unit: 'g', color: 'text-[var(--risk)]', bg: 'bg-[color-mix(in_oklab,var(--risk),transparent_92%)]' },
-            ].map(m => (
-              <div key={m.label} className={`${m.bg} rounded-2xl p-3 text-center`}>
-                <p className={`text-xl font-black tabular-nums ${m.color}`}>
-                  {m.value}<span className="text-xs font-medium">{m.unit}</span>
-                </p>
-                <p className="text-[11px] text-[var(--muted)] font-medium mt-0.5">{m.label}</p>
-              </div>
-            ))}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', marginBottom: 5, marginTop: 8 }}>
+          <span style={{ fontSize: 6.5, color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.08em' }}>RECENT SCANS</span>
+          <span style={{ fontSize: 7, color: 'var(--clay)', fontWeight: 600 }}>See all ›</span>
         </div>
 
-        {/* ── Last Scanned + Streak — matches skeleton SkeletonCard ─ */}
-        <div className="bg-[var(--card)] rounded-2xl p-5 border border-[var(--card-border)] space-y-3">
-          <p className="text-sm font-bold text-[var(--foreground)]">Recent Activity</p>
-
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 12px 8px' }}>
           {lastScan ? (
-            <div className="flex items-center gap-3 p-3 bg-[color-mix(in_oklab,var(--card),black_4%)] rounded-2xl">
-              <div className="w-11 h-11 rounded-2xl bg-[color-mix(in_oklab,var(--moss),transparent_85%)] flex items-center justify-center flex-shrink-0">
-                <Scan className="w-5 h-5 text-[var(--moss)]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[var(--foreground)] truncate">{lastScan.product_name}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  {lastScan.ai_health_rating && (
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                      lastScan.ai_health_rating === 'healthy'
-                        ? 'bg-[color-mix(in_oklab,var(--moss),transparent_85%)] text-[var(--moss)]'
-                        : lastScan.ai_health_rating === 'moderate'
-                        ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
-                        : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                    }`}>
-                      {lastScan.ai_health_rating}
-                    </span>
-                  )}
-                  {lastScan.ai_health_score && (
-                    <span className="text-[11px] text-[var(--muted)]">{lastScan.ai_health_score}/10</span>
-                  )}
-                </div>
-              </div>
-              <button onClick={() => router.push('/results')}
-                className="text-xs font-semibold text-[var(--clay)] flex items-center gap-0.5 flex-shrink-0">
-                View <ChevronRight className="w-3 h-3" />
-              </button>
+            <div style={{
+              background: 'var(--surface-2)', borderRadius: 10,
+              border: '0.5px solid var(--border-2)', padding: 8,
+              width: 82, flexShrink: 0, textAlign: 'center',
+              display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center',
+            }}>
+              <div style={{ width: 46, height: 46, borderRadius: 10, background: 'var(--surface-3)', border: '0.5px solid var(--border)' }} />
+              <span style={{ fontSize: 7, color: 'var(--foreground)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+                {lastScan.product_name || 'Product'}
+              </span>
+              <span style={{
+                padding: '2px 7px', borderRadius: 20,
+                background: 'rgba(76,107,57,0.22)', color: 'var(--moss)',
+                fontSize: 6.5, fontWeight: 500,
+                border: '0.5px solid var(--border-2)', whiteSpace: 'nowrap',
+              }}>
+                {lastScan.ai_health_score || '—'}/10
+              </span>
             </div>
           ) : (
-            <div className="flex items-center gap-3 p-3 bg-[color-mix(in_oklab,var(--card),black_4%)] rounded-2xl">
-              <div className="w-11 h-11 rounded-2xl bg-[color-mix(in_oklab,var(--card),black_8%)] flex items-center justify-center flex-shrink-0">
-                <Scan className="w-5 h-5 text-[var(--muted)]" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-[var(--foreground)]">No scans yet</p>
-                <p className="text-xs text-[var(--muted)]">Scan a product to see results here</p>
-              </div>
+            <div style={{
+              background: 'var(--surface-2)', borderRadius: 10,
+              border: '0.5px solid var(--border-2)', padding: 8,
+              width: 82, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', justifyContent: 'center',
+              fontSize: 7, color: 'var(--muted)', fontWeight: 500,
+            }}>
+              <span style={{ fontSize: 16 }}>\uD83D\uDCF7</span>
+              No scans yet
             </div>
           )}
-
-          <div className="flex items-center gap-3 p-3 bg-[color-mix(in_oklab,var(--card),black_4%)] rounded-2xl">
-            <div className="w-11 h-11 rounded-2xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
-              <Flame className="w-5 h-5 text-orange-500" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-[var(--foreground)]">{streak} day{streak !== 1 ? 's' : ''} streak</p>
-              <p className="text-xs text-[var(--muted)]">Best: {bestStreak} days</p>
-            </div>
-            {streak >= 3 && <Award className="w-5 h-5 text-amber-500 flex-shrink-0" />}
-          </div>
-
-          <div className="flex items-center gap-3 p-3 bg-[color-mix(in_oklab,var(--card),black_4%)] rounded-2xl">
-            <div className="w-11 h-11 rounded-2xl bg-[color-mix(in_oklab,var(--clay),transparent_85%)] flex items-center justify-center flex-shrink-0">
-              <Target className="w-5 h-5 text-[var(--clay)]" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-[var(--foreground)]">{pct}% of daily goal</p>
-              <p className="text-xs text-[var(--muted)]">{consumed} of {goal} kcal</p>
-            </div>
-          </div>
         </div>
 
-        {/* ── Quick Actions ──────────────────────────────────────── */}
-        <div className="bg-[var(--card)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
-          <p className="text-sm font-bold text-[var(--foreground)] px-4 py-3 border-b border-[var(--card-border)]">
-            Quick Actions
-          </p>
-          <div className="divide-y divide-[var(--card-border)]">
-            {[
-              { icon: '⭐', label: 'View last result', sub: 'Health score & ingredients', href: '/results' },
-              { icon: '🍽️', label: 'Meal history', sub: 'Your logged meals', href: '/history' },
-              { icon: '👤', label: 'Health profile', sub: 'Personalise your advice', href: '/profile-setup' },
-            ].map(item => (
-              <button key={item.href} onClick={() => router.push(item.href)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[color-mix(in_oklab,var(--card),black_4%)] transition-colors text-left">
-                <span className="text-xl w-8 text-center flex-shrink-0">{item.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[var(--foreground)]">{item.label}</p>
-                  <p className="text-xs text-[var(--muted)]">{item.sub}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-[var(--muted)] flex-shrink-0" />
-              </button>
-            ))}
+        {consumed > goal && (
+          <div style={{
+            borderRadius: 10,
+            border: '0.5px solid var(--border-2)', padding: 10,
+            margin: '8px 12px 12px',
+            borderLeft: '3px solid var(--risk-red)',
+            background: 'rgba(190,66,48,0.12)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12 }}>⚠️</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 8, color: 'var(--foreground)', fontWeight: 600 }}>High calorie alert</span>
+                <span style={{ fontSize: 7, color: 'var(--muted)' }}>Exceeded daily goal by {consumed - goal} kcal</span>
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* Scan CTA if no logs */}
-        {hasNoLogs && (
-          <button onClick={() => router.push('/scan')}
-            className="w-full flex items-center justify-center gap-2 py-4 bg-[var(--clay)] hover:bg-[color-mix(in_oklab,var(--clay),black_15%)] text-white font-bold rounded-2xl transition-colors shadow-lg shadow-[var(--clay)]/20">
-            <Scan className="w-5 h-5" /> Scan your first product today
-          </button>
         )}
-
       </div>
     </div>
     </RouteErrorBoundary>

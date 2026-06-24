@@ -1,45 +1,74 @@
 "use client"
 import { usePathname } from 'next/navigation'
-import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Home, Clock, User, Star } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/dashboard',    label: 'Home',    icon: Home  },
-  { href: '/results',      label: 'Results', icon: Star  },
-  { href: '/history',      label: 'History', icon: Clock },
-  { href: '/profile-setup',label: 'Profile', icon: User  },
+  { href: '/dashboard', label: 'Home', icon: '\u2302' },
+  { href: '/search', label: 'Search', icon: '\u2299' },
+  { href: '/scan', label: '', icon: '\uD83D\uDCF7', fab: true },
+  { href: '/scan-history', label: 'History', icon: '\u25F7' },
+  { href: '/profile-setup', label: 'Profile', icon: '\u25CE' },
 ]
 
 export default function BottomNav() {
   const pathname = usePathname()
-  const { data: session } = useSession()
-
-  if (pathname?.startsWith('/auth')) return null
-  if (!session) return null
+  if (pathname?.startsWith('/auth') || pathname === '/' || pathname?.startsWith('/legal')) return null
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-[color-mix(in_oklab,var(--background),black_10%)]/90 dark:bg-[color-mix(in_oklab,var(--background),white_5%)]/85 backdrop-blur-2xl border-t border-[var(--card-border)] safe-area-bottom">
-      <div className="flex items-center justify-around max-w-lg mx-auto px-2 py-3">
-        {NAV_ITEMS.map(item => {
-          const isActive = pathname === item.href
-          const Icon = item.icon
+    <div style={{
+      height: 56,
+      background: 'var(--surface)',
+      borderTop: '0.5px solid var(--border-2)',
+      display: 'flex',
+      alignItems: 'center',
+      flexShrink: 0,
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      zIndex: 50,
+      paddingBottom: 'env(safe-area-inset-bottom)',
+    }}>
+      {NAV_ITEMS.map(t => {
+        const isActive = pathname === t.href || (t.href === '/dashboard' && pathname === '/dashboard')
+        if (t.fab) {
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all ${
-                isActive
-                  ? 'text-[var(--bark)] dark:text-[var(--cream)] bg-[color-mix(in_oklab,var(--clay),transparent_88%)] border border-[color-mix(in_oklab,var(--clay),transparent_70%)]'
-                  : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[color-mix(in_oklab,var(--card),transparent_35%)]'
-              }`}
-            >
-              <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">{item.label}</span>
+            <Link key="fab" href="/scan" style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative', height: '100%', alignItems: 'center' }}>
+              <div style={{
+                position: 'absolute',
+                bottom: 10,
+                width: 46,
+                height: 46,
+                borderRadius: '50%',
+                background: 'var(--clay)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 0 3px var(--background), 0 0 0 5px rgba(196,113,74,0.27)',
+                fontSize: 18,
+              }}>
+                <span>\uD83D\uDCF7</span>
+              </div>
             </Link>
           )
-        })}
-      </div>
-    </nav>
+        }
+        const on = isActive
+        return (
+          <Link key={t.href} href={t.href} style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 2,
+            paddingTop: on ? 0 : 4,
+            textDecoration: 'none',
+          }}>
+            {on && <div style={{ width: 18, height: 2, borderRadius: 2, background: 'var(--clay)', marginBottom: 2 }} />}
+            <span style={{ fontSize: 13, color: on ? 'var(--clay)' : 'var(--muted)', lineHeight: 1.35 }}>{t.icon}</span>
+            {t.label && <span style={{ fontSize: 6, color: on ? 'var(--clay)' : 'var(--muted)', fontWeight: on ? 600 : 400 }}>{t.label}</span>}
+          </Link>
+        )
+      })}
+    </div>
   )
 }

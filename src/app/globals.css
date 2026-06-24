@@ -15,6 +15,12 @@
     --clay: #C4714A;
     --clay-light: #E8956E;
     --risk-red: #B43C28;
+    --rust: #B43C28;
+    --amber: #D98C2A;
+    --surface: #F2EDE4;
+    --surface-2: #E8E0D3;
+    --surface-3: #D6CDC0;
+    --border-2: rgba(44,31,15,0.20);
 
     --background: var(--sand);
     --foreground: var(--bark);
@@ -53,8 +59,14 @@
     --card: #1E1710;
     --card-border: rgba(242,237,228,0.08);
     --border: rgba(242,237,228,0.15);
+    --border-2: #2E2922;
     --muted: #B8A898;
     --muted-2: #7A6B5A;
+    --rust: #BE4230;
+    --amber: #D98C2A;
+    --surface: #131110;
+    --surface-2: #1B1815;
+    --surface-3: #252018;
     --ink: #FAF7F2;
     --shadow: 0 18px 40px rgba(0,0,0,0.55);
     --shadow-sm: 0 2px 8px rgba(0,0,0,0.30), 0 0 0 1px rgba(196,113,74,0.08);

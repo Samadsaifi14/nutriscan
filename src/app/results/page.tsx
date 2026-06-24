@@ -14,136 +14,8 @@ import { useOffline } from '@/hooks/useOffline'
 import { supabase } from '@/lib/supabase'
 import { buildLocalAnalysis } from '@/lib/client-analysis'
 import OverviewTab from '@/components/results/OverviewTab'
-
-// ── Score helpers ─────────────────────────────────────────────────────────────
-
-function scoreColor(s: number) {
-  if (s >= 7.5) return '#C4714A'
-  if (s >= 5.5) return '#f59e0b'
-  if (s >= 3.5) return '#fb923c'
-  return '#ef4444'
-}
-function scoreLabel(s: number) {
-  if (s >= 7.5) return 'Healthy'
-  if (s >= 5.5) return 'Moderate'
-  if (s >= 3.5) return 'Caution'
-  return 'Unhealthy'
-}
-function scoreBg(rating: string) {
-  if (rating === 'healthy')   return 'from-[var(--clay)]/20 to-[var(--clay)]/5'
-  if (rating === 'moderate')  return 'from-amber-500/20 to-amber-500/5'
-  return 'from-red-500/20 to-red-500/5'
-}
-function suitabilityColor(v: string) {
-  if (v === 'suitable')             return { bg: 'bg-[var(--clay)]/10', text: 'text-[var(--clay)]', icon: '✓' }
-  if (v === 'consume_with_caution') return { bg: 'bg-amber-500/10',   text: 'text-amber-400',   icon: '⚠' }
-  return                                   { bg: 'bg-red-500/10',     text: 'text-red-400',     icon: '✗' }
-}
-function severityStyle(s: string) {
-  if (s === 'high')   return { dot: 'bg-red-500',    text: 'text-red-400',    badge: 'bg-red-500/10 text-red-400' }
-  if (s === 'medium') return { dot: 'bg-amber-500',  text: 'text-amber-400',  badge: 'bg-amber-500/10 text-amber-400' }
-  return                     { dot: 'bg-slate-500',  text: 'text-slate-400',  badge: 'bg-slate-500/10 text-slate-400' }
-}
-
-// ── Score Ring ────────────────────────────────────────────────────────────────
-
-function ScoreRing({ score, rating }: { score: number; rating: string }) {
-  const r   = 54
-  const circ = 2 * Math.PI * r
-  const pct  = (Math.min(Math.max(score, 0), 10) / 10) * circ
-  const hex  = scoreColor(score)
-
-  return (
-    <div className="flex flex-col items-center">
-      <div className="relative w-36 h-36">
-        <svg width="144" height="144" viewBox="0 0 144 144" className="-rotate-90">
-          <circle cx="72" cy="72" r={r} fill="none" stroke="#1e2a35" strokeWidth="10" />
-          <circle cx="72" cy="72" r={r} fill="none" stroke={hex} strokeWidth="10"
-            strokeLinecap="round"
-            strokeDasharray={`${pct} ${circ - pct}`}
-            style={{ transition: 'stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1)' }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-4xl font-black tabular-nums" style={{ color: hex }}>{score}</span>
-          <span className="text-xs text-[var(--muted-2)] font-medium">/10</span>
-        </div>
-      </div>
-      <span className="mt-2 text-sm font-bold tracking-wide" style={{ color: hex }}>
-        {scoreLabel(score)}
-      </span>
-    </div>
-  )
-}
-
-// ── Mini score bar ────────────────────────────────────────────────────────────
-
-function MiniBar({ label, score }: { label: string; score: number }) {
-  const hex = scoreColor(score)
-  return (
-    <div>
-      <div className="flex justify-between mb-1">
-        <span className="text-[11px] text-[var(--muted-2)]">{label}</span>
-        <span className="text-[11px] font-bold" style={{ color: hex }}>{score}/10</span>
-      </div>
-      <div className="h-1.5 rounded-full bg-[#1e2a35] overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${score * 10}%`, backgroundColor: hex }} />
-      </div>
-    </div>
-  )
-}
-
-// ── Skeleton components ───────────────────────────────────────────────────────
-
-function SkeletonBar({ className }: { className?: string }) {
-  return <div className={`h-4 rounded-full bg-[#1e2a35] animate-pulse ${className || ''}`} />
-}
-
-function SkeletonCard({ className }: { className?: string }) {
-  return (
-    <div className={`bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 ${className || ''}`}>
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-xl bg-[#1e2a35] animate-pulse" />
-        <div className="flex-1 space-y-2">
-          <SkeletonBar className="w-3/4" />
-          <SkeletonBar className="w-1/2" />
-        </div>
-      </div>
-      <div className="space-y-2 ml-12">
-        <SkeletonBar className="w-full" />
-        <SkeletonBar className="w-5/6" />
-      </div>
-    </div>
-  )
-}
-
-function MacroGridSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      {[1, 2, 3, 4].map(i => (
-        <div key={i} className="bg-[var(--card)] rounded-xl p-3 space-y-2">
-          <SkeletonBar className="w-12 h-6" />
-          <SkeletonBar className="w-16" />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ── Section wrapper ───────────────────────────────────────────────────────────
-
-function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)] bg-[var(--card)]">
-        <span className="text-base">{icon}</span>
-        <h2 className="text-sm font-bold text-[var(--foreground)]">{title}</h2>
-      </div>
-      <div className="p-4">{children}</div>
-    </div>
-  )
-}
+import ScoreRing from '@/components/ScoreRing'
+import Pill from '@/components/Pill'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
@@ -520,6 +392,53 @@ async function handleLogMeal(mealType: string) {
     }
   }
 
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const scoreColor = (s: number) => s >= 7 ? '#4C6B39' : s >= 5 ? '#D98C2A' : '#BE4230'
+  const scoreLabel = (s: number) => s >= 7 ? 'Good' : s >= 5 ? 'Moderate' : 'Needs Improvement'
+  const severityStyle = (sev: string) => {
+    if (sev === 'high') return { dot: 'bg-[var(--rust)]', badge: 'bg-[var(--rust)]/15 text-[var(--rust)] border border-[var(--rust)]/25' }
+    if (sev === 'moderate') return { dot: 'bg-[var(--amber)]', badge: 'bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/25' }
+    return { dot: 'bg-[var(--moss)]', badge: 'bg-[var(--moss)]/15 text-[var(--moss)] border border-[var(--moss)]/25' }
+  }
+  const Section = ({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) => (
+    <div className="mb-4">
+      <div className="flex items-center gap-2 px-1 mb-2">
+        <span className="text-xs text-[var(--clay)] font-bold">{icon} {title}</span>
+      </div>
+      {children}
+    </div>
+  )
+  const MiniBar = ({ label, score }: { label: string; score: number }) => {
+    const co = scoreColor(score)
+    return (
+      <div className="mb-3">
+        <div className="flex justify-between mb-1 px-1">
+          <span className="text-xs text-[var(--muted-2)]">{label}</span>
+          <span className="text-xs font-bold text-[var(--foreground)]">{score}/10</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-[var(--surface-3)] overflow-hidden mx-1">
+          <div className="h-full rounded-full" style={{ width: `${score * 10}%`, backgroundColor: co }} />
+        </div>
+      </div>
+    )
+  }
+  const SkeletonCard = () => (
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 animate-pulse">
+      <div className="h-4 bg-[var(--surface-2)] rounded w-1/3 mb-2" />
+      <div className="h-3 bg-[var(--surface-2)] rounded w-2/3" />
+    </div>
+  )
+  const MacroGridSkeleton = () => (
+    <div className="grid grid-cols-2 gap-3">
+      {[1,2,3,4].map(i => (
+        <div key={i} className="bg-[var(--surface)] rounded-xl p-3 animate-pulse">
+          <div className="h-6 bg-[var(--surface-2)] rounded w-1/2 mb-2" />
+          <div className="h-3 bg-[var(--surface-2)] rounded w-3/4" />
+        </div>
+      ))}
+    </div>
+  )
+
   if (!hydrated && !scanLoading) return null
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -598,107 +517,108 @@ async function handleLogMeal(mealType: string) {
   const tabsMeta: TabMeta[] = TABS.map(tab => ({ key: tab, locked: false, reason: '' }))
 
   return (
-    <div className="min-h-[100svh] text-[var(--foreground)] font-sans pb-28">
+    <div className="min-h-[100svh] text-[var(--foreground)] font-sans pb-24 flex flex-col">
 
-      {/* ── Hero header ───────────────────────────────────────────────────── */}
-      <div className={`bg-gradient-to-b ${scoreBg(analysis.health_rating)} px-5 pt-14 pb-6`}>
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={() => router.push('/scan')}
-            className="text-[var(--muted)] hover:text-[var(--foreground)] text-sm transition-colors flex items-center gap-1">
-            ← Scan again
+      {/* ── TopBar ── */}
+      <div className="h-11 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0">
+        <button onClick={() => router.push('/scan')} className="text-base text-[var(--sand)]">←</button>
+        <span className="text-sm font-bold text-[var(--foreground)]">Analysis Result</span>
+        <div className="flex items-center gap-2">
+          <button onClick={handleSaveFavorite}
+            className="w-7 h-7 rounded-lg bg-[var(--surface-2)] border border-[var(--border-2)] flex items-center justify-center text-xs text-[var(--sand)]">
+            🔖
           </button>
-          <div className="flex items-center gap-3">
-            <ShareButton 
-              productName={product.name} 
-              healthScore={Number(analysis.health_score)} 
-              healthRating={analysis.health_rating} 
-            />
-            <span className="text-[11px] text-[var(--muted)]">
-              {new Date(timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-            </span>
-          </div>
-        </div>
-
-        {/* Product name + score ring */}
-        <div className="flex items-center gap-4">
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] text-[var(--muted-2)] font-medium uppercase tracking-widest mb-1">
-              {product.source === 'ai_estimated' ? '🤖 AI Estimated' :
-               product.source === 'gemini_photo' ? '📸 Photo scan' :
-               product.source === 'gemini_vision' ? '👁 Label scan' :
-               product.source === 'open_food_facts' ? '🌐 Open Food Facts' : '✅ Database'}
-            </p>
-            <h1 className="text-xl font-black text-[var(--foreground)] leading-tight">{product.name}</h1>
-            {product.brand && <p className="text-sm text-[var(--muted)] mt-0.5">{product.brand}</p>}
-
-            {scanConfidence === 'low' && (
-              <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                <p className="text-xs font-bold text-amber-400 mb-1">🤖 AI-Estimated Data</p>
-                <p className="text-[11px] text-[var(--muted)] leading-relaxed">
-                  This product wasn't found in any database. The name and nutrition shown were estimated by AI based on the barcode prefix.
-                  <button onClick={() => router.push(`/contribute?barcode=${product.barcode || scannedBarcode}`)}
-                    className="ml-1 text-amber-400 underline font-medium">Help improve it →</button>
-                </p>
-              </div>
-            )}
-
-            {/* Alert badges */}
-            <div className="flex flex-wrap gap-2 mt-3">
-              {highSevCount > 0 && (
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-500/15 text-red-400 border border-red-500/20">
-                  🚨 {highSevCount} High Risk
-                </span>
-              )}
-              {harmfulCount > 0 && harmfulCount > highSevCount && (
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
-                  ⚠ {harmfulCount} Concerns
-                </span>
-              )}
-              {analysis.personalized && (
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/20">
-                  ✨ Personalised
-                </span>
-              )}
-              {harmfulCount === 0 && (
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/20">
-                  ✅ Clean ingredients
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex-shrink-0">
-            <ScoreRing score={Number(analysis.health_score)} rating={analysis.health_rating} />
-            <p className="text-[10px] text-[#4a5a6a] text-center mt-2">* Score is algorithm-generated for informational purposes only.</p>
-          </div>
+          <ShareButton
+            productName={product.name}
+            healthScore={Number(analysis.health_score)}
+            healthRating={analysis.health_rating}
+          />
         </div>
       </div>
 
-      {/* ── Score breakdown strip ─────────────────────────────────────────── */}
-      {analysis.health_score_breakdown && (
-        <div className="mx-4 -mt-2 mb-4 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-4 space-y-2.5">
-          <MiniBar label="Nutrition Quality"  score={analysis.health_score_breakdown.nutrition_score} />
-          <MiniBar label="Ingredient Safety"  score={analysis.health_score_breakdown.ingredient_safety_score} />
-          <MiniBar label="Processing Level"   score={analysis.health_score_breakdown.processing_score} />
+      {/* ── Product Card ── */}
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0"
+        style={{ borderLeft: `3px solid ${scoreColor(Number(analysis.health_score))}` }}>
+        <div className="w-11 h-11 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] flex-shrink-0 overflow-hidden">
+          {product.image_url ? <img src={product.image_url} alt="" className="w-full h-full object-cover" /> : null}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-[var(--foreground)] truncate">{product.name}</p>
+          <p className="text-xs text-[var(--sand)] truncate">
+            {[product.brand, product.category].filter(Boolean).join(' · ') || product.source}
+          </p>
+          <div className="flex gap-1.5 mt-0.5 flex-wrap">
+            {analysis.health_score_breakdown?.processing_score != null && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--rust)]/15 text-[var(--rust)] border border-[var(--rust)]/25">
+                NOVA {analysis.health_score_breakdown.processing_score < 3 ? '1' : analysis.health_score_breakdown.processing_score < 4 ? '3' : '4'}
+              </span>
+            )}
+            {product.serving_size_g && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--surface-2)] text-[var(--sand)] border border-[var(--border-2)]">
+                {product.serving_size_g}g
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex-shrink-0">
+          <ScoreRing score={Number(analysis.health_score)} />
+        </div>
+      </div>
+
+      {/* ── Low confidence warning ── */}
+      {scanConfidence === 'low' && (
+        <div className="px-3 py-2 bg-[var(--surface)] border-b border-[var(--border)]">
+          <p className="text-xs font-bold text-[var(--amber)] mb-0.5">🤖 AI-Estimated Data</p>
+          <p className="text-[11px] text-[var(--sand)] leading-relaxed">
+            This product wasn't found in any database. The name and nutrition were estimated by AI.
+            <button onClick={() => router.push(`/contribute?barcode=${product.barcode || scannedBarcode}`)}
+              className="ml-1 text-[var(--amber)] underline font-medium">Help improve it →</button>
+          </p>
         </div>
       )}
 
-      {/* ── Tabs ─────────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-[var(--background)] border-b border-[var(--card-border)] px-4 backdrop-blur-xl/50">
-        <div className="flex gap-1 overflow-x-auto no-scrollbar py-2">
-          {TABS.map(key => (
-            <button key={key} onClick={() => setActiveTab(key)}
-              className={`flex-shrink-0 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === key
-                  ? 'bg-[var(--clay)] text-white'
-                  : 'text-[var(--muted)] hover:text-[var(--foreground)] bg-[var(--card)] border border-[var(--card-border)]'
-              }`}>
-              {key === 'Ingredients' && harmfulCount > 0 ? `Ingredients (${harmfulCount})` : key}
-            </button>
-          ))}
+      {/* ── Alert badges ── */}
+      {(highSevCount > 0 || harmfulCount > 0 || analysis.personalized || harmfulCount === 0) && (
+        <div className="flex gap-1.5 px-3 py-1.5 bg-[var(--surface)] border-b border-[var(--border)] flex-wrap">
+          {highSevCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--rust)]/15 text-[var(--rust)] border border-[var(--rust)]/25">
+              🚨 {highSevCount} High Risk
+            </span>
+          )}
+          {harmfulCount > 0 && harmfulCount > highSevCount && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/25">
+              ⚠ {harmfulCount} Concerns
+            </span>
+          )}
+          {analysis.personalized && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/25">
+              ✨ Personalised
+            </span>
+          )}
+          {harmfulCount === 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/25">
+              ✅ Clean ingredients
+            </span>
+          )}
         </div>
+      )}
+
+      {/* ── Tab bar ── */}
+      <div className="flex border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0 overflow-x-auto no-scrollbar">
+        {TABS.map(key => (
+          <button key={key} onClick={() => setActiveTab(key)}
+            className={`flex-1 h-9 text-xs font-bold border-b-2 transition-colors ${
+              activeTab === key
+                ? 'text-[var(--clay)] border-[var(--clay)]'
+                : 'text-[var(--muted)] border-transparent'
+            }`}>
+            {key === 'Ingredients' && harmfulCount > 0 ? `Ingredients (${harmfulCount})` : key}
+          </button>
+        ))}
       </div>
 
-      <div className="app-container pt-4 space-y-4">
+      {/* ── Tab content ── */}
+      <div className="flex-1 overflow-y-auto px-3 pt-3 space-y-4 pb-4">
 
         {activeTab === 'Overview' && (
           <OverviewTab analysis={analysis} />
@@ -1011,7 +931,7 @@ async function handleLogMeal(mealType: string) {
                   <div className="flex-1">
                     <div className="flex justify-between mb-1">
                       <span className="text-[11px] text-[var(--muted-2)]">Current</span>
-                      <span className={`text-[11px] font-bold ${scoreColor(apiAlternatives.current_score) === '#ef4444' ? 'text-red-400' : scoreColor(apiAlternatives.current_score) === '#fb923c' ? 'text-orange-400' : scoreColor(apiAlternatives.current_score) === '#f59e0b' ? 'text-amber-400' : 'text-[var(--clay)]'}`}>
+                      <span className={`text-[11px] font-bold ${apiAlternatives.current_score >= 7 ? 'text-[var(--moss)]' : apiAlternatives.current_score >= 5 ? 'text-[var(--clay)]' : 'text-[var(--rust)]'}`}>
                         {apiAlternatives.current_score}/10
                       </span>
                     </div>
