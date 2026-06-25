@@ -32,7 +32,8 @@ export default function FavoritesPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      await fetch(`/api/favorites?id=${id}`, { method: 'DELETE' })
+      const delRes = await fetch(`/api/favorites?id=${id}`, { method: 'DELETE' })
+      if (!delRes.ok) { toast.error('Failed to remove'); return }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['favorites'] })
@@ -65,7 +66,7 @@ export default function FavoritesPage() {
           </div>
         ) : (
           <>
-            <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider px-1 mb-2 block">
+            <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider px-1 mb-2 block">
               {data.length} product{data.length !== 1 ? 's' : ''} saved
             </span>
             <div className="grid grid-cols-2 gap-3">
@@ -79,17 +80,17 @@ export default function FavoritesPage() {
                   {f.health_score != null ? (
                     <HealthScoreRing score={Number(f.health_score)} size="xs" />
                   ) : (
-                    <span className="text-[10px] text-[var(--sand)]">No score</span>
+                    <span className="text-xs text-[var(--sand)]">No score</span>
                   )}
                   <div className="flex gap-1.5 mt-1">
                     {f.barcode && (
                       <button onClick={() => router.push(`/results?barcode=${f.barcode}`)}
-                        className="text-[9px] px-2 py-1 rounded-md bg-[var(--clay)]/10 text-[var(--clay)] font-medium">
+                        className="text-xs px-3 py-1.5 rounded-md bg-[var(--clay)]/10 text-[var(--clay)] font-medium">
                         View
                       </button>
                     )}
                     <button onClick={() => remove.mutate(f.id)}
-                      className="text-[9px] px-2 py-1 rounded-md bg-[var(--surface-2)] text-[var(--sand)] font-medium border border-[var(--border-2)]">
+                      className="text-xs px-3 py-1.5 rounded-md bg-[var(--surface-2)] text-[var(--sand)] font-medium border border-[var(--border-2)]">
                       ✕
                     </button>
                   </div>

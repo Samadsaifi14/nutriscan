@@ -60,7 +60,7 @@ export default function ScanPage() {
         marginTop: mode === 'photo' ? 80 : 40,
         textAlign: 'center', whiteSpace: 'nowrap',
       }}>
-        <span style={{ fontSize: 7, color: 'var(--sand)' }}>
+        <span style={{ fontSize: 13, color: 'var(--sand)' }}>
           {mode === 'barcode' ? 'Point at barcode' : mode === 'photo' ? 'Frame the product label' : 'Enter barcode manually'}
         </span>
       </div>
@@ -72,15 +72,15 @@ export default function ScanPage() {
       }}>
         <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px' }}>
           <button onClick={() => router.back()} style={{
-            padding: '2px 7px', borderRadius: 20, background: 'rgba(0,0,0,0.55)',
-            color: 'var(--sand)', fontSize: 8, border: 'none', cursor: 'pointer',
+            padding: '6px 12px', borderRadius: 20, background: 'rgba(0,0,0,0.55)',
+            color: 'var(--sand)', fontSize: 12, border: 'none', cursor: 'pointer',
           }}>
             ← Back
           </button>
-          <span style={{ fontSize: 9, color: '#fff', fontWeight: 700 }}>Scan Product</span>
+          <span style={{ fontSize: 15, color: '#fff', fontWeight: 700 }}>Scan Product</span>
           <div style={{
-            padding: '2px 7px', borderRadius: 20, background: 'rgba(0,0,0,0.55)',
-            color: 'var(--sand)', fontSize: 8,
+            padding: '6px 12px', borderRadius: 20, background: 'rgba(0,0,0,0.55)',
+            color: 'var(--sand)', fontSize: 12,
           }}>
             ⚡ Flash
           </div>
@@ -100,11 +100,11 @@ export default function ScanPage() {
         }}>
           {['Barcode','Photo','Manual'].map(m => (
             <button key={m} onClick={() => setMode(m.toLowerCase())} style={{
-              flex: 1, padding: '5px 0', borderRadius: 20,
+              flex: 1, padding: '8px 0', borderRadius: 20,
               background: mode === m.toLowerCase() ? 'var(--clay)' : 'transparent',
               border: 'none', cursor: 'pointer',
               color: mode === m.toLowerCase() ? '#fff' : 'var(--sand)',
-              fontSize: 7.5, fontWeight: 600,
+              fontSize: 13, fontWeight: 600,
             }}>
               {m}
             </button>

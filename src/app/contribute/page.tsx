@@ -1,16 +1,12 @@
 "use client"
-import { useState, useRef, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import toast from 'react-hot-toast'
-import { createClient } from '@supabase/supabase-js'
 import PageShell from '@/components/PageShell'
 import { parseIndianNutritionLabel } from '@/lib/ocr/indian-label-parser'
 import { enhanceImage, hasGlare } from '@/lib/ocr/image-enhancer'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { supabase } from '@/lib/supabase'
 
 const STEPS = ['Info', 'Ingr', 'Nutr', 'Review']
 
@@ -65,6 +61,7 @@ function ContributePageContent() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: enhanced.dataUrl })
       })
+      if (!response.ok) throw new Error('Failed to scan photo')
       const json = await response.json()
 
       if (json.success && json.data) {
@@ -146,9 +143,9 @@ function ContributePageContent() {
                   border: `0.5px solid ${i === step ? 'var(--clay)' : 'var(--border-2)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
-                  <span style={{ fontSize: 6.5, color: i <= step ? '#fff' : 'var(--muted)', fontWeight: 700 }}>{i + 1}</span>
+                  <span style={{ fontSize: 11, color: i <= step ? '#fff' : 'var(--muted)', fontWeight: 700 }}>{i + 1}</span>
                 </div>
-                <span style={{ fontSize: 6, color: i === step ? 'var(--clay)' : 'var(--muted)' }}>{s}</span>
+                <span style={{ fontSize: 11, color: i === step ? 'var(--clay)' : 'var(--muted)' }}>{s}</span>
               </div>
             ))}
           </div>
@@ -166,7 +163,7 @@ function ContributePageContent() {
 
             <div className="space-y-3">
               <div>
-                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Product name *</span>
+                <span className="text-xs text-[var(--sand)] font-bold block mb-1">Product name *</span>
                 <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
                   <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g. Maggi 2-Minute Noodles"
@@ -174,7 +171,7 @@ function ContributePageContent() {
                 </div>
               </div>
               <div>
-                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Brand name *</span>
+                <span className="text-xs text-[var(--sand)] font-bold block mb-1">Brand name *</span>
                 <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
                   <input type="text" value={formData.brand} onChange={e => setFormData({ ...formData, brand: e.target.value })}
                     placeholder="e.g. Nestlé India"
@@ -182,14 +179,14 @@ function ContributePageContent() {
                 </div>
               </div>
               <div>
-                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Barcode</span>
+                <span className="text-xs text-[var(--sand)] font-bold block mb-1">Barcode</span>
                 <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
                   <input type="text" defaultValue={barcode} placeholder="Scan or enter barcode"
                     className="w-full bg-transparent text-xs text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]" />
                 </div>
               </div>
               <div>
-                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Category *</span>
+                <span className="text-xs text-[var(--sand)] font-bold block mb-1">Category *</span>
                 <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
                   <span className="text-xs text-[var(--muted)]">Select...</span>
                 </div>
@@ -280,14 +277,14 @@ function ContributePageContent() {
 
             <div className="space-y-3 mb-4">
               <div>
-                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Product name</span>
+                <span className="text-xs text-[var(--sand)] font-bold block mb-1">Product name</span>
                 <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
                   <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
                     className="w-full bg-transparent text-xs text-[var(--foreground)] outline-none" />
                 </div>
               </div>
               <div>
-                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Brand</span>
+                <span className="text-xs text-[var(--sand)] font-bold block mb-1">Brand</span>
                 <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-2)', border: '0.5px solid var(--border-2)', padding: '0 8px', display: 'flex', alignItems: 'center' }}>
                   <input type="text" value={formData.brand} onChange={e => setFormData({ ...formData, brand: e.target.value })}
                     className="w-full bg-transparent text-xs text-[var(--foreground)] outline-none" />
@@ -297,13 +294,13 @@ function ContributePageContent() {
 
             {parsedData?.rawText && (
               <div className="mb-4 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--border-2)]">
-                <span className="text-[11px] text-[var(--sand)] font-bold block mb-1">Extracted Ingredients</span>
-                <p className="text-[10px] text-[var(--sand)] leading-relaxed">{parsedData.rawText}</p>
+                <span className="text-xs text-[var(--sand)] font-bold block mb-1">Extracted Ingredients</span>
+                <p className="text-xs text-[var(--sand)] leading-relaxed">{parsedData.rawText}</p>
               </div>
             )}
 
             <div className="mb-4">
-              <span className="text-[11px] text-[var(--sand)] font-bold block mb-2">Nutrition (per 100g)</span>
+              <span className="text-xs text-[var(--sand)] font-bold block mb-2">Nutrition (per 100g)</span>
               <div className="space-y-2">
                 {[
                   { key: 'calories', label: 'Energy', unit: 'kcal' },
@@ -319,7 +316,7 @@ function ContributePageContent() {
                       <input type="number" value={correctedNutrition[f.key] || ''}
                         onChange={e => setCorrectedNutrition({ ...correctedNutrition, [f.key]: e.target.value ? parseFloat(e.target.value) : null })}
                         className="w-20 h-7 px-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border-2)] text-xs text-right text-[var(--foreground)] outline-none" placeholder="—" />
-                      <span className="text-[10px] text-[var(--muted)] w-5">{f.unit}</span>
+                      <span className="text-xs text-[var(--muted)] w-5">{f.unit}</span>
                     </div>
                   </div>
                 ))}
@@ -355,9 +352,9 @@ function ContributePageContent() {
               border: '0.5px solid var(--border-2)', padding: 10,
               marginBottom: 12
             }}>
-              <p className="text-[10px] text-[var(--sand)] mb-1">Your Impact</p>
+              <p className="text-xs text-[var(--sand)] mb-1">Your Impact</p>
               <p className="text-xs font-bold text-[var(--clay)]">Help the community!</p>
-              <p className="text-[10px] text-[var(--sand)]">Others can now validate this product</p>
+              <p className="text-xs text-[var(--sand)]">Others can now validate this product</p>
             </div>
             <button onClick={() => router.push('/dashboard')}
               className="w-full h-9 rounded-lg bg-[var(--clay)] text-white text-xs font-bold mb-3">

@@ -26,7 +26,6 @@ const PATH_TO_TAB: Record<string, string> = {
   '/scan-history': 'history',
   '/history':      'history',
   '/favorites':    'history',
-  '/profile':      'profile',
   '/profile-setup':'profile',
 }
 

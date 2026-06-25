@@ -1,14 +1,10 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import PageShell from '@/components/PageShell'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { supabase } from '@/lib/supabase'
 
 interface LeaderboardUser {
   user_id: string
@@ -70,7 +66,7 @@ export default function LeaderboardPage() {
       <div className="flex border-b border-[var(--border)] flex-shrink-0">
         {PERIODS.map((t, i) => (
           <button key={t} onClick={() => setPeriod(i)}
-            className={`flex-1 h-8 text-[10px] font-bold border-b-2 transition-colors ${
+              className={`flex-1 h-8 text-xs font-bold border-b-2 transition-colors ${
               period === i
                 ? 'text-[var(--clay)] border-[var(--clay)]'
                 : 'text-[var(--muted)] border-transparent'
@@ -84,14 +80,14 @@ export default function LeaderboardPage() {
       {currentUser && (
         <div className="mx-3 mt-3 mb-1 p-3 rounded-xl border border-[var(--clay)] bg-[var(--surface)] flex items-center gap-3 flex-shrink-0">
           <span className="text-sm font-bold text-[var(--clay)]">#{currentUserIdx + 1}</span>
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--clay)] to-[var(--clay-dim)] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--clay)] to-[var(--clay-dim)] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
             {(currentUser.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <span className="text-xs font-bold text-[var(--foreground)]">{currentUser.name}</span>
-            <span className="text-[10px] text-[var(--sand)] block">{currentUser.total_impact} pts · {currentUser.contributions_count} scans</span>
+            <span className="text-xs text-[var(--sand)] block">{currentUser.total_impact} pts · {currentUser.contributions_count} scans</span>
           </div>
-          <span className="text-[9px] px-2 py-0.5 rounded-full bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/25 w-fit">↑ 3 places</span>
+          <span className="text-xs px-2 py-1 rounded-full bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/25 w-fit">↑ 3 places</span>
         </div>
       )}
 
@@ -123,12 +119,12 @@ export default function LeaderboardPage() {
                 <span className={`text-xs font-bold w-5 text-center ${i < 3 ? 'text-base' : 'text-[var(--muted)]'}`}>
                   {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                 </span>
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--clay)] to-[var(--clay-dim)] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--clay)] to-[var(--clay-dim)] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                   {(u.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-xs font-bold text-[var(--foreground)]">{u.name}</span>
-                  <span className="text-[10px] text-[var(--sand)] block">{u.contributions_count} scans</span>
+                  <span className="text-xs text-[var(--sand)] block">{u.contributions_count} scans</span>
                 </div>
                 <span className="text-xs font-bold text-[var(--clay)]">{u.total_impact} pts</span>
               </div>

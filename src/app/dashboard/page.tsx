@@ -1,10 +1,9 @@
 "use client"
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { SkeletonDashboard } from '@/components/Skeleton'
-import { event, AnalyticsEvents } from '@/lib/analytics'
 import HealthScoreRing from '@/components/HealthScoreRing'
 import PageShell from '@/components/PageShell'
 
@@ -110,6 +109,16 @@ export default function DashboardPage() {
     staleTime: 1000 * 60 * 2,
   })
 
+  useEffect(() => {
+    if (status === 'unauthenticated') router.push('/auth/signin')
+  }, [status, router])
+
+  useEffect(() => {
+    if (data?.profile && !data.profile.profile_completed) {
+      router.replace('/profile-setup')
+    }
+  }, [data, router])
+
   const now  = new Date()
   const hour = now.getHours()
 
@@ -125,11 +134,7 @@ export default function DashboardPage() {
   }, [data])
 
   if (status === 'loading' || isLoading) return <SkeletonDashboard />
-
-  if (status === 'unauthenticated') {
-    router.push('/auth/signin')
-    return null
-  }
+  if (status === 'unauthenticated') return null
 
   const userName  = session?.user?.name?.split(' ')[0] || 'there'
   const consumed  = data?.totalCalories ?? 0
@@ -144,6 +149,12 @@ export default function DashboardPage() {
   const pFat      = data?.totalFat ? Math.round((data.totalFat / macros.fat) * 100) : 0
   const pCal      = Math.round((consumed / goal) * 100)
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+
+  const healthScore = lastScan?.ai_health_score
+    ? Number(lastScan.ai_health_score)
+    : consumed > 0
+      ? Math.min(10, Math.round((1 - Math.abs(consumed - goal) / goal) * 5 + 5))
+      : 5.0
 
   return (
     <PageShell
@@ -197,7 +208,7 @@ export default function DashboardPage() {
         margin: '0 12px', marginBottom: 10,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
       }}>
-        <HealthScoreRing score={7.2} size="xl" />
+        <HealthScoreRing score={healthScore} size="xl" />
         <div style={{
           marginTop: 10, padding: '4px 12px', borderRadius: 20,
           background: 'rgba(108,140,78,0.12)', color: 'var(--moss)',

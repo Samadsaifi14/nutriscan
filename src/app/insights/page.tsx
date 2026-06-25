@@ -10,6 +10,7 @@ export default function InsightsPage() {
     queryKey: ['nutrients-summary'],
     queryFn: async () => {
       const res = await fetch('/api/nutrients/summary')
+      if (!res.ok) throw new Error('Failed to fetch insights')
       return res.json()
     },
   })
@@ -40,11 +41,11 @@ export default function InsightsPage() {
             <div className="flex items-center gap-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-3">
               <HealthScoreRing score={summary.avg?.overall != null ? Math.round(summary.avg.overall) : 6.4} size="lg" />
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-[var(--sand)]">Monthly average</span>
+                <span className="text-xs text-[var(--sand)]">Monthly average</span>
                 <span className="text-sm font-bold text-[var(--foreground)]">
                   {summary.avg?.overall != null ? Math.round(summary.avg.overall * 10) / 10 : '6.4'} / 10
                 </span>
-                <span className="text-[9px] px-2 py-0.5 rounded-full bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/25 w-fit">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/25 w-fit">
                   ↑ 0.3 vs last month
                 </span>
               </div>
@@ -52,7 +53,7 @@ export default function InsightsPage() {
 
             {/* Nutrient grid */}
             <div>
-              <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider px-1 mb-2 block">Nutrient averages</span>
+              <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider px-1 mb-2 block">Nutrient averages</span>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { l: 'Avg. Sodium', v: summary.avg?.sodium != null ? `${Math.round(summary.avg.sodium)}mg` : '786mg', s: '37% RDA', c: 'var(--amber)' },
@@ -62,8 +63,8 @@ export default function InsightsPage() {
                 ].map(s => (
                   <div key={s.l} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-3" style={{ borderTop: `2px solid ${s.c}` }}>
                     <div className="text-xs font-bold" style={{ color: s.c }}>{s.v}</div>
-                    <div className="text-[10px] text-[var(--foreground)]">{s.l}</div>
-                    <div className="text-[9px] text-[var(--sand)]">{s.s}</div>
+                    <div className="text-xs text-[var(--foreground)]">{s.l}</div>
+                    <div className="text-xs text-[var(--sand)]">{s.s}</div>
                   </div>
                 ))}
               </div>
@@ -72,7 +73,7 @@ export default function InsightsPage() {
             {/* Alerts */}
             {summary.alerts?.length > 0 && (
               <div className="space-y-2">
-                <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider px-1 mb-2 block">Alerts</span>
+                <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider px-1 mb-2 block">Alerts</span>
                 {summary.alerts.map((a: { message: string; severity: string }, i: number) => (
                   <div key={i}
                     className="px-3 py-2 rounded-xl border text-xs"

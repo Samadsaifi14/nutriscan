@@ -23,62 +23,62 @@ export default function SignInPage() {
       <div style={{
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        padding: 20, minHeight: '100dvh',
+        padding: 24, minHeight: '100dvh',
       }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 22 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginBottom: 28 }}>
         <div style={{
-          width: 52, height: 52, borderRadius: 16,
+          width: 60, height: 60, borderRadius: 18,
           background: 'linear-gradient(135deg, var(--clay), #78471C)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22,
+          fontSize: 26,
         }}>
-          <span>\uD83E\uDD66</span>
+          <span>🥦</span>
         </div>
-        <span style={{ fontSize: 14, color: 'var(--foreground)', fontWeight: 800, letterSpacing: '-0.04em' }}>Bio You</span>
-        <span style={{ fontSize: 8, color: 'var(--muted)' }}>Know what&apos;s in your food</span>
+        <span style={{ fontSize: 20, color: 'var(--foreground)', fontWeight: 800, letterSpacing: '-0.04em' }}>Bio You</span>
+        <span style={{ fontSize: 13, color: 'var(--muted)' }}>Know what&apos;s in your food</span>
       </div>
 
       <div style={{
-        background: 'var(--surface-2)', borderRadius: 10,
-        border: '0.5px solid var(--border-2)', padding: 16,
-        width: '100%', maxWidth: 320,
-        display: 'flex', flexDirection: 'column', gap: 10,
+        background: 'var(--surface-2)', borderRadius: 14,
+        border: '0.5px solid var(--border-2)', padding: 20,
+        width: '100%', maxWidth: 360,
+        display: 'flex', flexDirection: 'column', gap: 14,
       }}>
-        <span style={{ fontSize: 10, color: 'var(--foreground)', fontWeight: 700 }}>Sign in or create account</span>
+        <span style={{ fontSize: 15, color: 'var(--foreground)', fontWeight: 700 }}>Sign in or create account</span>
 
         <button onClick={handleSignIn} disabled={loading} style={{
-          height: 36, borderRadius: 10,
+          height: 48, borderRadius: 12,
           background: 'var(--surface-3)', border: '0.5px solid var(--border-2)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           cursor: loading ? 'not-allowed' : 'pointer', color: 'var(--foreground)',
-          fontSize: 8, fontWeight: 500, opacity: loading ? 0.6 : 1,
+          fontSize: 14, fontWeight: 600, opacity: loading ? 0.6 : 1,
         }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--foreground)' }}>G</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--foreground)' }}>G</span>
           {loading ? 'Signing in...' : 'Continue with Google'}
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ flex: 1, height: 0.5, background: 'var(--border-2)' }} />
-          <span style={{ fontSize: 7, color: 'var(--muted)' }}>or</span>
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>or</span>
           <div style={{ flex: 1, height: 0.5, background: 'var(--border-2)' }} />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: 7.5, color: 'var(--muted)' }}>Email address</span>
-          <div style={{ height: 32, borderRadius: 8, background: 'var(--surface-3)', border: '0.5px solid var(--border-2)' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>Email address</span>
+          <div style={{ height: 44, borderRadius: 10, background: 'var(--surface-3)', border: '0.5px solid var(--border-2)' }} />
         </div>
 
         <button style={{
-          height: 34, borderRadius: 10, background: 'var(--clay)', color: '#fff',
+          height: 46, borderRadius: 12, background: 'var(--clay)', color: '#fff',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 8, fontWeight: 700, cursor: 'pointer', border: 'none',
+          fontSize: 14, fontWeight: 700, cursor: 'pointer', border: 'none',
         }}>
           Send magic link →
         </button>
       </div>
 
       <span style={{
-        fontSize: 7, color: 'var(--muted)', marginTop: 14,
+        fontSize: 11, color: 'var(--muted)', marginTop: 18,
         textAlign: 'center', lineHeight: 1.6,
       }}>
         By signing in you agree to our{' '}

@@ -15,7 +15,6 @@ import { supabase } from '@/lib/supabase'
 import { buildLocalAnalysis } from '@/lib/client-analysis'
 import OverviewTab from '@/components/results/OverviewTab'
 import HealthScoreRing from '@/components/HealthScoreRing'
-import Pill from '@/components/Pill'
 import PageShell from '@/components/PageShell'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -56,7 +55,12 @@ const [payload,    setPayload]    = useState<ScanResultPayload | null>(null)
   const [loggedMeal, setLoggedMeal] = useState<string | null>(null)
   const [logging,    setLogging]    = useState(false)
 
-useEffect(() => {
+  useEffect(() => {
+    if (status === 'unauthenticated') router.push('/auth/signin')
+  }, [status, router])
+
+  // ── Fetch product on mount / barcode change ────────────────────────────────
+  useEffect(() => {
     const barcode = searchParams?.get('barcode')
     const mode = searchParams?.get('mode')
 
@@ -65,7 +69,7 @@ useEffect(() => {
       setScannedBarcode(barcode)
       setScanLoading(true)
       fetch(`/api/scan?barcode=${encodeURIComponent(barcode)}`)
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error('Scan fetch failed'); return r.json() })
         .then(async (res) => {
           if (res.success && res.data) {
             setScanFailed(false)
@@ -200,7 +204,7 @@ useEffect(() => {
     if (!payload) return
     const ingText = payload.product?.ingredients_text || ''
     const ings = ingText.split(',').map(s => s.trim()).filter(Boolean)
-    const harmfulSet = new Set<string>((payload.analysis.harmful_ingredients || []).filter(h => h.found_in_product !== false).map(h => (h.name || '').toLowerCase()))
+    const harmfulSet = new Set<string>((payload.analysis?.harmful_ingredients || []).filter(h => h.found_in_product !== false).map(h => (h.name || '').toLowerCase()))
     const list = ings.map(name => {
       const lower = name.toLowerCase()
       const status: 'harmful'|'safe'|'unknown' = harmfulSet.has(lower) || Array.from(harmfulSet).some(h => lower.includes(h)) ? 'harmful' : 'safe'
@@ -266,7 +270,7 @@ useEffect(() => {
     if (product?.nutrition?.protein != null) params.set('protein', String(product.nutrition.protein))
     if (!params.toString()) return
     fetch(`/api/ingredients-health?${params.toString()}`)
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error('Ingredients health fetch failed'); return r.json() })
       .then((d) => {
         if (d?.success) setAiInsights(d.data || [])
         // Also seed the local ingredient list when Groq filled in missing ingredients
@@ -309,10 +313,10 @@ useEffect(() => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: payload.product.name,
-        brand: payload.product.brand,
-        category: payload.product.category,
-        barcode: payload.product.barcode,
+        name: payload.product?.name ?? '',
+        brand: payload.product?.brand ?? null,
+        category: payload.product?.category ?? null,
+        barcode: payload.product?.barcode ?? '',
         nutrition_per_100g: payload.product.nutrition,
         ingredients_text: payload.product.ingredients_text,
         current_score: payload.analysis?.health_score,
@@ -329,6 +333,8 @@ useEffect(() => {
     .catch(() => setAltError(true))
     .finally(() => setAltLoading(false))
   }, [activeTab, payload, apiAlternatives])
+
+  if (status === 'unauthenticated') return null
 
 async function handleLogMeal(mealType: string) {
     if (!payload || isGuest || logging) return
@@ -350,6 +356,7 @@ async function handleLogMeal(mealType: string) {
           meal_type:         mealType,
         }),
       })
+      if (!res.ok) { throw new Error('Log meal failed') }
       const json = await res.json()
       if (json.success) {
         setLoggedMeal(mealType)
@@ -385,6 +392,7 @@ async function handleLogMeal(mealType: string) {
           sodium_per_100g: product.nutrition?.sodium,
         }),
       })
+      if (!res.ok) { throw new Error('Save favorite failed') }
       const json = await res.json()
       if (json.success) toast.success('Saved to favorites')
       else toast.error(json.error || 'Could not save')
@@ -513,7 +521,9 @@ async function handleLogMeal(mealType: string) {
     )
   }
 
-  const { product, analysis, timestamp } = payload
+  const product = payload?.product ?? {} as any
+  const analysis = payload?.analysis ?? {} as any
+  const timestamp = payload?.timestamp ?? null
   const harmfulCount = analysis.harmful_ingredients?.filter(h => h.found_in_product !== false).length || 0
   const highSevCount = analysis.harmful_ingredients?.filter(h => h.severity === 'high' && h.found_in_product !== false).length || 0
 
@@ -554,12 +564,12 @@ async function handleLogMeal(mealType: string) {
           </p>
           <div className="flex gap-1.5 mt-0.5 flex-wrap">
             {analysis.health_score_breakdown?.processing_score != null && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--rust)]/15 text-[var(--rust)] border border-[var(--rust)]/25">
-                NOVA {analysis.health_score_breakdown.processing_score < 3 ? '1' : analysis.health_score_breakdown.processing_score < 4 ? '3' : '4'}
+              <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-[var(--rust)]/15 text-[var(--rust)] border border-[var(--rust)]/25">
+                NOVA {(analysis.health_score_breakdown?.processing_score ?? 5) < 3 ? '1' : (analysis.health_score_breakdown?.processing_score ?? 5) < 4 ? '3' : '4'}
               </span>
             )}
             {product.serving_size_g && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--surface-2)] text-[var(--sand)] border border-[var(--border-2)]">
+              <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-[var(--surface-2)] text-[var(--sand)] border border-[var(--border-2)]">
                 {product.serving_size_g}g
               </span>
             )}
@@ -574,7 +584,7 @@ async function handleLogMeal(mealType: string) {
       {scanConfidence === 'low' && (
         <div className="px-3 py-2 bg-[var(--surface)] border-b border-[var(--border)]">
           <p className="text-xs font-bold text-[var(--amber)] mb-0.5">🤖 AI-Estimated Data</p>
-          <p className="text-[11px] text-[var(--sand)] leading-relaxed">
+          <p className="text-xs text-[var(--sand)] leading-relaxed">
             This product wasn't found in any database. The name and nutrition were estimated by AI.
             <button onClick={() => router.push(`/contribute?barcode=${product.barcode || scannedBarcode}`)}
               className="ml-1 text-[var(--amber)] underline font-medium">Help improve it →</button>
@@ -586,22 +596,22 @@ async function handleLogMeal(mealType: string) {
       {(highSevCount > 0 || harmfulCount > 0 || analysis.personalized || harmfulCount === 0) && (
         <div className="flex gap-1.5 px-3 py-1.5 bg-[var(--surface)] border-b border-[var(--border)] flex-wrap">
           {highSevCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--rust)]/15 text-[var(--rust)] border border-[var(--rust)]/25">
+            <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-[var(--rust)]/15 text-[var(--rust)] border border-[var(--rust)]/25">
               🚨 {highSevCount} High Risk
             </span>
           )}
           {harmfulCount > 0 && harmfulCount > highSevCount && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/25">
+            <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/25">
               ⚠ {harmfulCount} Concerns
             </span>
           )}
           {analysis.personalized && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/25">
+            <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/25">
               ✨ Personalised
             </span>
           )}
           {harmfulCount === 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/25">
+            <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-[var(--clay)]/15 text-[var(--clay)] border border-[var(--clay)]/25">
               ✅ Clean ingredients
             </span>
           )}
@@ -655,7 +665,7 @@ async function handleLogMeal(mealType: string) {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-1">
                   <span className="text-sm font-bold text-[var(--foreground)]">🚨 Harmful Ingredients Found</span>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-red-500 text-white">{harmfulCount}</span>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-black bg-red-500 text-white">{harmfulCount}</span>
                 </div>
                 {(analysis.harmful_ingredients || [])
                   .filter(h => h.found_in_product !== false)
@@ -671,11 +681,11 @@ async function handleLogMeal(mealType: string) {
                             <div>
                               <p className="text-sm font-bold text-[var(--foreground)]">{h.name}</p>
                               {h.also_known_as && h.also_known_as.length > 0 && (
-                                <p className="text-[10px] text-[var(--muted-2)]">Also: {h.also_known_as.slice(0, 2).join(', ')}</p>
+                                <p className="text-xs text-[var(--muted-2)]">Also: {h.also_known_as.slice(0, 2).join(', ')}</p>
                               )}
                             </div>
                           </div>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold capitalize ${sty.badge}`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${sty.badge}`}>
                             {h.severity} risk
                           </span>
                         </div>
@@ -686,7 +696,7 @@ async function handleLogMeal(mealType: string) {
                         {/* Amount */}
                         {h.amount_in_this_product && (
                           <div className="px-4 py-2 border-t border-[var(--border)] bg-[var(--card)]">
-                            <p className="text-[11px] text-[var(--muted-2)]">
+                            <p className="text-xs text-[var(--muted-2)]">
                               📊 In this product: <span className="font-bold text-[var(--foreground)]">{h.amount_in_this_product}</span>
                               {h.percentage_of_daily_limit && <span> · {h.percentage_of_daily_limit} of daily limit</span>}
                             </p>
@@ -697,13 +707,13 @@ async function handleLogMeal(mealType: string) {
                           <div className="px-4 py-3 border-t border-[var(--border)] space-y-2">
                             {h.global_safe_limit && (
                               <div>
-                                <p className="text-[10px] font-bold text-[var(--muted-2)] mb-0.5">🌍 Global Safe Limit</p>
+                                <p className="text-xs font-bold text-[var(--muted-2)] mb-0.5">🌍 Global Safe Limit</p>
                                 <p className="text-xs text-[var(--foreground)]">{h.global_safe_limit}</p>
                               </div>
                             )}
                             {h.personalized_safe_limit && (
                               <div className="pt-2 border-t border-[var(--border)]">
-                                <p className="text-[10px] font-bold text-[var(--clay)] mb-0.5">✨ Your limit</p>
+                                <p className="text-xs font-bold text-[var(--clay)] mb-0.5">✨ Your limit</p>
                                 <p className="text-xs text-[var(--foreground)]">{h.personalized_safe_limit}</p>
                               </div>
                             )}
@@ -712,11 +722,11 @@ async function handleLogMeal(mealType: string) {
                         {/* Source */}
                         {h.scientific_source && (
                           <div className="px-4 py-3 border-t border-[var(--border)] bg-sky-500/5">
-                            <p className="text-[10px] text-[var(--muted-2)] mb-1">📚 Source</p>
+                            <p className="text-xs text-[var(--muted-2)] mb-1">📚 Source</p>
                             <p className="text-xs font-bold text-[var(--foreground)]">{h.scientific_source}</p>
                             {h.source_url && (
                               <a href={h.source_url} target="_blank" rel="noopener noreferrer"
-                                className="text-[10px] text-sky-400 underline break-all mt-1 block">{h.source_url}</a>
+                                className="text-xs text-sky-400 underline break-all mt-1 block">{h.source_url}</a>
                             )}
                           </div>
                         )}
@@ -732,7 +742,7 @@ async function handleLogMeal(mealType: string) {
                 <div className="flex items-center gap-2 mb-2">
                   <p className="text-xs font-bold text-[var(--muted-2)]">📋 All Ingredients</p>
                   {!product.ingredients_text && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25 font-bold">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25 font-bold">
                       🤖 AI-estimated
                     </span>
                   )}
@@ -780,7 +790,7 @@ async function handleLogMeal(mealType: string) {
                         <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${sty.dot}`} />
                         <div>
                           <p className="text-xs font-bold text-[var(--foreground)]">{w.ingredient}</p>
-                          <p className="text-[11px] text-[var(--muted-2)]">{w.concern}</p>
+                          <p className="text-xs text-[var(--muted-2)]">{w.concern}</p>
                         </div>
                       </div>
                     )
@@ -791,7 +801,7 @@ async function handleLogMeal(mealType: string) {
 
 
 
-            <div className="p-3 bg-[var(--card)] border border-[var(--border)] rounded-xl text-[11px] text-[var(--muted-2)] leading-relaxed">
+            <div className="p-3 bg-[var(--card)] border border-[var(--border)] rounded-xl text-xs text-[var(--muted-2)] leading-relaxed">
               ℹ️ Based on WHO, FSSAI, ICMR and EFSA guidelines. Not medical advice.
             </div>
           </>
@@ -836,8 +846,8 @@ async function handleLogMeal(mealType: string) {
                 ].filter(m => m.value != null).map(m => (
                   <div key={m.label} className="bg-[var(--card)] rounded-xl p-3">
                     <p className={`text-xl font-black tabular-nums ${m.color}`}>{m.value}<span className="text-xs font-medium text-[var(--muted-2)] ml-0.5">{m.unit}</span></p>
-                    <p className="text-[11px] text-[var(--muted-2)] mt-0.5">{m.label}</p>
-                    <p className="text-[10px] text-[var(--muted-2)] mt-1">
+                    <p className="text-xs text-[var(--muted-2)] mt-0.5">{m.label}</p>
+                    <p className="text-xs text-[var(--muted-2)] mt-1">
                       = {Math.round((Number(m.value) || 0) * quantity / 100)}{m.unit} in {quantity}g
                     </p>
                   </div>
@@ -858,14 +868,14 @@ async function handleLogMeal(mealType: string) {
                     const isBad  = lower.startsWith('high') || lower.startsWith('very high')
                     return (
                       <div key={key} className="flex items-start gap-3 py-2.5 border-b border-[var(--border)] last:border-0">
-                        <span className="text-[11px] w-14 font-bold text-[var(--muted-2)] capitalize flex-shrink-0 pt-0.5">{key}</span>
+                        <span className="text-xs w-14 font-bold text-[var(--muted-2)] capitalize flex-shrink-0 pt-0.5">{key}</span>
                         <span className={`text-sm ${isGood ? 'text-[var(--clay)]' : isBad ? 'text-red-400' : 'text-[var(--foreground)]'}`}>{val}</span>
                       </div>
                     )
                   })}
                   {analysis.detailed_breakdown.processing_level && (
                     <div className="flex items-center gap-3 pt-2.5 border-t border-[var(--border)]">
-                      <span className="text-[11px] w-14 font-bold text-[var(--muted-2)] flex-shrink-0">Level</span>
+                      <span className="text-xs w-14 font-bold text-[var(--muted-2)] flex-shrink-0">Level</span>
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                         analysis.detailed_breakdown.processing_level === 'minimally_processed'
                           ? 'bg-[var(--clay)]/10 text-[var(--clay)]'
@@ -935,8 +945,8 @@ async function handleLogMeal(mealType: string) {
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
                     <div className="flex justify-between mb-1">
-                      <span className="text-[11px] text-[var(--muted-2)]">Current</span>
-                      <span className={`text-[11px] font-bold ${apiAlternatives.current_score >= 7 ? 'text-[var(--moss)]' : apiAlternatives.current_score >= 5 ? 'text-[var(--amber)]' : 'text-[var(--rust)]'}`}>
+                      <span className="text-xs text-[var(--muted-2)]">Current</span>
+                      <span className={`text-xs font-bold ${apiAlternatives.current_score >= 7 ? 'text-[var(--moss)]' : apiAlternatives.current_score >= 5 ? 'text-[var(--amber)]' : 'text-[var(--rust)]'}`}>
                         {apiAlternatives.current_score}/10
                       </span>
                     </div>
@@ -947,8 +957,8 @@ async function handleLogMeal(mealType: string) {
                   <span className="text-[var(--muted-2)] text-lg">→</span>
                   <div className="flex-1">
                     <div className="flex justify-between mb-1">
-                      <span className="text-[11px] text-[var(--clay)]">Alternative</span>
-                      <span className="text-[11px] font-bold text-[var(--clay)]">
+                      <span className="text-xs text-[var(--clay)]">Alternative</span>
+                      <span className="text-xs font-bold text-[var(--clay)]">
                         {Math.round(apiAlternatives.alternatives[0].score * 10) / 10}/10
                       </span>
                     </div>
@@ -974,13 +984,13 @@ async function handleLogMeal(mealType: string) {
                         <div>
                           <p className="text-sm font-bold text-[var(--foreground)]">{alt.name}</p>
                           {alt.score != null && (
-                            <p className="text-[11px]" style={{ color: scoreColor(alt.score) }}>
+                            <p className="text-xs" style={{ color: scoreColor(alt.score) }}>
                               Score: {Math.round(alt.score * 10) / 10}/10 · Grade: {alt.grade || scoreLabel(alt.score)}
                             </p>
                           )}
                         </div>
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 bg-[var(--card)] border border-[var(--border)] text-[var(--muted-2)] rounded-full flex-shrink-0">
+                      <span className="text-xs px-2 py-0.5 bg-[var(--card)] border border-[var(--border)] text-[var(--muted-2)] rounded-full flex-shrink-0">
                         {alt.brand || 'Branded'}
                       </span>
                     </div>
@@ -989,16 +999,16 @@ async function handleLogMeal(mealType: string) {
                     {alt.nutrition_per_100g && (
                       <div className="flex flex-wrap gap-2 mt-2 ml-12">
                         {alt.nutrition_per_100g.calories && (
-                          <span className="px-2 py-0.5 rounded-md bg-[var(--card)] text-[10px] text-[var(--muted-2)]">🔥 {alt.nutrition_per_100g.calories} kcal</span>
+                          <span className="px-2 py-0.5 rounded-md bg-[var(--card)] text-xs text-[var(--muted-2)]">🔥 {alt.nutrition_per_100g.calories} kcal</span>
                         )}
                         {alt.nutrition_per_100g.protein && (
-                          <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-[10px] text-blue-400">💪 {alt.nutrition_per_100g.protein}g protein</span>
+                          <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-xs text-blue-400">💪 {alt.nutrition_per_100g.protein}g protein</span>
                         )}
                         {alt.nutrition_per_100g.sugar != null && (
-                          <span className="px-2 py-0.5 rounded-md bg-pink-500/10 text-[10px] text-pink-400">🍬 {alt.nutrition_per_100g.sugar}g sugar</span>
+                          <span className="px-2 py-0.5 rounded-md bg-pink-500/10 text-xs text-pink-400">🍬 {alt.nutrition_per_100g.sugar}g sugar</span>
                         )}
                         {alt.nutrition_per_100g.fiber && (
-                          <span className="px-2 py-0.5 rounded-md bg-[var(--clay)]/10 text-[10px] text-[var(--clay)]">🌾 {alt.nutrition_per_100g.fiber}g fiber</span>
+                          <span className="px-2 py-0.5 rounded-md bg-[var(--clay)]/10 text-xs text-[var(--clay)]">🌾 {alt.nutrition_per_100g.fiber}g fiber</span>
                         )}
                       </div>
                     )}
@@ -1008,7 +1018,7 @@ async function handleLogMeal(mealType: string) {
 
                     {/* Availability */}
                     {alt.availability && (
-                      <p className="text-[11px] text-[var(--clay)] mt-1.5 ml-12">📍 {alt.availability}</p>
+                      <p className="text-xs text-[var(--clay)] mt-1.5 ml-12">📍 {alt.availability}</p>
                     )}
 
                     {/* Shopping link */}
@@ -1026,7 +1036,7 @@ async function handleLogMeal(mealType: string) {
                     <p className="text-xs font-bold text-[var(--clay)] mb-2">📈 What makes them better</p>
                     <div className="space-y-2">
                       {apiAlternatives.why_better.map((w: any, i: number) => (
-                        <div key={i} className="flex items-start gap-2 text-[11px] text-[var(--muted-2)]">
+                        <div key={i} className="flex items-start gap-2 text-xs text-[var(--muted-2)]">
                           <span className="text-[var(--clay)] mt-0.5">✓</span>
                           <span>{w.metric}: <span className="text-red-400 line-through">{w.current}</span> → <span className="text-[var(--clay)]">{w.alternative}</span> ({w.improvement})</span>
                         </div>
@@ -1045,7 +1055,7 @@ async function handleLogMeal(mealType: string) {
                     {apiAlternatives?.source === 'groq_ai' ? '🤖 AI-suggested healthier options' : '🛒 Curated healthier options'}
                   </p>
                   {apiAlternatives?.source === 'groq_ai' && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25 font-bold">AI</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25 font-bold">AI</span>
                   )}
                 </div>
                 {apiAlternatives.alternatives.map((alt: any, i: number) => {
@@ -1062,12 +1072,12 @@ async function handleLogMeal(mealType: string) {
                           <div>
                             <p className="text-sm font-bold text-[var(--foreground)]">{alt.name}</p>
                             {altScore != null && (
-                              <p className="text-[11px] text-[var(--clay)]">Score: {Math.round(altScore * 10) / 10}/10</p>
+                              <p className="text-xs text-[var(--clay)]">Score: {Math.round(altScore * 10) / 10}/10</p>
                             )}
                           </div>
                         </div>
                         {alt.type && (
-                          <span className="text-[10px] px-2 py-0.5 bg-[var(--card)] border border-[var(--border)] text-[var(--muted-2)] rounded-full flex-shrink-0">
+                          <span className="text-xs px-2 py-0.5 bg-[var(--card)] border border-[var(--border)] text-[var(--muted-2)] rounded-full flex-shrink-0">
                             {typeLabel[alt.type] || alt.type}
                           </span>
                         )}
@@ -1076,16 +1086,16 @@ async function handleLogMeal(mealType: string) {
                       {/* Nutrition mini chips */}
                       {alt.nutrition_per_100g && (
                         <div className="flex flex-wrap gap-2 mt-2 ml-12">
-                          {alt.nutrition_per_100g.calories && <span className="px-2 py-0.5 rounded-md bg-[var(--card)] text-[10px] text-[var(--muted-2)]">🔥 {alt.nutrition_per_100g.calories} kcal</span>}
-                          {alt.nutrition_per_100g.protein && <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-[10px] text-blue-400">💪 {alt.nutrition_per_100g.protein}g</span>}
-                          {alt.nutrition_per_100g.sugar != null && <span className="px-2 py-0.5 rounded-md bg-pink-500/10 text-[10px] text-pink-400">🍬 {alt.nutrition_per_100g.sugar}g</span>}
-                          {alt.nutrition_per_100g.fiber && <span className="px-2 py-0.5 rounded-md bg-[var(--clay)]/10 text-[10px] text-[var(--clay)]">🌾 {alt.nutrition_per_100g.fiber}g</span>}
+                          {alt.nutrition_per_100g.calories && <span className="px-2 py-0.5 rounded-md bg-[var(--card)] text-xs text-[var(--muted-2)]">🔥 {alt.nutrition_per_100g.calories} kcal</span>}
+                          {alt.nutrition_per_100g.protein && <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-xs text-blue-400">💪 {alt.nutrition_per_100g.protein}g</span>}
+                          {alt.nutrition_per_100g.sugar != null && <span className="px-2 py-0.5 rounded-md bg-pink-500/10 text-xs text-pink-400">🍬 {alt.nutrition_per_100g.sugar}g</span>}
+                          {alt.nutrition_per_100g.fiber && <span className="px-2 py-0.5 rounded-md bg-[var(--clay)]/10 text-xs text-[var(--clay)]">🌾 {alt.nutrition_per_100g.fiber}g</span>}
                         </div>
                       )}
 
                       {alt.reason && <p className="text-xs text-[var(--muted-2)] leading-relaxed mt-2 ml-12">{alt.reason}</p>}
                       {alt.availability && (
-                        <p className="text-[11px] text-[var(--clay)] mt-1.5 ml-12">📍 {alt.availability.replace(/_/g, ' ')}</p>
+                        <p className="text-xs text-[var(--clay)] mt-1.5 ml-12">📍 {alt.availability.replace(/_/g, ' ')}</p>
                       )}
 
                       {/* Shopping link for branded items */}
@@ -1115,7 +1125,7 @@ async function handleLogMeal(mealType: string) {
             {apiAlternatives && apiAlternatives?.alternatives?.length === 0 && (
               <div className="text-center py-8 text-[var(--muted-2)]">
                 <p className="text-sm">We're finding healthier options for you…</p>
-                <p className="text-[10px] mt-1">Universal whole-food options below</p>
+                <p className="text-xs mt-1">Universal whole-food options below</p>
               </div>
             )}
 
@@ -1129,7 +1139,7 @@ async function handleLogMeal(mealType: string) {
             {/* Universal fallback — always visible */}
             <div className="pt-2">
               <p className="text-xs text-[var(--clay)] font-bold mb-2">🌿 Universal Healthy Options</p>
-              <p className="text-[10px] text-[var(--muted-2)] mb-3">These whole food alternatives are always healthier choices:</p>
+              <p className="text-xs text-[var(--muted-2)] mb-3">These whole food alternatives are always healthier choices:</p>
               <div className="space-y-2">
                 {UNIVERSAL_FALLBACK.slice(0, 3).map((alt, i) => (
                   <div key={i} className="bg-[var(--card)] border border-[var(--border)] hover:border-[var(--clay)]/20 rounded-xl p-3 transition-colors">
@@ -1137,7 +1147,7 @@ async function handleLogMeal(mealType: string) {
                       <span className="text-lg">{i === 0 ? '🥜' : i === 1 ? '🍎' : '🌱'}</span>
                       <div>
                         <p className="text-sm font-bold text-[var(--foreground)]">{alt.name}</p>
-                        <p className="text-[11px] text-[var(--muted-2)]">{alt.reason}</p>
+                        <p className="text-xs text-[var(--muted-2)]">{alt.reason}</p>
                       </div>
                     </div>
                   </div>
@@ -1148,7 +1158,7 @@ async function handleLogMeal(mealType: string) {
             {analysis.health_rating !== 'healthy' && (
               <div className="p-4 bg-[var(--clay)]/5 border border-[var(--clay)]/15 rounded-2xl mt-3">
                 <p className="text-xs font-bold text-[var(--clay)] mb-1">🌿 Why switch?</p>
-                <p className="text-[11px] text-[var(--muted-2)] leading-relaxed">
+                <p className="text-xs text-[var(--muted-2)] leading-relaxed">
                   Switching to healthier alternatives even 2–3 times a week can significantly reduce your
                   intake of harmful additives. Small changes add up over time.
                 </p>

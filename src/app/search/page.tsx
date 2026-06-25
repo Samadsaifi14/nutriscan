@@ -4,7 +4,6 @@ import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import PageShell from '@/components/PageShell'
-import Pill from '@/components/Pill'
 
 interface SearchResult {
   barcode: string
@@ -50,6 +49,7 @@ function SearchPageContent() {
     const handle = setTimeout(async () => {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`)
+        if (!res.ok) { setLoading(false); return }
         const data = await res.json()
         if (data.success) {
           setProducts(data.data.products || [])
@@ -96,7 +96,7 @@ function SearchPageContent() {
           <button
             key={f}
             onClick={() => setActiveFilter(f.toLowerCase())}
-            className={`px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap border transition-colors ${
+            className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap border transition-colors ${
               activeFilter === f.toLowerCase()
                 ? 'bg-[var(--clay)] text-white border-[var(--clay)]'
                 : 'bg-[var(--surface-2)] text-[var(--sand)] border-[var(--border-2)]'
@@ -115,7 +115,7 @@ function SearchPageContent() {
             {products.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider">Verified products</span>
+                  <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider">Verified products</span>
                 </div>
                 <div className="space-y-1">
                   {products.map((p) => (
@@ -126,10 +126,10 @@ function SearchPageContent() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-[var(--foreground)] truncate">{p.name}</p>
-                        {p.brand && <p className="text-[10px] text-[var(--sand)] truncate">{p.brand}</p>}
+                        {p.brand && <p className="text-xs text-[var(--sand)] truncate">{p.brand}</p>}
                       </div>
                       {p.health_score != null && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                           p.health_score >= 7 ? 'bg-[var(--moss)]/15 text-[var(--moss)]' :
                           p.health_score >= 5 ? 'bg-[var(--amber)]/15 text-[var(--amber)]' :
                           'bg-[var(--rust)]/15 text-[var(--rust)]'
@@ -145,7 +145,7 @@ function SearchPageContent() {
             {community.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider">Community</span>
+                  <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider">Community</span>
                 </div>
                 <div className="space-y-1">
                   {community.map((p) => (
@@ -154,7 +154,7 @@ function SearchPageContent() {
                       <div className="w-9 h-9 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-[var(--foreground)] truncate">{p.name}</p>
-                        {p.brand && <p className="text-[10px] text-[var(--sand)] truncate">{p.brand}</p>}
+                        {p.brand && <p className="text-xs text-[var(--sand)] truncate">{p.brand}</p>}
                       </div>
                     </button>
                   ))}
@@ -177,7 +177,7 @@ function SearchPageContent() {
             {/* Categories grid */}
             <section>
               <div className="flex items-center justify-between mb-2 px-1">
-                <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider">Popular categories</span>
+                <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider">Popular categories</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {CATEGORIES.map(c => (

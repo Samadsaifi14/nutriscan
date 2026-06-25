@@ -35,6 +35,7 @@ export default function HistoryPage() {
       if (!userId) return []
       try {
         const res = await fetch('/api/log?userId=' + userId)
+        if (!res.ok) throw new Error('Failed to load history')
         const json = await res.json()
         return json.data || []
       } catch (err) {

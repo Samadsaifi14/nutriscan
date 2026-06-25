@@ -83,7 +83,7 @@ export default function ScanHistoryPage() {
         ) : (
           grouped.map(g => (
             <div key={g.label}>
-              <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-medium bg-[var(--surface-2)] text-[var(--sand)] border border-[var(--border-2)] mb-2 ml-1">
+              <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface-2)] text-[var(--sand)] border border-[var(--border-2)] mb-2 ml-1">
                 {g.label}
               </span>
               <div className="space-y-1">
@@ -98,7 +98,7 @@ export default function ScanHistoryPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-[var(--foreground)] truncate">{s.product_name || 'Unknown Product'}</p>
-                        <p className="text-[10px] text-[var(--sand)]">
+                        <p className="text-xs text-[var(--sand)]">
                           {new Date(s.scanned_at).toLocaleString('en-IN', {
                             day: 'numeric', month: 'short',
                             hour: '2-digit', minute: '2-digit'

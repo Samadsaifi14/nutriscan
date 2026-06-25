@@ -3,13 +3,9 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { createClient } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
 import PageShell from '@/components/PageShell'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { supabase } from '@/lib/supabase'
 
 interface PendingProduct {
   id: string
@@ -92,6 +88,7 @@ export default function ValidatePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ productId }),
         })
+        if (!promoteRes.ok) { toast.error('Failed to promote'); setVoting(null); return }
         const promoteJson = await promoteRes.json()
         
         if (promoteJson.success) {
@@ -150,7 +147,7 @@ export default function ValidatePage() {
   return (
     <PageShell variant="default" title="Validate" showBack>
       <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl mb-4">
-        <p className="text-[11px] text-purple-400">
+        <p className="text-xs text-purple-400">
           🎯 Vote on products to help them go live. 3 approvals = product added to database!
         </p>
       </div>
@@ -173,10 +170,10 @@ export default function ValidatePage() {
               <div className="p-4">
                 <h3 className="text-sm font-bold text-[var(--foreground)]">{product.name}</h3>
                 {product.brand && (
-                  <p className="text-[11px] text-[var(--muted-2)] mt-1">{product.brand}</p>
+                  <p className="text-xs text-[var(--muted-2)] mt-1">{product.brand}</p>
                 )}
                 {product.ingredients_text && (
-                  <p className="text-[10px] text-[var(--muted-2)] mt-2 line-clamp-2">
+                  <p className="text-xs text-[var(--muted-2)] mt-2 line-clamp-2">
                     📋 {product.ingredients_text}
                   </p>
                 )}

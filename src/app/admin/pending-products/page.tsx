@@ -3,13 +3,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { createClient } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
 import PageShell from '@/components/PageShell'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { supabase } from '@/lib/supabase'
 
 interface PendingProduct {
   id: string
@@ -154,7 +150,7 @@ export default function AdminPendingPage() {
         <p className="text-sm text-[var(--muted-2)] mt-1">Review 20 products in 10 minutes</p>
         
         {/* Keyboard shortcuts */}
-        <div className="mt-3 flex gap-2 text-[10px]">
+        <div className="mt-3 flex gap-2 text-xs">
           <span className="bg-[var(--card)] px-2 py-1 rounded">A = Approve</span>
           <span className="bg-[var(--card)] px-2 py-1 rounded">E = Edit</span>
           <span className="bg-[var(--card)] px-2 py-1 rounded">R = Reject</span>
@@ -197,13 +193,13 @@ export default function AdminPendingPage() {
                     <div className="flex-1">
                       <h3 className="text-sm font-bold text-[var(--foreground)]">{product.name}</h3>
                       {product.brand && (
-                        <p className="text-[11px] text-[var(--muted-2)]">{product.brand}</p>
+                        <p className="text-xs text-[var(--muted-2)]">{product.brand}</p>
                       )}
                       {product.barcode && (
-                        <p className="text-[10px] text-[var(--muted-2)] mt-1">_barcode: {product.barcode}</p>
+                        <p className="text-xs text-[var(--muted-2)] mt-1">_barcode: {product.barcode}</p>
                       )}
                     </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
                       product.status === 'unverified' ? 'bg-amber-500/20 text-amber-400' :
                       product.status === 'pending' ? 'bg-gray-500/20 text-gray-400' :
                       'bg-[var(--clay)]/20 text-[var(--clay)]'
@@ -214,7 +210,7 @@ export default function AdminPendingPage() {
 
                   {/* Nutrition Preview */}
                   {product.nutrition && (
-                    <div className="mt-3 p-2 bg-[var(--card)] rounded-lg text-[10px] flex flex-wrap gap-2">
+                    <div className="mt-3 p-2 bg-[var(--card)] rounded-lg text-xs flex flex-wrap gap-2">
                       {Object.entries(product.nutrition as Record<string, any>).map(([k, v]) => (
                         v != null && <span key={k} className="text-[var(--muted-2)]">{k}: {String(v)}</span>
                       ))}
@@ -223,7 +219,7 @@ export default function AdminPendingPage() {
 
                   {/* Ingredients */}
                   {product.ingredients_text && (
-                    <p className="mt-2 text-[10px] text-[var(--muted-2)] line-clamp-2">
+                    <p className="mt-2 text-xs text-[var(--muted-2)] line-clamp-2">
                       📋 {product.ingredients_text}
                     </p>
                   )}
@@ -315,7 +311,7 @@ function EditModal({ product, onClose, onSave }: {
         
         <div className="p-4 space-y-4">
           <div>
-            <label className="text-[11px] text-[var(--muted-2)]">Name</label>
+            <label className="text-xs text-[var(--muted-2)]">Name</label>
             <input
               value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
@@ -324,7 +320,7 @@ function EditModal({ product, onClose, onSave }: {
           </div>
           
           <div>
-            <label className="text-[11px] text-[var(--muted-2)]">Brand</label>
+            <label className="text-xs text-[var(--muted-2)]">Brand</label>
             <input
               value={form.brand}
               onChange={e => setForm({ ...form, brand: e.target.value })}
@@ -333,7 +329,7 @@ function EditModal({ product, onClose, onSave }: {
           </div>
 
           <div>
-            <label className="text-[11px] text-[var(--muted-2)]">Nutrition (JSON)</label>
+            <label className="text-xs text-[var(--muted-2)]">Nutrition (JSON)</label>
             <textarea
               value={JSON.stringify(form.nutrition, null, 2)}
               onChange={e => {
@@ -345,7 +341,7 @@ function EditModal({ product, onClose, onSave }: {
           </div>
 
           <div>
-            <label className="text-[11px] text-[var(--muted-2)]">Ingredients</label>
+            <label className="text-xs text-[var(--muted-2)]">Ingredients</label>
             <textarea
               value={form.ingredients_text}
               onChange={e => setForm({ ...form, ingredients_text: e.target.value })}

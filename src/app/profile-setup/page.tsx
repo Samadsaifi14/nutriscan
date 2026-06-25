@@ -60,6 +60,7 @@ export default function ProfileSetupPage() {
     async function loadProfile() {
       try {
         const res = await fetch('/api/profile')
+        if (!res.ok) throw new Error('Failed to load profile')
         const json = await res.json()
         if (json.success && json.data) {
           const d = json.data
@@ -154,7 +155,7 @@ export default function ProfileSetupPage() {
             style={{ width: `${(step / 4) * 100}%` }}
           />
         </div>
-        <span className="text-[10px] text-[var(--muted)] mt-1 block">
+        <span className="text-xs text-[var(--muted)] mt-1 block">
           Step {step} of 4
         </span>
       </div>
@@ -164,14 +165,14 @@ export default function ProfileSetupPage() {
 
         {/* Step title */}
         <h2 className="text-sm font-bold text-[var(--foreground)] mb-1">{s.title}</h2>
-        <p className="text-[11px] text-[var(--muted)] mb-4 leading-relaxed">{s.sub}</p>
+        <p className="text-xs text-[var(--muted)] mb-4 leading-relaxed">{s.sub}</p>
 
         {/* Step 1 — fields */}
         {step === 1 && (
           <div className="space-y-3 mb-4">
             {STEPS[0].fields.map(f => (
               <div key={f}>
-                <label className="block text-[11px] text-[var(--muted)] mb-1">{f}</label>
+                <label className="block text-xs text-[var(--muted)] mb-1">{f}</label>
                 {f === 'Gender' ? (
                   <div className="grid grid-cols-2 gap-2">
                     {['Male', 'Female'].map(g => (
@@ -226,7 +227,7 @@ export default function ProfileSetupPage() {
                   <div className={`w-[14px] h-[14px] flex-shrink-0 flex items-center justify-center transition-colors rounded ${
                     selected ? 'bg-[var(--clay)] border-[var(--clay)] text-white' : 'border-2 border-[var(--border-2)]'
                   }`}>
-                    {selected && <span className="text-[9px]">✓</span>}
+                    {selected && <span className="text-xs">✓</span>}
                   </div>
                   <span className={`text-xs font-bold ${selected ? 'text-[var(--clay)]' : 'text-[var(--foreground)]'}`}>{o}</span>
                 </button>
@@ -247,7 +248,7 @@ export default function ProfileSetupPage() {
                   <div className={`w-[14px] h-[14px] flex-shrink-0 flex items-center justify-center transition-colors rounded ${
                     selected ? 'bg-[var(--clay)] border-[var(--clay)] text-white' : 'border-2 border-[var(--border-2)]'
                   }`}>
-                    {selected && <span className="text-[9px]">✓</span>}
+                    {selected && <span className="text-xs">✓</span>}
                   </div>
                   <span className={`text-xs font-bold ${selected ? 'text-[var(--clay)]' : 'text-[var(--foreground)]'}`}>{o}</span>
                 </button>
@@ -268,7 +269,7 @@ export default function ProfileSetupPage() {
                   <div className={`w-[14px] h-[14px] flex-shrink-0 flex items-center justify-center transition-colors rounded-full ${
                     selected ? 'bg-[var(--clay)] border-[var(--clay)] text-white' : 'border-2 border-[var(--border-2)]'
                   }`}>
-                    {selected && <span className="text-[9px]">✓</span>}
+                    {selected && <span className="text-xs">✓</span>}
                   </div>
                   <span className={`text-xs font-bold ${selected ? 'text-[var(--clay)]' : 'text-[var(--foreground)]'}`}>{o}</span>
                 </button>

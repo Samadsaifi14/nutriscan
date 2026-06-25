@@ -83,6 +83,7 @@ function CorrectProductPageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(product)
       })
+      if (!res.ok) { throw new Error('Failed to submit correction') }
       const json = await res.json()
 
       if (json.success) {
@@ -205,7 +206,7 @@ function CorrectProductPageContent() {
                         { key: 'sodium', label: 'Sodium', unit: 'mg', color: 'text-purple-400' },
                       ].map((field) => (
                         <div key={field.key}>
-                          <label className="block text-[10px] text-[var(--muted-2)] mb-1">{field.label}</label>
+                          <label className="block text-xs text-[var(--muted-2)] mb-1">{field.label}</label>
                           <div className="relative">
                             <input
                               type="number"
@@ -214,7 +215,7 @@ function CorrectProductPageContent() {
                               className="w-full px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] text-sm focus:border-[var(--clay)]/50 outline-none"
                               placeholder="0"
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[var(--muted-2)]">
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted-2)]">
                               {field.unit}
                             </span>
                           </div>
@@ -243,7 +244,7 @@ function CorrectProductPageContent() {
                 </button>
               )}
 
-              <p className="text-[11px] text-[var(--muted-2)] text-center">
+              <p className="text-xs text-[var(--muted-2)] text-center">
                 Corrections are reviewed by our team before going live.
               </p>
             </motion.div>
