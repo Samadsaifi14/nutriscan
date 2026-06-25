@@ -18,6 +18,7 @@ const AUTH_REQUIRED_PREFIXES = [
   '/insights',
   '/search',
   '/favorites',
+  '/settings',
 ]
 
 export async function middleware(req: NextRequest) {
@@ -57,5 +58,6 @@ export const config = {
     '/insights/:path*',
     '/search/:path*',
     '/favorites/:path*',
+    '/settings/:path*',
   ],
 }

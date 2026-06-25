@@ -289,7 +289,7 @@ body {
   align-items:     center;
   justify-content: center;
   height:          var(--nav-h);
-  gap:             3px;
+  gap:             2px;
   position:        relative;
   cursor:          pointer;
   user-select:     none;
@@ -297,7 +297,30 @@ body {
 }
 
 .bottom-nav__slot--fab {
-  pointer-events: none;
+  justify-content: flex-end;
+  padding-bottom: 10px;
+  pointer-events: auto;
+}
+
+.bottom-nav__fab-ring {
+  width:          46px;
+  height:         46px;
+  border-radius:  50%;
+  background:     linear-gradient(135deg, var(--clay) 0%, var(--clay-dim) 100%);
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  font-size:      18px;
+  box-shadow:     0 0 0 3px var(--bg), 0 0 0 5px color-mix(in srgb, var(--clay) 27%, transparent);
+}
+
+.bottom-nav__pill {
+  width:           18px;
+  height:          2px;
+  border-radius:   2px;
+  background:      var(--clay);
+  margin-bottom:   2px;
+  flex-shrink:     0;
 }
 
 .bottom-nav__icon {
@@ -319,16 +342,6 @@ body {
 
 .bottom-nav__slot--active .bottom-nav__icon,
 .bottom-nav__slot--active .bottom-nav__label { color: var(--clay); }
-
-.bottom-nav__slot--active::before {
-  content:       '';
-  position:      absolute;
-  top:           8px;
-  width:         20px;
-  height:        2px;
-  border-radius: var(--r-full);
-  background:    var(--clay);
-}
 
 /* ── FLOATING SCAN FAB ────────────────────────────────────────────────────── */
 .fab-scan {

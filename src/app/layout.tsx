@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Providers from '@/components/Providers'
 import BottomNav from '@/components/BottomNav'
-import FloatingScanButton from '@/components/FloatingScanButton'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import GrainOverlay from '@/components/GrainOverlay'
 import { CookieBanner } from '@/components/CookieBanner'
@@ -48,7 +47,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </ErrorBoundary>
         </Providers>
         <BottomNav />
-        <FloatingScanButton />
       </body>
     </html>
   )

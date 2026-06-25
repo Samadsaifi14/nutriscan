@@ -1,6 +1,6 @@
 "use client"
 
-import Link      from 'next/link'
+import Link            from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Search, Clock, User } from 'lucide-react'
 
@@ -12,10 +12,11 @@ interface NavTab {
 }
 
 const TABS: NavTab[] = [
-  { id: 'home',    href: '/dashboard',   icon: <Home   size={22} strokeWidth={1.8} />, label: 'Home'    },
-  { id: 'search',  href: '/search',       icon: <Search size={22} strokeWidth={1.8} />, label: 'Search'  },
-  { id: 'history', href: '/scan-history', icon: <Clock  size={22} strokeWidth={1.8} />, label: 'History' },
-  { id: 'profile', href: '/profile-setup',icon: <User   size={22} strokeWidth={1.8} />, label: 'Profile' },
+  { id: 'home',    href: '/dashboard',   icon: <Home   size={20} strokeWidth={1.8} />, label: 'Home'    },
+  { id: 'search',  href: '/search',       icon: <Search size={20} strokeWidth={1.8} />, label: 'Search'  },
+  { id: 'scan',    href: '/scan',         icon: null,                                    label: ''       },
+  { id: 'history', href: '/scan-history', icon: <Clock  size={20} strokeWidth={1.8} />, label: 'History' },
+  { id: 'profile', href: '/profile',       icon: <User   size={20} strokeWidth={1.8} />, label: 'Profile' },
 ]
 
 const PATH_TO_TAB: Record<string, string> = {
@@ -23,10 +24,13 @@ const PATH_TO_TAB: Record<string, string> = {
   '/insights':     'home',
   '/leaderboard':  'home',
   '/search':       'search',
+  '/scan':         'scan',
   '/scan-history': 'history',
   '/history':      'history',
   '/favorites':    'history',
   '/profile-setup':'profile',
+  '/profile':     'profile',
+  '/settings':    'profile',
 }
 
 function getActiveTab(pathname: string): string {
@@ -36,7 +40,7 @@ function getActiveTab(pathname: string): string {
   return 'home'
 }
 
-const HIDDEN_PATHS = ['/scan', '/auth', '/signin', '/', '/legal']
+const HIDDEN_PATHS = ['/auth', '/signin', '/', '/legal']
 
 export default function BottomNav() {
   const pathname  = usePathname()
@@ -46,33 +50,37 @@ export default function BottomNav() {
 
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
-      {TABS.slice(0, 2).map(tab => (
-        <Link
-          key={tab.id}
-          href={tab.href}
-          className={`bottom-nav__slot ${activeTab === tab.id ? 'bottom-nav__slot--active' : ''}`}
-          aria-label={tab.label}
-          aria-current={activeTab === tab.id ? 'page' : undefined}
-        >
-          <span className="bottom-nav__icon">{tab.icon}</span>
-          <span className="bottom-nav__label">{tab.label}</span>
-        </Link>
-      ))}
+      {TABS.map(tab => {
+        if (tab.id === 'scan') {
+          return (
+            <Link
+              key="scan"
+              href="/scan"
+              className="bottom-nav__slot bottom-nav__slot--fab"
+              aria-label="Scan food"
+            >
+              <div className="bottom-nav__fab-ring" aria-hidden="true">
+              <span>📷</span>
+            </div>
+            </Link>
+          )
+        }
 
-      <div className="bottom-nav__slot bottom-nav__slot--fab" aria-hidden="true" />
-
-      {TABS.slice(2).map(tab => (
-        <Link
-          key={tab.id}
-          href={tab.href}
-          className={`bottom-nav__slot ${activeTab === tab.id ? 'bottom-nav__slot--active' : ''}`}
-          aria-label={tab.label}
-          aria-current={activeTab === tab.id ? 'page' : undefined}
-        >
-          <span className="bottom-nav__icon">{tab.icon}</span>
-          <span className="bottom-nav__label">{tab.label}</span>
-        </Link>
-      ))}
+        const on = activeTab === tab.id
+        return (
+          <Link
+            key={tab.id}
+            href={tab.href}
+            className={`bottom-nav__slot ${on ? 'bottom-nav__slot--active' : ''}`}
+            aria-label={tab.label}
+            aria-current={on ? 'page' : undefined}
+          >
+            {on && <div className="bottom-nav__pill" />}
+            <span className="bottom-nav__icon">{tab.icon}</span>
+            <span className="bottom-nav__label">{tab.label}</span>
+          </Link>
+        )
+      })}
     </nav>
   )
 }
