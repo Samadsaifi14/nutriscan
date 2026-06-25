@@ -52,9 +52,9 @@ export async function POST(req: NextRequest) {
         'Authorization': `Bearer ${resendApiKey}`
       },
       body: JSON.stringify({
-        from: 'HealthOX <onboarding@resend.dev>',
+        from: 'Bio You <onboarding@resend.dev>',
         to: [email],
-        subject: `Welcome to HealthOX, ${firstName}! Your journey to healthier eating starts now`,
+        subject: `Welcome to Bio You, ${firstName}! Your journey to healthier eating starts now`,
         html,
       })
     })
@@ -94,7 +94,7 @@ function buildWelcomeHTML(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to HealthOX</title>
+  <title>Welcome to Bio You</title>
 </head>
 <body style="margin:0;padding:0;background:#F2EDE4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 
@@ -102,8 +102,8 @@ function buildWelcomeHTML(
 
   <!-- Logo Header -->
   <div style="text-align:center;margin-bottom:32px;">
-    <img src="${baseUrl}/icon-512.png" alt="HealthOX" width="88" height="88" style="border-radius:50%;margin-bottom:16px;" />
-    <h1 style="font-size:32px;font-weight:900;margin:0 0 4px;color:#2C1F0F;">HealthOX</h1>
+    <img src="${baseUrl}/icon-512.png" alt="Bio You" width="88" height="88" style="border-radius:50%;margin-bottom:16px;" />
+    <h1 style="font-size:32px;font-weight:900;margin:0 0 4px;color:#2C1F0F;">Bio You</h1>
     <p style="font-size:14px;color:#6b7280;margin:0;">Scan. Know. Choose Better.</p>
   </div>
 
@@ -118,7 +118,7 @@ function buildWelcomeHTML(
 
     <p style="font-size:15px;color:#374151;line-height:1.8;margin:0 0 20px;">
       You have just taken a small but meaningful step towards understanding what goes into
-      the food you eat every single day. At HealthOX, we believe that
+      the food you eat every single day. At Bio You, we believe that
       <strong>knowledge is the first step to better health</strong> — and you now have
       that knowledge at your fingertips.
     </p>
@@ -127,7 +127,7 @@ function buildWelcomeHTML(
     <div style="height:1px;background:linear-gradient(90deg,transparent,#e5e7eb,transparent);margin:28px 0;"></div>
 
     <!-- Our Mission -->
-    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 14px;">🌱 Why We Built HealthOX</h3>
+    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 14px;">🌱 Why We Built Bio You</h3>
 
     <p style="font-size:14px;color:#374151;line-height:1.8;margin:0 0 14px;">
       India is home to over 1.4 billion people, yet most of us eat packaged food every day
@@ -137,7 +137,7 @@ function buildWelcomeHTML(
     </p>
 
     <p style="font-size:14px;color:#374151;line-height:1.8;margin:0 0 28px;">
-      We built HealthOX with one heartfelt intention — to make food transparency
+      We built Bio You with one heartfelt intention — to make food transparency
       <strong>free, accessible, and easy for every Indian family</strong>. Just scan a product
       and instantly know if it is good for you, your children, or your parents — powered by
       Google Gemini AI and FSSAI standards.
@@ -147,7 +147,7 @@ function buildWelcomeHTML(
     <div style="height:1px;background:linear-gradient(90deg,transparent,#e5e7eb,transparent);margin:0 0 28px;"></div>
 
     <!-- Features -->
-    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 16px;">✨ What you can do with HealthOX</h3>
+    <h3 style="font-size:17px;font-weight:800;color:#111827;margin:0 0 16px;">✨ What you can do with Bio You</h3>
 
     ${[
       { icon: '📷', title: 'Scan any packaged food', desc: 'Point your camera at a barcode or nutrition label. Works on all Indian products — even ones not in any database yet.' },
@@ -214,7 +214,7 @@ function buildWelcomeHTML(
   <!-- Footer -->
   <div style="background:white;border-radius:20px;padding:20px 24px;box-shadow:0 2px 12px rgba(0,0,0,0.04);text-align:center;">
     <p style="font-size:13px;color:#374151;font-weight:600;margin:0 0 4px;">Made with care for a healthier India</p>
-    <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">HealthOX — Scan. Know. Choose Better.</p>
+    <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">Bio You — Scan. Know. Choose Better.</p>
     <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
       <a href="${unsubscribeWeeklyUrl}" style="font-size:11px;color:#9ca3af;text-decoration:underline;">
         Unsubscribe from weekly reports

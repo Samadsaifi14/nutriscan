@@ -9,13 +9,13 @@ import { CookieBanner } from '@/components/CookieBanner'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 
 export const metadata: Metadata = {
-  title:       'HealthOX — Know What You Eat',
+  title:       'Bio You — Scan. Know. Choose Better.',
   description: 'AI-powered food scanner for Indian consumers. Scan any packaged food for instant health scores, additive alerts, and personalised insights.',
   manifest:    '/manifest.json',
   appleWebApp: {
     capable:          true,
     statusBarStyle:   'black-translucent',
-    title:            'HealthOX',
+    title:            'Bio You',
   },
   icons: {
     apple: '/icon-192.png',

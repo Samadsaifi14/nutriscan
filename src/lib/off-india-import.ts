@@ -12,7 +12,7 @@ export async function fetchFromOFF(barcode: string): Promise<any | null> {
   try {
     const res = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
-      { headers: { 'User-Agent': 'HealthOX/1.0 (contact@healthox.app)' } }
+      { headers: { 'User-Agent': 'BioYou/1.0 (contact@bioyou.app)' } }
     )
     
     if (!res.ok) return null

@@ -121,9 +121,9 @@ export async function GET(req: NextRequest) {
           'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
         },
         body: JSON.stringify({
-          from: 'HealthOX <onboarding@resend.dev>',
+          from: 'Bio You <onboarding@resend.dev>',
           to: [user.email],
-          subject: `${firstName}, here is your weekly HealthOX nutrition report 📊`,
+          subject: `${firstName}, here is your weekly Bio You nutrition report 📊`,
           html,
         })
       })
@@ -180,7 +180,7 @@ function buildWeeklyHTML(data: {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HealthOX Weekly Report</title>
+  <title>Bio You Weekly Report</title>
 </head>
 <body style="margin:0;padding:0;background:#F2EDE4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 
@@ -188,8 +188,8 @@ function buildWeeklyHTML(data: {
 
   <!-- Header -->
   <div style="text-align:center;margin-bottom:28px;">
-    <img src="${data.baseUrl}/icon-512.png" alt="HealthOX" width="80" height="80" style="border-radius:50%;margin-bottom:12px;" />
-    <h1 style="font-size:28px;font-weight:900;margin:0 0 4px;color:#2C1F0F;">HealthOX</h1>
+    <img src="${data.baseUrl}/icon-512.png" alt="Bio You" width="80" height="80" style="border-radius:50%;margin-bottom:12px;" />
+    <h1 style="font-size:28px;font-weight:900;margin:0 0 4px;color:#2C1F0F;">Bio You</h1>
     <p style="font-size:13px;color:#6b7280;margin:0;">Weekly Nutrition Report · Scan. Know. Choose Better.</p>
   </div>
 
@@ -303,7 +303,7 @@ function buildWeeklyHTML(data: {
   <!-- Footer -->
   <div style="background:white;border-radius:20px;padding:20px 24px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.04);">
     <p style="font-size:13px;color:#374151;font-weight:600;margin:0 0 4px;">Made for a healthier India</p>
-    <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">HealthOX — Scan. Know. Choose Better.</p>
+    <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">Bio You — Scan. Know. Choose Better.</p>
     <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
       <a href="${data.unsubscribeWeeklyUrl}" style="font-size:11px;color:#9ca3af;text-decoration:underline;">
         Unsubscribe from weekly reports
