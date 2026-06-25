@@ -1,12 +1,12 @@
 "use client"
 import { useEffect } from 'react'
-import RouteErrorBoundary from '@/components/RouteErrorBoundary'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { SkeletonDashboard } from '@/components/Skeleton'
 import { event, AnalyticsEvents } from '@/lib/analytics'
-import ScoreRing from '@/components/ScoreRing'
+import HealthScoreRing from '@/components/HealthScoreRing'
+import PageShell from '@/components/PageShell'
 
 interface DashboardData {
   totalCalories:    number
@@ -91,18 +91,10 @@ export default function DashboardPage() {
   const weekValues = [70, 85, 60, 92, 45, 78, 72]
 
   return (
-    <RouteErrorBoundary>
-    <div style={{ minHeight: '100svh', background: 'var(--background)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: '50%',
-          background: 'linear-gradient(135deg, var(--clay), #78471C)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0,
-        }}>
-          {session?.user?.name?.charAt(0) || 'Y'}
-        </div>
-        <span style={{ fontSize: 8, color: 'var(--muted)' }}>{greeting}, {userName}</span>
+    <PageShell
+      variant="default"
+      title="Dashboard"
+      right={
         <div style={{
           width: 28, height: 28, borderRadius: 8,
           background: 'var(--surface-2)', border: '0.5px solid var(--border-2)',
@@ -111,125 +103,122 @@ export default function DashboardPage() {
         }}>
           <span>\uD83D\uDD14</span>
         </div>
+      }
+    >
+      <div style={{ textAlign: 'center', padding: '14px 0 8px' }}>
+        <span style={{ fontSize: 7, color: 'var(--muted)' }}>Today&apos;s Health Score</span>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+          <HealthScoreRing score={7.2} size="xl" />
+        </div>
+        <div style={{
+          padding: '2px 7px', borderRadius: 20, background: 'rgba(76,107,57,0.12)',
+          color: 'var(--moss)', width: 'fit-content', margin: '8px auto 0',
+          fontSize: 7, border: '0.5px solid var(--border-2)', whiteSpace: 'nowrap',
+        }}>
+          ✓ Good overall — {data?.mealCount || 0} items scanned
+        </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ textAlign: 'center', padding: '14px 0 8px' }}>
-          <span style={{ fontSize: 7, color: 'var(--muted)' }}>Today&apos;s Health Score</span>
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-            <ScoreRing score={7.2} size={88} />
-          </div>
-          <div style={{
-            padding: '2px 7px', borderRadius: 20, background: 'rgba(76,107,57,0.12)',
-            color: 'var(--moss)', width: 'fit-content', margin: '8px auto 0',
-            fontSize: 7, border: '0.5px solid var(--border-2)', whiteSpace: 'nowrap',
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, padding: '0 12px', marginBottom: 10 }}>
+        {[
+          { l: 'Calories', v: consumed.toString(), s: `/ ${goal}` },
+          { l: 'Scans', v: (data?.mealCount ?? 0).toString(), s: 'today' },
+          { l: 'Streak', v: `${streak} \uD83D\uDD25`, s: 'days' },
+        ].map(s => (
+          <div key={s.l} style={{
+            background: 'var(--surface-2)', borderRadius: 10,
+            border: '0.5px solid var(--border-2)', padding: 8, textAlign: 'center',
           }}>
-            ✓ Good overall — {data?.mealCount || 0} items scanned
+            <div style={{ fontSize: 11, color: 'var(--foreground)', fontWeight: 700 }}>{s.v}</div>
+            <div style={{ fontSize: 6, color: 'var(--foreground)' }}>{s.l}</div>
+            <div style={{ fontSize: 6, color: 'var(--muted)' }}>{s.s}</div>
           </div>
-        </div>
+        ))}
+      </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, padding: '0 12px', marginBottom: 10 }}>
-          {[
-            { l: 'Calories', v: consumed.toString(), s: `/ ${goal}` },
-            { l: 'Scans', v: (data?.mealCount ?? 0).toString(), s: 'today' },
-            { l: 'Streak', v: `${streak} \uD83D\uDD25`, s: 'days' },
-          ].map(s => (
-            <div key={s.l} style={{
-              background: 'var(--surface-2)', borderRadius: 10,
-              border: '0.5px solid var(--border-2)', padding: 8, textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 11, color: 'var(--foreground)', fontWeight: 700 }}>{s.v}</div>
-              <div style={{ fontSize: 6, color: 'var(--foreground)' }}>{s.l}</div>
-              <div style={{ fontSize: 6, color: 'var(--muted)' }}>{s.s}</div>
-            </div>
-          ))}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', marginBottom: 5, marginTop: 8 }}>
+        <span style={{ fontSize: 6.5, color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.08em' }}>THIS WEEK</span>
+        <span style={{ fontSize: 7, color: 'var(--clay)', fontWeight: 600 }}>Full report ›</span>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', marginBottom: 5, marginTop: 8 }}>
-          <span style={{ fontSize: 6.5, color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.08em' }}>THIS WEEK</span>
-          <span style={{ fontSize: 7, color: 'var(--clay)', fontWeight: 600 }}>Full report ›</span>
-        </div>
-
-        <div style={{
-          background: 'var(--surface-2)', borderRadius: 10,
-          border: '0.5px solid var(--border-2)', padding: 10,
-          margin: '0 12px', marginBottom: 10,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 52 }}>
-            {weekDays.map((d, i) => {
-              const today = i === 6
-              return (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-                  <div style={{
-                    width: '100%', height: `${weekValues[i]}%`, borderRadius: 4,
-                    background: today ? 'var(--clay)' : 'var(--surface-3)',
-                    border: `0.5px solid ${today ? 'rgba(196,113,74,0.38)' : 'var(--border-2)'}`,
-                  }} />
-                  <span style={{ fontSize: 5.5, color: today ? 'var(--clay)' : 'var(--muted)' }}>{d}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', marginBottom: 5, marginTop: 8 }}>
-          <span style={{ fontSize: 6.5, color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.08em' }}>RECENT SCANS</span>
-          <span style={{ fontSize: 7, color: 'var(--clay)', fontWeight: 600 }}>See all ›</span>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 12px 8px' }}>
-          {lastScan ? (
-            <div style={{
-              background: 'var(--surface-2)', borderRadius: 10,
-              border: '0.5px solid var(--border-2)', padding: 8,
-              width: 82, flexShrink: 0, textAlign: 'center',
-              display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center',
-            }}>
-              <div style={{ width: 46, height: 46, borderRadius: 10, background: 'var(--surface-3)', border: '0.5px solid var(--border)' }} />
-              <span style={{ fontSize: 7, color: 'var(--foreground)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
-                {lastScan.product_name || 'Product'}
-              </span>
-              <span style={{
-                padding: '2px 7px', borderRadius: 20,
-                background: 'rgba(76,107,57,0.22)', color: 'var(--moss)',
-                fontSize: 6.5, fontWeight: 500,
-                border: '0.5px solid var(--border-2)', whiteSpace: 'nowrap',
-              }}>
-                {lastScan.ai_health_score || '—'}/10
-              </span>
-            </div>
-          ) : (
-            <div style={{
-              background: 'var(--surface-2)', borderRadius: 10,
-              border: '0.5px solid var(--border-2)', padding: 8,
-              width: 82, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', justifyContent: 'center',
-              fontSize: 7, color: 'var(--muted)', fontWeight: 500,
-            }}>
-              <span style={{ fontSize: 16 }}>\uD83D\uDCF7</span>
-              No scans yet
-            </div>
-          )}
-        </div>
-
-        {consumed > goal && (
-          <div style={{
-            borderRadius: 10,
-            border: '0.5px solid var(--border-2)', padding: 10,
-            margin: '8px 12px 12px',
-            borderLeft: '3px solid var(--risk-red)',
-            background: 'rgba(190,66,48,0.12)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12 }}>⚠️</span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 8, color: 'var(--foreground)', fontWeight: 600 }}>High calorie alert</span>
-                <span style={{ fontSize: 7, color: 'var(--muted)' }}>Exceeded daily goal by {consumed - goal} kcal</span>
+      <div style={{
+        background: 'var(--surface-2)', borderRadius: 10,
+        border: '0.5px solid var(--border-2)', padding: 10,
+        margin: '0 12px', marginBottom: 10,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 52 }}>
+          {weekDays.map((d, i) => {
+            const today = i === 6
+            return (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+                <div style={{
+                  width: '100%', height: `${weekValues[i]}%`, borderRadius: 4,
+                  background: today ? 'var(--clay)' : 'var(--surface-3)',
+                  border: `0.5px solid ${today ? 'rgba(196,113,74,0.38)' : 'var(--border-2)'}`,
+                }} />
+                <span style={{ fontSize: 5.5, color: today ? 'var(--clay)' : 'var(--muted)' }}>{d}</span>
               </div>
-            </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', marginBottom: 5, marginTop: 8 }}>
+        <span style={{ fontSize: 6.5, color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.08em' }}>RECENT SCANS</span>
+        <span style={{ fontSize: 7, color: 'var(--clay)', fontWeight: 600 }}>See all ›</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 12px 8px' }}>
+        {lastScan ? (
+          <div style={{
+            background: 'var(--surface-2)', borderRadius: 10,
+            border: '0.5px solid var(--border-2)', padding: 8,
+            width: 82, flexShrink: 0, textAlign: 'center',
+            display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center',
+          }}>
+            <div style={{ width: 46, height: 46, borderRadius: 10, background: 'var(--surface-3)', border: '0.5px solid var(--border)' }} />
+            <span style={{ fontSize: 7, color: 'var(--foreground)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+              {lastScan.product_name || 'Product'}
+            </span>
+            <span style={{
+              padding: '2px 7px', borderRadius: 20,
+              background: 'rgba(76,107,57,0.22)', color: 'var(--moss)',
+              fontSize: 6.5, fontWeight: 500,
+              border: '0.5px solid var(--border-2)', whiteSpace: 'nowrap',
+            }}>
+              {lastScan.ai_health_score || '—'}/10
+            </span>
+          </div>
+        ) : (
+          <div style={{
+            background: 'var(--surface-2)', borderRadius: 10,
+            border: '0.5px solid var(--border-2)', padding: 8,
+            width: 82, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', justifyContent: 'center',
+            fontSize: 7, color: 'var(--muted)', fontWeight: 500,
+          }}>
+            <span style={{ fontSize: 16 }}>\uD83D\uDCF7</span>
+            No scans yet
           </div>
         )}
       </div>
-    </div>
-    </RouteErrorBoundary>
+
+      {consumed > goal && (
+        <div style={{
+          borderRadius: 10,
+          border: '0.5px solid var(--border-2)', padding: 10,
+          margin: '8px 12px 12px',
+          borderLeft: '3px solid var(--risk-red)',
+          background: 'rgba(190,66,48,0.12)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12 }}>⚠️</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: 8, color: 'var(--foreground)', fontWeight: 600 }}>High calorie alert</span>
+              <span style={{ fontSize: 7, color: 'var(--muted)' }}>Exceeded daily goal by {consumed - goal} kcal</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </PageShell>
   )
 }

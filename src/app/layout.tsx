@@ -1,74 +1,54 @@
 import type { Metadata, Viewport } from 'next'
-import { Syne, DM_Sans } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
 import BottomNav from '@/components/BottomNav'
+import FloatingScanButton from '@/components/FloatingScanButton'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
-import { Footer } from '@/components/Footer'
-import { CookieBanner } from '@/components/CookieBanner'
 import GrainOverlay from '@/components/GrainOverlay'
-
-const syne = Syne({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-})
-
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500'],
-  variable: '--font-body',
-})
+import { CookieBanner } from '@/components/CookieBanner'
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 
 export const metadata: Metadata = {
-  title: {
-    default: 'Bio You — Scan. Know. Choose Better.',
-    template: '%s | Bio You',
+  title:       'HealthOX — Know What You Eat',
+  description: 'AI-powered food scanner for Indian consumers. Scan any packaged food for instant health scores, additive alerts, and personalised insights.',
+  manifest:    '/manifest.json',
+  appleWebApp: {
+    capable:          true,
+    statusBarStyle:   'black-translucent',
+    title:            'HealthOX',
   },
-  description: 'Scan packaged foods to analyze ingredients, detect harmful additives, and get health scores. Made for India.',
   icons: {
-    icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-    ],
-    apple: '/icon-512.png',
-  },
-  robots: {
-    index: true,
-    follow: true,
+    apple: '/icon-192.png',
+    icon:  '/icon-192.png',
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#C4714A',
-  width: 'device-width',
-  initialScale: 1,
+  width:          'device-width',
+  initialScale:   1,
+  viewportFit:    'cover',
+  userScalable:   false,
+  themeColor:     '#0A0806',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${syne.variable} ${dmSans.variable}`}>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://www.googletagmanager.com" />
         <link rel="preconnect" href="https://www.google-analytics.com" />
       </head>
-      <body className={`${syne.variable} ${dmSans.variable}`}>
+      <body className="bg-[var(--bg)] text-[var(--cream)] overflow-x-hidden overscroll-none">
         <Providers>
           <ErrorBoundary>
-            <div className="phone-container">
-              <GrainOverlay />
-              <main className="flex-1 pb-24">
-                <div className="page-enter">{children}</div>
-              </main>
-              <Footer />
-              <ServiceWorkerRegister />
-              <CookieBanner />
-            </div>
-            <BottomNav />
+            <GrainOverlay />
+            {children}
+            <ServiceWorkerRegister />
+            <CookieBanner />
           </ErrorBoundary>
         </Providers>
+        <BottomNav />
+        <FloatingScanButton />
       </body>
     </html>
   )

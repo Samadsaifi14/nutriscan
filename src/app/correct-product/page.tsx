@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
+import PageShell from '@/components/PageShell'
 
 interface Nutrition {
   calories?: number
@@ -97,20 +98,8 @@ function CorrectProductPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-[var(--foreground)]">
-      <div className="max-w-md mx-auto p-4 pb-28">
-        {/* Header */}
-        <div className="flex items-center justify-between py-4 mb-2">
-          <button 
-            onClick={() => router.back()} 
-            className="p-2 rounded-xl bg-[var(--card)] text-[var(--muted-2)] hover:text-[var(--foreground)] transition-colors"
-          >
-            ←
-          </button>
-          <h1 className="text-lg font-black">Correct Product</h1>
-          <div className="w-9" />
-        </div>
-
+    <PageShell variant="default" title="Correct Product" showBack>
+      <div className="px-4">
         <AnimatePresence mode="wait">
           {step === 1 ? (
             <motion.div 
@@ -297,15 +286,17 @@ function CorrectProductPageContent() {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </PageShell>
   )
 }
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
-    </div>
+    <PageShell variant="no-header">
+      <div className="flex items-center justify-center" style={{ minHeight: '100dvh' }}>
+        <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    </PageShell>
   )
 }
 

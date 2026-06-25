@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import PageShell from '@/components/PageShell'
 
 const FEATURES = [
   { ic: '\uD83D\uDCCA', t: 'Health Score', d: 'AI-powered 1-10 rating. Nutrition + processing + ingredients.' },
@@ -24,7 +25,7 @@ export default function Home() {
   if (session) return null
 
   return (
-    <div style={{ background: 'var(--background)', minHeight: '100svh', display: 'flex', flexDirection: 'column' }}>
+    <PageShell variant="no-header">
       <div style={{ height: 72, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '0 14px 10px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <div style={{ width: 18, height: 18, borderRadius: 6, background: 'linear-gradient(135deg, var(--clay), var(--moss))' }} />
@@ -106,6 +107,6 @@ export default function Home() {
           </div>
         ))}
       </div>
-    </div>
+    </PageShell>
   )
 }

@@ -4,7 +4,8 @@ import { useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import ScoreRing from '@/components/ScoreRing'
+import HealthScoreRing from '@/components/HealthScoreRing'
+import PageShell from '@/components/PageShell'
 
 export default function ScanHistoryPage() {
   const { data: session, status } = useSession()
@@ -59,15 +60,7 @@ export default function ScanHistoryPage() {
   const scoreColorVar = (s: number) => s >= 7 ? 'var(--moss)' : s >= 5 ? 'var(--amber)' : 'var(--rust)'
 
   return (
-    <div className="min-h-screen bg-[var(--background)] flex flex-col">
-
-      {/* TopBar */}
-      <div className="h-11 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0">
-        <button onClick={() => router.back()} className="text-base text-[var(--sand)]">←</button>
-        <span className="text-sm font-bold text-[var(--foreground)]">Scan History</span>
-        <span className="text-sm text-[var(--sand)]">⬇️</span>
-      </div>
-
+    <PageShell variant="default" title="Scan History" showBack right={<span className="text-sm text-[var(--sand)]">⬇️</span>}>
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-3 pt-3 space-y-4 pb-4">
 
@@ -113,7 +106,7 @@ export default function ScanHistoryPage() {
                         </p>
                       </div>
                       {score != null && (
-                        <ScoreRing score={score} />
+                        <HealthScoreRing score={score} size="md" />
                       )}
                     </button>
                   )
@@ -124,6 +117,6 @@ export default function ScanHistoryPage() {
         )}
 
       </div>
-    </div>
+    </PageShell>
   )
 }

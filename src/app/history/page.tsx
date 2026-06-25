@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import PageShell from '@/components/PageShell'
 
 const mealEmoji: Record<string, string> = {
   breakfast: '🌅',
@@ -62,16 +63,11 @@ export default function HistoryPage() {
   const totalMeals = (logs || []).length
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-
-      {/* Header */}
+    <PageShell variant="default" title="History" showBack>
       <div
         className="px-5 pt-12 pb-6"
         style={{ background: 'linear-gradient(135deg, #C4714A 0%, #2C1F0F 100%)' }}
       >
-        <h1 className="text-2xl font-black text-white mb-1">Meal History</h1>
-        <p className="text-[var(--cream)] text-sm">Your last 50 logged meals</p>
-
         {!isLoading && logs && logs.length > 0 && (
           <div className="grid grid-cols-2 gap-3 mt-4">
             {[
@@ -187,6 +183,6 @@ export default function HistoryPage() {
         )}
 
       </div>
-    </div>
+    </PageShell>
   )
 }

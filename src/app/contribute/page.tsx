@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import toast from 'react-hot-toast'
 import { createClient } from '@supabase/supabase-js'
+import PageShell from '@/components/PageShell'
 import { parseIndianNutritionLabel } from '@/lib/ocr/indian-label-parser'
 import { enhanceImage, hasGlare } from '@/lib/ocr/image-enhancer'
 
@@ -118,22 +119,22 @@ function ContributePageContent() {
     return data.publicUrl
   }
 
-  if (status === 'loading') return <div className="min-h-screen bg-[var(--background)] flex items-center justify-center"><div className="w-6 h-6 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" /></div>
+  if (status === 'loading') return (
+    <PageShell variant="no-header">
+      <div className="flex items-center justify-center" style={{ minHeight: '100dvh' }}>
+        <div className="w-6 h-6 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    </PageShell>
+  )
 
   return (
-    <div className="min-h-screen bg-[var(--background)] flex flex-col">
-      {/* TopBar */}
-      <div className="h-11 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0">
-        <button onClick={() => step > 0 ? setStep(s => Math.max(0, s - 1)) : router.back()} className="text-base text-[var(--sand)]">
-          {step > 0 || (step === 0 && !barcode) ? '' : ''}←
-        </button>
-        <span className="text-sm font-bold text-[var(--foreground)]">Add Product</span>
-        <span className="text-xs text-[var(--sand)]">{step < 4 ? `Step ${step + 1} of 4` : 'Done'}</span>
-      </div>
-
+    <PageShell variant="default" title="Contribute" showBack={false}
+      left={<button onClick={() => step > 0 ? setStep(s => Math.max(0, s - 1)) : router.back()} className="text-base text-[var(--sand)]">←</button>}
+      right={<span className="text-xs text-[var(--sand)]">{step < 4 ? `Step ${step + 1} of 4` : 'Done'}</span>}
+    >
       {/* Progress bar */}
       {step < 4 && (
-        <div className="px-4 pt-3 pb-2 flex-shrink-0">
+        <div className="px-4 pt-3 pb-2">
           <div style={{ display: 'flex', gap: 0, position: 'relative', marginBottom: 10 }}>
             <div style={{ position: 'absolute', top: 9, left: '10%', right: '10%', height: 2, background: 'var(--surface-3)', zIndex: 0 }} />
             <div style={{ position: 'absolute', top: 9, left: '10%', width: `${(step / 3) * 80}%`, height: 2, background: 'var(--clay)', zIndex: 1, transition: 'width .3s' }} />
@@ -155,7 +156,7 @@ function ContributePageContent() {
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 pt-1 pb-6 space-y-4">
+      <div className="px-4 pt-1 pb-6 space-y-4">
 
         {/* ═══ STEP 0 — Info ═══ */}
         {step === 0 && (
@@ -366,13 +367,13 @@ function ContributePageContent() {
         )}
 
       </div>
-    </div>
+    </PageShell>
   )
 }
 
 export default function ContributePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[var(--background)] flex items-center justify-center"><div className="w-6 h-6 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<PageShell variant="no-header"><div className="flex items-center justify-center" style={{ minHeight: '100dvh' }}><div className="w-6 h-6 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" /></div></PageShell>}>
       <ContributePageContent />
     </Suspense>
   )

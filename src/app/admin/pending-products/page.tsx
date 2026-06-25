@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { createClient } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
+import PageShell from '@/components/PageShell'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -121,25 +122,31 @@ export default function AdminPendingPage() {
   }, [selectedProduct, handleAction])
 
   if (status === 'loading') {
-    return <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
-    </div>
+    return (
+      <PageShell variant="no-header">
+        <div className="flex items-center justify-center" style={{ minHeight: '100dvh' }}>
+          <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </PageShell>
+    )
   }
 
   if (status === 'unauthenticated' || !isAdmin) {
     return (
-      <div className="min-h-screen bg-[#0d0f12] flex flex-col items-center justify-center px-6 text-center">
-        <div className="text-4xl mb-4">🔐</div>
-        <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Admin Access Only</h2>
-        <p className="text-sm text-[var(--muted-2)]">This page is for authorized administrators.</p>
-      </div>
+      <PageShell variant="no-header">
+        <div className="flex flex-col items-center justify-center px-6 text-center" style={{ minHeight: '100dvh' }}>
+          <div className="text-4xl mb-4">🔐</div>
+          <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Admin Access Only</h2>
+          <p className="text-sm text-[var(--muted-2)]">This page is for authorized administrators.</p>
+        </div>
+      </PageShell>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-[var(--foreground)] pb-24">
+    <PageShell variant="default" title="Pending Approvals" showBack>
       {/* Header */}
-      <div className="bg-gradient-to-b from-red-500/20 to-transparent px-5 pt-12 pb-4">
+      <div className="bg-gradient-to-b from-red-500/20 to-transparent px-5 pt-4 pb-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-black">⚡ Admin: Fast Track Review</h1>
           <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">Admin</span>
@@ -282,7 +289,7 @@ export default function AdminPendingPage() {
           }}
         />
       )}
-    </div>
+    </PageShell>
   )
 }
 

@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import PageShell from '@/components/PageShell'
 
 const BarcodeScanner = dynamic(
   () => import('@/components/scanner/BarcodeScanner'),
@@ -20,7 +21,7 @@ export default function ScanPage() {
   }, [router, scanning])
 
   return (
-    <div style={{ position: 'relative', height: '100dvh', background: '#080604', overflow: 'hidden' }}>
+    <PageShell variant="fullscreen">
       <div style={{
         position: 'absolute', inset: 0,
         backgroundImage: 'repeating-linear-gradient(0deg,#0f0d0b 0,#0f0d0b 1px,#0b0908 1px,#0b0908 22px),repeating-linear-gradient(90deg,#0f0d0b 0,#0f0d0b 1px,#0b0908 1px,#0b0908 22px)',
@@ -137,6 +138,6 @@ export default function ScanPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PageShell>
   )
 }

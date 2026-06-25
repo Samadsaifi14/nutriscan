@@ -14,8 +14,9 @@ import { useOffline } from '@/hooks/useOffline'
 import { supabase } from '@/lib/supabase'
 import { buildLocalAnalysis } from '@/lib/client-analysis'
 import OverviewTab from '@/components/results/OverviewTab'
-import ScoreRing from '@/components/ScoreRing'
+import HealthScoreRing from '@/components/HealthScoreRing'
 import Pill from '@/components/Pill'
+import PageShell from '@/components/PageShell'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
@@ -445,13 +446,15 @@ async function handleLogMeal(mealType: string) {
 
   if (scanLoading) {
     return (
-      <div className="min-h-[100svh] flex flex-col items-center justify-center px-6 text-center pb-24">
-        <div className="w-16 h-16 border-4 border-[var(--clay)] border-t-transparent rounded-full animate-spin mb-6" />
-        <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Analyzing Product...</h2>
-        <p className="text-sm text-[var(--muted)] mb-8 leading-relaxed max-w-xs">
-          Scanning databases and running health analysis
-        </p>
-      </div>
+      <PageShell variant="no-header">
+        <div className="flex flex-col items-center justify-center px-6 text-center" style={{ minHeight: '100dvh' }}>
+          <div className="w-16 h-16 border-4 border-[var(--clay)] border-t-transparent rounded-full animate-spin mb-6" />
+          <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Analyzing Product...</h2>
+          <p className="text-sm text-[var(--muted)] mb-8 leading-relaxed max-w-xs">
+            Scanning databases and running health analysis
+          </p>
+        </div>
+      </PageShell>
     )
   }
 
@@ -460,49 +463,53 @@ async function handleLogMeal(mealType: string) {
   if (!payload) {
     if (scanFailed && scannedBarcode) {
       return (
-        <div className="min-h-[100svh] flex flex-col items-center justify-center px-6 text-center pb-24">
-          <div className="w-20 h-20 rounded-full bg-[var(--card)] border border-[var(--card-border)] flex items-center justify-center mb-5 text-3xl">
-            📦
+        <PageShell variant="no-header">
+          <div className="flex flex-col items-center justify-center px-6 text-center" style={{ minHeight: '100dvh' }}>
+            <div className="w-20 h-20 rounded-full bg-[var(--card)] border border-[var(--card-border)] flex items-center justify-center mb-5 text-3xl">
+              📦
+            </div>
+            <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Product Not Found</h2>
+            <p className="text-sm text-[var(--muted)] mb-2 leading-relaxed max-w-sm">
+              This product (barcode: {scannedBarcode}) isn't in our database yet.
+            </p>
+            <p className="text-xs text-[var(--muted-2)] mb-6 leading-relaxed max-w-xs">
+              Help the community! Contribute this product's details so others can check its health score.
+            </p>
+            <div className="flex flex-col gap-3 w-full max-w-xs">
+              <button onClick={() => router.push(`/contribute?barcode=${scannedBarcode}`)}
+                className="px-6 py-3.5 bg-[var(--clay)] hover:bg-[var(--clay)] text-white font-bold rounded-2xl text-sm transition-colors">
+                📸 Add This Product
+              </button>
+              <button onClick={() => router.push(`/search?q=${encodeURIComponent(scannedBarcode)}`)}
+                className="px-6 py-3.5 bg-[color-mix(in_oklab,var(--card),black_5%)] hover:bg-[color-mix(in_oklab,var(--card),black_10%)] text-[var(--foreground)] font-bold rounded-2xl text-sm transition-colors border border-[var(--card-border)]">
+                Search by Name
+              </button>
+              <button onClick={() => router.push('/scan')}
+                className="px-6 py-3.5 border border-[var(--card-border)] text-[var(--foreground)] font-bold rounded-2xl text-sm transition-colors bg-transparent hover:bg-[color-mix(in_oklab,var(--card),transparent_60%)]">
+                Scan Another
+              </button>
+            </div>
           </div>
-          <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Product Not Found</h2>
-          <p className="text-sm text-[var(--muted)] mb-2 leading-relaxed max-w-sm">
-            This product (barcode: {scannedBarcode}) isn't in our database yet.
-          </p>
-          <p className="text-xs text-[var(--muted-2)] mb-6 leading-relaxed max-w-xs">
-            Help the community! Contribute this product's details so others can check its health score.
-          </p>
-          <div className="flex flex-col gap-3 w-full max-w-xs">
-            <button onClick={() => router.push(`/contribute?barcode=${scannedBarcode}`)}
-              className="px-6 py-3.5 bg-[var(--clay)] hover:bg-[var(--clay)] text-white font-bold rounded-2xl text-sm transition-colors">
-              📸 Add This Product
-            </button>
-            <button onClick={() => router.push(`/search?q=${encodeURIComponent(scannedBarcode)}`)}
-              className="px-6 py-3.5 bg-[color-mix(in_oklab,var(--card),black_5%)] hover:bg-[color-mix(in_oklab,var(--card),black_10%)] text-[var(--foreground)] font-bold rounded-2xl text-sm transition-colors border border-[var(--card-border)]">
-              Search by Name
-            </button>
-            <button onClick={() => router.push('/scan')}
-              className="px-6 py-3.5 border border-[var(--card-border)] text-[var(--foreground)] font-bold rounded-2xl text-sm transition-colors bg-transparent hover:bg-[color-mix(in_oklab,var(--card),transparent_60%)]">
-              Scan Another
-            </button>
-      </div>
-    </div>
-  )
-}
+        </PageShell>
+      )
+    }
 
     return (
-      <div className="min-h-[100svh] flex flex-col items-center justify-center px-6 text-center pb-24">
-        <div className="w-20 h-20 rounded-full bg-[var(--card)] border border-[var(--card-border)] flex items-center justify-center mb-5 text-3xl">
-          🔍
+      <PageShell variant="no-header">
+        <div className="flex flex-col items-center justify-center px-6 text-center" style={{ minHeight: '100dvh' }}>
+          <div className="w-20 h-20 rounded-full bg-[var(--card)] border border-[var(--card-border)] flex items-center justify-center mb-5 text-3xl">
+            🔍
+          </div>
+          <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">No scan result yet</h2>
+          <p className="text-sm text-[var(--muted)] mb-8 leading-relaxed max-w-xs">
+            Scan a product to see its full health analysis, ingredient breakdown, and personalised advice here.
+          </p>
+          <button onClick={() => router.push('/scan')}
+            className="px-6 py-3.5 bg-[var(--clay)] hover:bg-[var(--clay)] text-white font-bold rounded-2xl text-sm transition-colors">
+            📷 Scan a Product
+          </button>
         </div>
-        <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">No scan result yet</h2>
-        <p className="text-sm text-[var(--muted)] mb-8 leading-relaxed max-w-xs">
-          Scan a product to see its full health analysis, ingredient breakdown, and personalised advice here.
-        </p>
-        <button onClick={() => router.push('/scan')}
-          className="px-6 py-3.5 bg-[var(--clay)] hover:bg-[var(--clay)] text-white font-bold rounded-2xl text-sm transition-colors">
-          📷 Scan a Product
-        </button>
-      </div>
+      </PageShell>
     )
   }
 
@@ -516,25 +523,23 @@ async function handleLogMeal(mealType: string) {
   // AI-generated ingredient list and a synthesized nutrition panel).
   const tabsMeta: TabMeta[] = TABS.map(tab => ({ key: tab, locked: false, reason: '' }))
 
-  return (
-    <div className="min-h-[100svh] text-[var(--foreground)] font-sans pb-24 flex flex-col">
+  const rightContent = (
+    <div className="flex items-center gap-2">
+      <button onClick={handleSaveFavorite}
+        className="w-7 h-7 rounded-lg bg-[var(--surface-2)] border border-[var(--border-2)] flex items-center justify-center text-xs text-[var(--sand)]">
+        🔖
+      </button>
+      <ShareButton
+        productName={product.name}
+        healthScore={Number(analysis.health_score)}
+        healthRating={analysis.health_rating}
+      />
+    </div>
+  )
 
-      {/* ── TopBar ── */}
-      <div className="h-11 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0">
-        <button onClick={() => router.push('/scan')} className="text-base text-[var(--sand)]">←</button>
-        <span className="text-sm font-bold text-[var(--foreground)]">Analysis Result</span>
-        <div className="flex items-center gap-2">
-          <button onClick={handleSaveFavorite}
-            className="w-7 h-7 rounded-lg bg-[var(--surface-2)] border border-[var(--border-2)] flex items-center justify-center text-xs text-[var(--sand)]">
-            🔖
-          </button>
-          <ShareButton
-            productName={product.name}
-            healthScore={Number(analysis.health_score)}
-            healthRating={analysis.health_rating}
-          />
-        </div>
-      </div>
+  return (
+    <PageShell variant="default" title="Analysis Result" showBack right={rightContent} className="font-sans text-[var(--foreground)]">
+      <div className="flex flex-col" style={{ minHeight: 'calc(100dvh - var(--header-offset) - var(--content-pb))' }}>
 
       {/* ── Product Card ── */}
       <div className="flex items-center gap-3 px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0"
@@ -561,7 +566,7 @@ async function handleLogMeal(mealType: string) {
           </div>
         </div>
         <div className="flex-shrink-0">
-          <ScoreRing score={Number(analysis.health_score)} />
+          <HealthScoreRing score={Number(analysis.health_score)} size="md" />
         </div>
       </div>
 
@@ -1159,14 +1164,17 @@ async function handleLogMeal(mealType: string) {
 
       </div>
     </div>
+    </PageShell>
   )
 }
 
 function LoadingFallback() {
   return (
-    <div className="min-h-[100svh] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
-    </div>
+    <PageShell variant="no-header">
+      <div className="flex items-center justify-center" style={{ minHeight: '100dvh' }}>
+        <div className="w-8 h-8 border-2 border-[var(--clay)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    </PageShell>
   )
 }
 

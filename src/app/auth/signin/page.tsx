@@ -2,6 +2,7 @@
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import PageShell from '@/components/PageShell'
 
 export default function SignInPage() {
   const [loading, setLoading] = useState(false)
@@ -18,13 +19,12 @@ export default function SignInPage() {
   if (!mounted) return null
 
   return (
-    <div style={{
-      height: '100%', minHeight: '100svh',
-      background: 'var(--background)',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: 20,
-    }}>
+    <PageShell variant="bare">
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: 20, minHeight: '100dvh',
+      }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 22 }}>
         <div style={{
           width: 52, height: 52, borderRadius: 16,
@@ -87,5 +87,6 @@ export default function SignInPage() {
         <a href="/legal/privacy" style={{ color: 'var(--clay)', textDecoration: 'underline' }}>Privacy Policy</a>
       </span>
     </div>
+    </PageShell>
   )
 }

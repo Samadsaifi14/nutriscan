@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import PageShell from '@/components/PageShell'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -63,14 +64,7 @@ export default function LeaderboardPage() {
   const currentUser = currentUserIdx >= 0 ? users[currentUserIdx] : null
 
   return (
-    <div className="min-h-screen bg-[var(--background)] flex flex-col">
-
-      {/* TopBar */}
-      <div className="h-11 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--surface)] flex-shrink-0">
-        <span />
-        <span className="text-sm font-bold text-[var(--foreground)]">Leaderboard</span>
-        <span className="text-sm text-[var(--sand)]">👥</span>
-      </div>
+    <PageShell variant="default" title="Leaderboard" right={<span className="text-sm text-[var(--sand)]">👥</span>}>
 
       {/* Period tabs */}
       <div className="flex border-b border-[var(--border)] flex-shrink-0">
@@ -143,6 +137,6 @@ export default function LeaderboardPage() {
         )}
       </div>
 
-    </div>
+    </PageShell>
   )
 }

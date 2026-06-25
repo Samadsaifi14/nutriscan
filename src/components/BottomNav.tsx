@@ -1,75 +1,79 @@
 "use client"
-import { usePathname } from 'next/navigation'
-import Link from 'next/link'
 
-const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Home', icon: '\u2302' },
-  { href: '/search', label: 'Search', icon: '\u2299' },
-  { href: '/scan', label: '', icon: '\uD83D\uDCF7', fab: true },
-  { href: '/scan-history', label: 'History', icon: '\u25F7' },
-  { href: '/profile-setup', label: 'Profile', icon: '\u25CE' },
+import Link      from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Home, Search, Clock, User } from 'lucide-react'
+
+interface NavTab {
+  id:    string
+  href:  string
+  icon:  React.ReactNode
+  label: string
+}
+
+const TABS: NavTab[] = [
+  { id: 'home',    href: '/dashboard',   icon: <Home   size={22} strokeWidth={1.8} />, label: 'Home'    },
+  { id: 'search',  href: '/search',       icon: <Search size={22} strokeWidth={1.8} />, label: 'Search'  },
+  { id: 'history', href: '/scan-history', icon: <Clock  size={22} strokeWidth={1.8} />, label: 'History' },
+  { id: 'profile', href: '/profile-setup',icon: <User   size={22} strokeWidth={1.8} />, label: 'Profile' },
 ]
 
+const PATH_TO_TAB: Record<string, string> = {
+  '/dashboard':    'home',
+  '/insights':     'home',
+  '/leaderboard':  'home',
+  '/search':       'search',
+  '/scan-history': 'history',
+  '/history':      'history',
+  '/favorites':    'history',
+  '/profile':      'profile',
+  '/profile-setup':'profile',
+}
+
+function getActiveTab(pathname: string): string {
+  for (const [prefix, tab] of Object.entries(PATH_TO_TAB)) {
+    if (pathname.startsWith(prefix)) return tab
+  }
+  return 'home'
+}
+
+const HIDDEN_PATHS = ['/scan', '/auth', '/signin', '/', '/legal']
+
 export default function BottomNav() {
-  const pathname = usePathname()
-  if (pathname?.startsWith('/auth') || pathname === '/' || pathname?.startsWith('/legal')) return null
+  const pathname  = usePathname()
+  const activeTab = getActiveTab(pathname)
+
+  if (HIDDEN_PATHS.some(p => pathname?.startsWith(p))) return null
 
   return (
-    <div className="safe-area-bottom" style={{
-      height: 56,
-      background: 'var(--surface)',
-      borderTop: '0.5px solid var(--border-2)',
-      display: 'flex',
-      alignItems: 'center',
-      flexShrink: 0,
-      position: 'fixed',
-      bottom: 0,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: '100%',
-      maxWidth: 430,
-      zIndex: 50,
-    }}>
-      {NAV_ITEMS.map(t => {
-        const isActive = pathname === t.href || (t.href === '/dashboard' && pathname === '/dashboard')
-        if (t.fab) {
-          return (
-            <Link key="fab" href="/scan" style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative', height: '100%', alignItems: 'center' }}>
-              <div style={{
-                position: 'absolute',
-                bottom: 10,
-                width: 46,
-                height: 46,
-                borderRadius: '50%',
-                background: 'var(--clay)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 0 0 3px var(--background), 0 0 0 5px rgba(196,113,74,0.27)',
-                fontSize: 22,
-              }}>
-                <span>\uD83D\uDCF7</span>
-              </div>
-            </Link>
-          )
-        }
-        const on = isActive
-        return (
-          <Link key={t.href} href={t.href} style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 2,
-            paddingTop: on ? 0 : 4,
-            textDecoration: 'none',
-          }}>
-            {on && <div style={{ width: 18, height: 2, borderRadius: 2, background: 'var(--clay)', marginBottom: 2 }} />}
-            <span style={{ fontSize: 18, color: on ? 'var(--clay)' : 'var(--muted)', lineHeight: 1.35 }}>{t.icon}</span>
-            {t.label && <span style={{ fontSize: 8, color: on ? 'var(--clay)' : 'var(--muted)', fontWeight: on ? 600 : 400 }}>{t.label}</span>}
-          </Link>
-        )
-      })}
-    </div>
+    <nav className="bottom-nav" aria-label="Main navigation">
+      {TABS.slice(0, 2).map(tab => (
+        <Link
+          key={tab.id}
+          href={tab.href}
+          className={`bottom-nav__slot ${activeTab === tab.id ? 'bottom-nav__slot--active' : ''}`}
+          aria-label={tab.label}
+          aria-current={activeTab === tab.id ? 'page' : undefined}
+        >
+          <span className="bottom-nav__icon">{tab.icon}</span>
+          <span className="bottom-nav__label">{tab.label}</span>
+        </Link>
+      ))}
+
+      <div className="bottom-nav__slot bottom-nav__slot--fab" aria-hidden="true" />
+
+      {TABS.slice(2).map(tab => (
+        <Link
+          key={tab.id}
+          href={tab.href}
+          className={`bottom-nav__slot ${activeTab === tab.id ? 'bottom-nav__slot--active' : ''}`}
+          aria-label={tab.label}
+          aria-current={activeTab === tab.id ? 'page' : undefined}
+        >
+          <span className="bottom-nav__icon">{tab.icon}</span>
+          <span className="bottom-nav__label">{tab.label}</span>
+        </Link>
+      ))}
+    </nav>
   )
 }
