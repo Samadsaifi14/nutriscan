@@ -15,7 +15,7 @@ export default function BottomNav() {
   if (pathname?.startsWith('/auth') || pathname === '/' || pathname?.startsWith('/legal')) return null
 
   return (
-    <div style={{
+    <div className="safe-area-bottom" style={{
       height: 56,
       background: 'var(--surface)',
       borderTop: '0.5px solid var(--border-2)',
@@ -24,10 +24,11 @@ export default function BottomNav() {
       flexShrink: 0,
       position: 'fixed',
       bottom: 0,
-      left: 0,
-      right: 0,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: '100%',
+      maxWidth: 430,
       zIndex: 50,
-      paddingBottom: 'env(safe-area-inset-bottom)',
     }}>
       {NAV_ITEMS.map(t => {
         const isActive = pathname === t.href || (t.href === '/dashboard' && pathname === '/dashboard')

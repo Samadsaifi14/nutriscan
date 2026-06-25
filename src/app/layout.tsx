@@ -55,16 +55,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://www.google-analytics.com" />
       </head>
       <body className={`${syne.variable} ${dmSans.variable}`}>
-        <GrainOverlay />
         <Providers>
           <ErrorBoundary>
-            <main className="min-h-[100svh] pb-24">
-              <div className="page-enter">{children}</div>
-            </main>
-            <Footer />
+            <div className="phone-container">
+              <GrainOverlay />
+              <main className="flex-1 pb-24">
+                <div className="page-enter">{children}</div>
+              </main>
+              <Footer />
+              <ServiceWorkerRegister />
+              <CookieBanner />
+            </div>
             <BottomNav />
-            <ServiceWorkerRegister />
-            <CookieBanner />
           </ErrorBoundary>
         </Providers>
       </body>

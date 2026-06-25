@@ -106,20 +106,6 @@ export default function Home() {
           </div>
         ))}
       </div>
-
-      <div style={{
-        padding: '8px 14px 16px', borderTop: '0.5px solid var(--border)',
-        textAlign: 'center', marginTop: 4, flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 6.5, color: 'var(--muted)' }}>
-          <a href="/legal/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy</a>
-          {' · '}
-          <a href="/legal/terms" style={{ color: 'inherit', textDecoration: 'none' }}>Terms</a>
-          {' · '}
-          <a href="/legal/cookies" style={{ color: 'inherit', textDecoration: 'none' }}>Cookies</a>
-          {' · v2.1.0'}
-        </span>
-      </div>
     </div>
   )
 }

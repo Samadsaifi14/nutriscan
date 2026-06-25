@@ -90,7 +90,36 @@
   html, body { height: 100%; }
   body {
     overscroll-behavior-y: none;
+    overscroll-behavior-x: none;
     touch-action: manipulation;
+  }
+
+  /* Phone-sized container — max 430px (iPhone 15 Pro Max), centered on desktop */
+  .phone-container {
+    max-width: 430px;
+    margin-left: auto;
+    margin-right: auto;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 0 0 1px rgba(44,31,15,0.06);
+  }
+
+  @media (min-width: 431px) {
+    body {
+      background: #e8e2d8;
+    }
+    .phone-container {
+      border-left: 1px solid rgba(44,31,15,0.08);
+      border-right: 1px solid rgba(44,31,15,0.08);
+    }
+  }
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .safe-area-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
   }
 
   ::-webkit-scrollbar { width: 4px; }
