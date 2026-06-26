@@ -24,7 +24,8 @@ const PATH_TO_TAB: Record<string, string> = {
   '/settings':     'profile',
 }
 
-function getActiveTab(pathname: string): string {
+function getActiveTab(pathname: string | null): string {
+  if (!pathname) return 'home'
   for (const [prefix, tab] of Object.entries(PATH_TO_TAB)) {
     if (pathname.startsWith(prefix)) return tab
   }
@@ -37,7 +38,7 @@ export default function BottomNav() {
   const pathname  = usePathname()
   const activeTab = getActiveTab(pathname)
 
-  if (HIDDEN_PATHS.some(p => pathname?.startsWith(p))) return null
+  if (!pathname || HIDDEN_PATHS.some(p => pathname.startsWith(p))) return null
 
   return (
     <nav style={{
@@ -45,9 +46,8 @@ export default function BottomNav() {
       bottom: 0,
       left: 0,
       right: 0,
-      height: 56,
+      height: 'calc(56px + env(safe-area-inset-bottom, 0px))',
       paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      boxSizing: 'content-box',
       background: 'var(--surface)',
       borderTop: '0.5px solid var(--border-2)',
       display: 'flex',

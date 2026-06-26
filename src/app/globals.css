@@ -268,6 +268,30 @@ body {
   border-bottom: none;
 }
 
+/* ── FLOATING SCAN BUTTON ──────────────────────────────────────────────────── */
+.fab-scan {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  left: calc(50% - 28px);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--clay) 0%, var(--clay-dim) 100%);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 24px var(--clay-glow), 0 2px 8px rgba(0,0,0,0.5);
+  z-index: 45;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.fab-scan:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 12px var(--clay-glow);
+}
+
 /* ── CARD COMPONENTS ──────────────────────────────────────────────────────── */
 .card {
   background:    var(--surface-2);

@@ -6,6 +6,7 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import GrainOverlay from '@/components/GrainOverlay'
 import { CookieBanner } from '@/components/CookieBanner'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
+import FloatingScanButton from '@/components/FloatingScanButton'
 
 export const metadata: Metadata = {
   title:       'Bio You — Scan. Know. Choose Better.',
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <CookieBanner />
           </ErrorBoundary>
         </Providers>
+        <FloatingScanButton />
         <BottomNav />
       </body>
     </html>
