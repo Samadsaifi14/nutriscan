@@ -48,7 +48,7 @@
   /* ── COMPUTED OFFSETS ── */
   --header-offset:  calc(var(--topbar-h) + var(--safe-top));
   --footer-offset:  calc(var(--nav-h)    + var(--safe-bottom));
-  --content-pb:     calc(80px + var(--safe-bottom));
+  --content-pb:     0px;
 
   /* ── SPACING SCALE ── */
   --gap-2xs:  2px;
