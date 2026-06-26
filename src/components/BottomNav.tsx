@@ -1,23 +1,14 @@
 "use client"
-
 import Link            from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Clock, User } from 'lucide-react'
 
-interface NavTab {
-  id:    string
-  href:  string
-  icon:  React.ReactNode
-  label: string
-}
-
-const TABS: NavTab[] = [
-  { id: 'home',    href: '/dashboard',   icon: <Home   size={20} strokeWidth={1.8} />, label: 'Home'    },
-  { id: 'search',  href: '/search',       icon: <Search size={20} strokeWidth={1.8} />, label: 'Search'  },
-  { id: 'scan',    href: '/scan',         icon: null,                                    label: ''       },
-  { id: 'history', href: '/scan-history', icon: <Clock  size={20} strokeWidth={1.8} />, label: 'History' },
-  { id: 'profile', href: '/profile',       icon: <User   size={20} strokeWidth={1.8} />, label: 'Profile' },
-]
+const TABS = [
+  { id: 'home',    ic: '⌂', l: 'Home',    href: '/dashboard'   },
+  { id: 'search',  ic: '⊙', l: 'Search',  href: '/search'       },
+  { id: 'scan',    ic: '',  l: '',         href: '/scan'         },
+  { id: 'history', ic: '◷', l: 'History', href: '/scan-history' },
+  { id: 'profile', ic: '◎', l: 'Profile', href: '/profile'      },
+] as const
 
 const PATH_TO_TAB: Record<string, string> = {
   '/dashboard':    'home',
@@ -29,8 +20,8 @@ const PATH_TO_TAB: Record<string, string> = {
   '/history':      'history',
   '/favorites':    'history',
   '/profile-setup':'profile',
-  '/profile':     'profile',
-  '/settings':    'profile',
+  '/profile':      'profile',
+  '/settings':     'profile',
 }
 
 function getActiveTab(pathname: string): string {
@@ -49,35 +40,80 @@ export default function BottomNav() {
   if (HIDDEN_PATHS.some(p => pathname?.startsWith(p))) return null
 
   return (
-    <nav className="bottom-nav" aria-label="Main navigation">
-      {TABS.map(tab => {
-        if (tab.id === 'scan') {
+    <nav style={{
+      height: 56,
+      background: 'var(--surface)',
+      borderTop: '0.5px solid var(--border-2)',
+      display: 'flex',
+      alignItems: 'center',
+      flexShrink: 0,
+      zIndex: 40,
+    }}>
+      {TABS.map(t => {
+        const on = activeTab === t.id
+
+        if (t.id === 'scan') {
           return (
             <Link
               key="scan"
               href="/scan"
-              className="bottom-nav__slot bottom-nav__slot--fab"
               aria-label="Scan food"
+              style={{
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                position: 'relative',
+                height: '100%',
+                alignItems: 'center',
+                textDecoration: 'none',
+              }}
             >
-              <div className="bottom-nav__fab-ring" aria-hidden="true">
-              <span>📷</span>
-            </div>
+              <div style={{
+                position: 'absolute',
+                bottom: 10,
+                width: 46,
+                height: 46,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--clay) 0%, var(--clay-dim) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 0 3px var(--bg), 0 0 0 5px color-mix(in srgb, var(--clay) 27%, transparent)',
+                fontSize: 18,
+              }}>
+                <span>📷</span>
+              </div>
             </Link>
           )
         }
 
-        const on = activeTab === tab.id
         return (
           <Link
-            key={tab.id}
-            href={tab.href}
-            className={`bottom-nav__slot ${on ? 'bottom-nav__slot--active' : ''}`}
-            aria-label={tab.label}
+            key={t.id}
+            href={t.href}
+            aria-label={t.l}
             aria-current={on ? 'page' : undefined}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2,
+              paddingTop: on ? 0 : 4,
+              textDecoration: 'none',
+            }}
           >
-            {on && <div className="bottom-nav__pill" />}
-            <span className="bottom-nav__icon">{tab.icon}</span>
-            <span className="bottom-nav__label">{tab.label}</span>
+            {on && <div style={{ width: 18, height: 2, borderRadius: 2, background: 'var(--clay)', marginBottom: 2 }} />}
+            <span style={{ fontSize: 13, color: on ? 'var(--clay)' : 'var(--muted)' }}>
+              {t.ic}
+            </span>
+            <span style={{
+              fontSize: 6,
+              color: on ? 'var(--clay)' : 'var(--muted)',
+              fontWeight: on ? 600 : 400,
+            }}>
+              {t.l}
+            </span>
           </Link>
         )
       })}
