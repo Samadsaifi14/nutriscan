@@ -14,32 +14,32 @@
 :root {
 
   /* ── COLORS ── */
-  --bg:         #0A0806;
-  --surface:    #131110;
-  --surface-2:  #1B1815;
+  --bg:         #0B0907;
+  --surface:    #141210;
+  --surface-2:  #1D1915;
   --surface-3:  #252018;
-  --clay:       #D0823A;
+  --clay:       #D4853B;
   --clay-dim:   #78471C;
-  --clay-bg:    rgba(208, 130, 58, 0.10);
-  --clay-glow:  rgba(208, 130, 58, 0.25);
-  --moss:       #4C6B39;
-  --moss-bg:    rgba(76, 107, 57, 0.12);
-  --rust:       #BE4230;
-  --rust-bg:    rgba(190, 66, 48, 0.12);
-  --amber:      #D98C2A;
-  --amber-bg:   rgba(217, 140, 42, 0.12);
-  --sand:       #A89A82;
-  --cream:      #EAE2D4;
+  --clay-bg:    rgba(212, 133, 59, 0.10);
+  --clay-glow:  rgba(212, 133, 59, 0.25);
+  --moss:       #4A6B3A;
+  --moss-bg:    rgba(74, 107, 58, 0.12);
+  --rust:       #C04028;
+  --rust-bg:    rgba(192, 64, 40, 0.12);
+  --amber:      #E49030;
+  --amber-bg:   rgba(228, 144, 48, 0.12);
+  --sand:       #AEA08A;
+  --cream:      #EDE6D6;
   --muted:      #58524A;
-  --border:     #221E18;
+  --border:     #252018;
   --border-2:   #2E2922;
   --border-3:   #3A3328;
 
   /* ── LAYOUT HEIGHTS ── */
-  --topbar-h:     56px;
-  --nav-h:        64px;
-  --fab-size:     56px;
-  --fab-lift:     18px;
+  --topbar-h:     44px;
+  --nav-h:        56px;
+  --fab-size:     46px;
+  --fab-lift:     10px;
 
   /* ── SAFE AREA ── */
   --safe-top:    env(safe-area-inset-top,    0px);
@@ -48,7 +48,7 @@
   /* ── COMPUTED OFFSETS ── */
   --header-offset:  calc(var(--topbar-h) + var(--safe-top));
   --footer-offset:  calc(var(--nav-h)    + var(--safe-bottom));
-  --content-pb:     calc(var(--nav-h)    + var(--safe-bottom) + 24px);
+  --content-pb:     calc(80px + var(--safe-bottom));
 
   /* ── SPACING SCALE ── */
   --gap-2xs:  2px;
@@ -61,7 +61,7 @@
   --gap-3xl: 48px;
 
   /* ── PAGE GUTTERS ── */
-  --page-px:  16px;
+  --page-px:  12px;
   --page-py:  12px;
 
   /* ── BORDER RADIUS SCALE ── */
@@ -69,6 +69,7 @@
   --r-sm:    8px;
   --r-md:   12px;
   --r-lg:   16px;
+  --r-card: 10px;
   --r-xl:   24px;
   --r-2xl:  32px;
   --r-full: 9999px;
@@ -97,11 +98,11 @@
   --fw-black:   800;
 
   /* ── COMPONENT SIZES ── */
-  --ring-xl:  96px;
+  --ring-xl:  88px;
   --ring-lg:  72px;
   --ring-md:  52px;
-  --ring-sm:  40px;
-  --ring-xs:  32px;
+  --ring-sm:  44px;
+  --ring-xs:  34px;
 
   --thumb-xl: 72px;
   --thumb-lg: 56px;
@@ -267,17 +268,10 @@ body {
   border-bottom: none;
 }
 
-/* ── NAV SPACER (replaced by inline-styled BottomNav) ───────── */
-
-.fab-scan:active {
-  transform:  translateX(-50%) scale(0.92);
-  box-shadow: 0 2px 12px var(--clay-glow);
-}
-
 /* ── CARD COMPONENTS ──────────────────────────────────────────────────────── */
 .card {
   background:    var(--surface-2);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   border:        0.5px solid var(--border-2);
   padding:       var(--gap-md);
 }

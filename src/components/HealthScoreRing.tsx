@@ -3,11 +3,11 @@
 type RingSize = 'xl' | 'lg' | 'md' | 'sm' | 'xs'
 
 const SIZE_MAP: Record<RingSize, number> = {
-  xl:  96,
+  xl:  88,
   lg:  72,
   md:  52,
-  sm:  40,
-  xs:  32,
+  sm:  44,
+  xs:  34,
 }
 
 interface HealthScoreRingProps {

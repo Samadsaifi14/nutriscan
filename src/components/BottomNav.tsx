@@ -41,13 +41,18 @@ export default function BottomNav() {
 
   return (
     <nav style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
       height: 56,
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      boxSizing: 'content-box',
       background: 'var(--surface)',
       borderTop: '0.5px solid var(--border-2)',
       display: 'flex',
       alignItems: 'center',
-      flexShrink: 0,
-      zIndex: 40,
+      zIndex: 50,
     }}>
       {TABS.map(t => {
         const on = activeTab === t.id
