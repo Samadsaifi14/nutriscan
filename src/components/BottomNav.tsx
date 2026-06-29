@@ -1,13 +1,21 @@
 "use client"
 import Link            from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Home, Search, Camera, Clock, User } from 'lucide-react'
+
+const ICONS: Record<string, React.ReactNode> = {
+  home:    <Home    size={22} strokeWidth={1.8} />,
+  search:  <Search  size={22} strokeWidth={1.8} />,
+  history: <Clock   size={22} strokeWidth={1.8} />,
+  profile: <User    size={22} strokeWidth={1.8} />,
+}
 
 const TABS = [
-  { id: 'home',    ic: '⌂', l: 'Home',    href: '/dashboard'   },
-  { id: 'search',  ic: '⊙', l: 'Search',  href: '/search'       },
-  { id: 'scan',    ic: '',  l: '',         href: '/scan'         },
-  { id: 'history', ic: '◷', l: 'History', href: '/scan-history' },
-  { id: 'profile', ic: '◎', l: 'Profile', href: '/profile'      },
+  { id: 'home',    l: 'Home',    href: '/dashboard'   },
+  { id: 'search',  l: 'Search',  href: '/search'       },
+  { id: 'scan',    l: '',        href: '/scan'         },
+  { id: 'history', l: 'History', href: '/scan-history' },
+  { id: 'profile', l: 'Profile', href: '/profile'      },
 ] as const
 
 const PATH_TO_TAB: Record<string, string> = {
@@ -41,47 +49,15 @@ export default function BottomNav() {
   if (!pathname || HIDDEN_PATHS.some(p => pathname.startsWith(p))) return null
 
   return (
-    <nav style={{
-      height: 56,
-      background: 'var(--surface)',
-      borderTop: '0.5px solid var(--border-2)',
-      display: 'flex',
-      alignItems: 'center',
-      flexShrink: 0,
-    }}>
+    <nav className="bottom-nav">
       {TABS.map(t => {
         const on = activeTab === t.id
 
         if (t.id === 'scan') {
           return (
-            <Link
-              key="scan"
-              href="/scan"
-              aria-label="Scan food"
-              style={{
-                flex: 1,
-                display: 'flex',
-                justifyContent: 'center',
-                position: 'relative',
-                height: '100%',
-                alignItems: 'center',
-                textDecoration: 'none',
-              }}
-            >
-              <div style={{
-                position: 'absolute',
-                bottom: 10,
-                width: 46,
-                height: 46,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, var(--clay) 0%, var(--clay-dim) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 0 0 3px var(--bg), 0 0 0 5px color-mix(in srgb, var(--clay) 27%, transparent)',
-                fontSize: 18,
-              }}>
-                <span>📷</span>
+            <Link key="scan" href="/scan" aria-label="Scan food" className="bottom-nav__slot--scan">
+              <div className="bottom-nav__fab">
+                <Camera size={22} strokeWidth={1.8} color="var(--cream)" />
               </div>
             </Link>
           )
@@ -93,25 +69,13 @@ export default function BottomNav() {
             href={t.href}
             aria-label={t.l}
             aria-current={on ? 'page' : undefined}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 2,
-              paddingTop: on ? 0 : 4,
-              textDecoration: 'none',
-            }}
+            className={`bottom-nav__slot${on ? ' bottom-nav__slot--active' : ''}`}
           >
-            {on && <div style={{ width: 18, height: 2, borderRadius: 2, background: 'var(--clay)', marginBottom: 2 }} />}
-            <span style={{ fontSize: 13, color: on ? 'var(--clay)' : 'var(--muted)' }}>
-              {t.ic}
+            {on && <div className="bottom-nav__indicator" />}
+            <span className="bottom-nav__icon" style={{ color: on ? 'var(--clay)' : 'var(--muted)' }}>
+              {ICONS[t.id]}
             </span>
-            <span style={{
-              fontSize: 6,
-              color: on ? 'var(--clay)' : 'var(--muted)',
-              fontWeight: on ? 600 : 400,
-            }}>
+            <span className={`bottom-nav__label${on ? ' bottom-nav__label--active' : ''}`} style={{ color: on ? 'var(--clay)' : 'var(--muted)' }}>
               {t.l}
             </span>
           </Link>

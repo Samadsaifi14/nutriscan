@@ -37,9 +37,9 @@
 
   /* ── LAYOUT HEIGHTS ── */
   --topbar-h:     44px;
-  --nav-h:        56px;
-  --fab-size:     46px;
-  --fab-lift:     10px;
+  --nav-h:        64px;
+  --fab-size:     56px;
+  --fab-lift:     18px;
 
   /* ── SAFE AREA ── */
   --safe-top:    env(safe-area-inset-top,    0px);
@@ -271,10 +271,10 @@ body {
 /* ── FLOATING SCAN BUTTON ──────────────────────────────────────────────────── */
 .fab-scan {
   position: fixed;
-  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-  left: calc(50% - 28px);
-  width: 56px;
-  height: 56px;
+  bottom: calc(var(--nav-h) - var(--fab-lift) + var(--safe-bottom));
+  left: calc(50% - calc(var(--fab-size) / 2));
+  width: var(--fab-size);
+  height: var(--fab-size);
   border-radius: 50%;
   background: linear-gradient(135deg, var(--clay) 0%, var(--clay-dim) 100%);
   border: none;
@@ -290,6 +290,82 @@ body {
 .fab-scan:active {
   transform: scale(0.92);
   box-shadow: 0 2px 12px var(--clay-glow);
+}
+
+/* ── BOTTOM NAV ───────────────────────────────────────────────────────────── */
+.bottom-nav {
+  height:       var(--nav-h);
+  background:   var(--surface);
+  border-top:   0.5px solid var(--border-2);
+  display:      flex;
+  align-items:  center;
+  flex-shrink:  0;
+  z-index:      40;
+}
+
+.bottom-nav__slot {
+  flex:             1;
+  display:          flex;
+  flex-direction:   column;
+  align-items:      center;
+  gap:              3px;
+  padding-top:      4px;
+  text-decoration:  none;
+  position:         relative;
+}
+
+.bottom-nav__slot--active {
+  padding-top: 0;
+}
+
+.bottom-nav__indicator {
+  width:           20px;
+  height:          2px;
+  border-radius:   2px;
+  background:      var(--clay);
+  margin-bottom:   2px;
+  position:        absolute;
+  top:             0;
+}
+
+.bottom-nav__icon {
+  font-size:   22px;
+  color:       inherit;
+  line-height: 1;
+}
+
+.bottom-nav__label {
+  font-size:   10px;
+  font-weight: var(--fw-normal);
+  line-height: 1;
+}
+
+.bottom-nav__label--active {
+  font-weight: var(--fw-semi);
+}
+
+.bottom-nav__slot--scan {
+  flex:             1;
+  display:          flex;
+  justify-content:  center;
+  position:         relative;
+  height:           100%;
+  align-items:      center;
+  text-decoration:  none;
+}
+
+.bottom-nav__fab {
+  position:        absolute;
+  bottom:          10px;
+  width:           46px;
+  height:          46px;
+  border-radius:   50%;
+  background:      linear-gradient(135deg, var(--clay) 0%, var(--clay-dim) 100%);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  box-shadow:      0 0 0 3px var(--bg), 0 0 0 5px color-mix(in srgb, var(--clay) 27%, transparent);
+  font-size:       18px;
 }
 
 /* ── CARD COMPONENTS ──────────────────────────────────────────────────────── */
