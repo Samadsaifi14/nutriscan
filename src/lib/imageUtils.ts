@@ -34,7 +34,7 @@ export async function compressImageBase64(
       ctx.drawImage(img, 0, 0, width, height)
 
       const dataUrl    = canvas.toDataURL('image/jpeg', quality)
-      const compressed = dataUrl.split(',')[1]
+      const compressed = dataUrl.split(',')[1]!
 
       const origKB = Math.round(base64.length * 0.75 / 1024)
       const compKB = Math.round((compressed?.length ?? 0) * 0.75 / 1024)

@@ -1,56 +1,57 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 
-const COOKIE_CONSENT_KEY = 'hox_cookie_consent'
+const KEY = 'hox_cookie_consent'
 
 export function CookieBanner() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const consent = localStorage.getItem(COOKIE_CONSENT_KEY)
-    if (!consent) setVisible(true)
+    if (typeof window === 'undefined') return
+    if (!localStorage.getItem(KEY)) setVisible(true)
   }, [])
 
-  function acceptAll() {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'all')
+  function choose(value: 'all' | 'essential') {
+    localStorage.setItem(KEY, value)
     setVisible(false)
   }
-
-  function rejectAnalytics() {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'essential')
-    setVisible(false)
-  }
-
-  if (!visible) return null
 
   return (
-    <div className="fixed bottom-20 left-0 right-0 z-50 px-4 pb-2">
-      <div className="max-w-md mx-auto rounded-2xl p-4 shadow-2xl"
-        style={{ background: 'var(--card)', border: '1px solid var(--card-border)' }}>
-        <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
-          We use cookies and Google Analytics to improve your experience.
-          Essential cookies are always active. Analytics cookies are optional.
-        </p>
-        <div className="flex items-center gap-2">
-          <button onClick={acceptAll}
-            className="flex-1 px-3 py-2 rounded-xl text-white text-xs font-bold transition-colors"
-            style={{ background: 'var(--clay)' }}>
-            Accept All
-          </button>
-          <button onClick={rejectAnalytics}
-            className="flex-1 px-3 py-2 rounded-xl text-xs font-bold transition-colors"
-            style={{ background: 'color-mix(in oklab, var(--card), black 10%)', color: 'var(--muted)' }}>
-            Reject Analytics
-          </button>
-          <Link href="/legal/cookies"
-            className="px-3 py-2 text-xs underline flex-shrink-0"
-            style={{ color: 'var(--clay)' }}>
-            Learn More
-          </Link>
-        </div>
-      </div>
-    </div>
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="glass-strong"
+          style={{
+            position: 'fixed', left: 12, right: 12,
+            bottom: 'calc(var(--footer-offset) + 12px)',
+            zIndex: 90, maxWidth: 456, margin: '0 auto',
+            borderRadius: 16, padding: 16,
+          }}
+        >
+          <p className="text-sm" style={{ color: 'var(--sand)', marginBottom: 12 }}>
+            We use cookies to improve your experience and measure how the app is used. Read our{' '}
+            <Link href="/legal/cookies" style={{ color: 'var(--clay)', textDecoration: 'underline' }}>
+              cookie policy
+            </Link>
+            .
+          </p>
+          <div className="row--sm">
+            <button className="btn btn--secondary btn--sm flex-1" onClick={() => choose('essential')}>
+              Essential only
+            </button>
+            <button className="btn btn--primary btn--sm flex-1" onClick={() => choose('all')}>
+              Accept all
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

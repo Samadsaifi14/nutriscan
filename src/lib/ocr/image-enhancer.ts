@@ -41,30 +41,30 @@ export async function enhanceImage(dataUrl: string, options: EnhancementOptions 
       ctx.drawImage(img, 0, 0)
       
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const data = imageData.data
+      const d = (idx: number): number => imageData.data[idx]!
       
       // Simple enhancement loop
-      for (let i = 0; i < data.length; i += 4) {
+      for (let i = 0; i < imageData.data.length; i += 4) {
         // Apply contrast
         const contrastFactor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255))
-        data[i] = Math.max(0, Math.min(255, contrastFactor * (data[i] - 128) + 128 + brightness))
-        data[i + 1] = Math.max(0, Math.min(255, contrastFactor * (data[i + 1] - 128) + 128 + brightness))
-        data[i + 2] = Math.max(0, Math.min(255, contrastFactor * (data[i + 2] - 128) + 128 + brightness))
+        imageData.data[i] = Math.max(0, Math.min(255, contrastFactor * (d(i) - 128) + 128 + brightness))
+        imageData.data[i + 1] = Math.max(0, Math.min(255, contrastFactor * (d(i + 1) - 128) + 128 + brightness))
+        imageData.data[i + 2] = Math.max(0, Math.min(255, contrastFactor * (d(i + 2) - 128) + 128 + brightness))
         
         // Apply saturation
         if (saturation !== 1) {
-          const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-          data[i] = gray + saturation * (data[i] - gray)
-          data[i + 1] = gray + saturation * (data[i + 1] - gray)
-          data[i + 2] = gray + saturation * (data[i + 2] - gray)
+          const gray = 0.299 * d(i) + 0.587 * d(i + 1) + 0.114 * d(i + 2)
+          imageData.data[i] = gray + saturation * (d(i) - gray)
+          imageData.data[i + 1] = gray + saturation * (d(i + 1) - gray)
+          imageData.data[i + 2] = gray + saturation * (d(i + 2) - gray)
         }
         
         // Apply grayscale
         if (grayscale) {
-          const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-          data[i] = gray
-          data[i + 1] = gray
-          data[i + 2] = gray
+          const gray = 0.299 * d(i) + 0.587 * d(i + 1) + 0.114 * d(i + 2)
+          imageData.data[i] = gray
+          imageData.data[i + 1] = gray
+          imageData.data[i + 2] = gray
         }
       }
       

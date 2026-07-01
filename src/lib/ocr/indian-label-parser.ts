@@ -41,70 +41,70 @@ export function parseIndianNutritionLabel(ocrText: string): ParsedNutrition {
   // Calories - Indian labels say "Energy" not "Calories"
   const caloriesMatch = text.match(/energy[:\s]+(\d+\.?\d*)\s*(kcal|kj)/i)
   if (caloriesMatch) {
-    result.calories = caloriesMatch[2].toLowerCase() === 'kj' 
-      ? Math.round(parseFloat(caloriesMatch[1]) / 4.184) 
-      : parseFloat(caloriesMatch[1])
+    result.calories = caloriesMatch[2]!.toLowerCase() === 'kj' 
+      ? Math.round(parseFloat(caloriesMatch[1]!) / 4.184) 
+      : parseFloat(caloriesMatch[1]!)
     result.confidence.calories = 'high'
   }
 
   // Protein
   const proteinMatch = text.match(/protein[:\s]+(\d+\.?\d*)\s*g/i)
   if (proteinMatch) {
-    result.protein = parseFloat(proteinMatch[1])
+    result.protein = parseFloat(proteinMatch[1]!)
     result.confidence.protein = 'high'
   }
 
   // Total Fat
   const fatMatch = text.match(/(?:total\s+)?fat[:\s]+(\d+\.?\d*)\s*g/i)
   if (fatMatch) {
-    result.fat = parseFloat(fatMatch[1])
+    result.fat = parseFloat(fatMatch[1]!)
     result.confidence.fat = 'high'
   }
 
   // Saturated Fat
   const satFatMatch = text.match(/saturated\s+(?:fat|fatty acids)[:\s]+(\d+\.?\d*)\s*g/i)
   if (satFatMatch) {
-    result.saturated_fat = parseFloat(satFatMatch[1])
+    result.saturated_fat = parseFloat(satFatMatch[1]!)
     result.confidence.saturated_fat = 'medium'
   }
 
   // Trans Fat - FSSAI mandates this
   const transFatMatch = text.match(/trans\s+(?:fat|fatty acids)[:\s]+(\d+\.?\d*)\s*g/i)
   if (transFatMatch) {
-    result.trans_fat = parseFloat(transFatMatch[1])
+    result.trans_fat = parseFloat(transFatMatch[1]!)
     result.confidence.trans_fat = 'high'
   }
 
   // Carbohydrates
   const carbsMatch = text.match(/(?:total\s+)?carbohydrate[s]?[:\s]+(\d+\.?\d*)\s*g/i)
   if (carbsMatch) {
-    result.carbohydrates = parseFloat(carbsMatch[1])
+    result.carbohydrates = parseFloat(carbsMatch[1]!)
     result.confidence.carbohydrates = 'high'
   }
 
   // Sugar - Indian labels say "Total Sugars"
   const sugarMatch = text.match(/(?:total\s+)?sugars?[:\s]+(\d+\.?\d*)\s*g/i)
   if (sugarMatch) {
-    result.sugar = parseFloat(sugarMatch[1])
+    result.sugar = parseFloat(sugarMatch[1]!)
     result.confidence.sugar = 'high'
   }
 
   // Fiber - British spelling common on Indian labels
   const fiberMatch = text.match(/dietary\s+(?:fibre|fiber)[:\s]+(\d+\.?\d*)\s*g/i)
   if (fiberMatch) {
-    result.fiber = parseFloat(fiberMatch[1])
+    result.fiber = parseFloat(fiberMatch[1]!)
     result.confidence.fiber = 'medium'
   }
 
   // Sodium - sometimes listed as salt
   const sodiumMatch = text.match(/sodium[:\s]+(\d+\.?\d*)\s*mg/i)
   if (sodiumMatch) {
-    result.sodium = parseFloat(sodiumMatch[1])
+    result.sodium = parseFloat(sodiumMatch[1]!)
     result.confidence.sodium = 'high'
   } else {
     const saltMatch = text.match(/salt[:\s]+(\d+\.?\d*)\s*g/i)
     if (saltMatch) {
-      result.sodium = parseFloat(saltMatch[1]) * 400 // 1g salt ≈ 400mg sodium
+      result.sodium = parseFloat(saltMatch[1]!) * 400 // 1g salt ≈ 400mg sodium
       result.confidence.sodium = 'medium'
     }
   }
@@ -112,7 +112,7 @@ export function parseIndianNutritionLabel(ocrText: string): ParsedNutrition {
   // Serving size
   const servingMatch = text.match(/(?:serving\s+size|per\s+serving)[:\s]+(\d+\.?\d*)\s*g/i)
   if (servingMatch) {
-    result.serving_size = parseFloat(servingMatch[1])
+    result.serving_size = parseFloat(servingMatch[1]!)
     result.confidence.serving_size = 'high'
   }
 
@@ -121,7 +121,7 @@ export function parseIndianNutritionLabel(ocrText: string): ParsedNutrition {
     /ingredients[:\s]*(.+?)(?:nutritional|nutrition|contains|allergen|manufactured|best before|expiry|storage)/i
   )
   if (ingredientsMatch) {
-    result.ingredients_text = ingredientsMatch[1]
+    result.ingredients_text = ingredientsMatch[1]!
       .replace(/[^\w\s,;()]/g, '') // Remove special chars
       .replace(/\s+/g, ' ')
       .trim()
@@ -131,14 +131,14 @@ export function parseIndianNutritionLabel(ocrText: string): ParsedNutrition {
   // FSSAI license - 14 digit number
   const fssaiMatch = text.match(/(?:fssai|food\s+safety)[:\s#]*(\d{14})/i)
   if (fssaiMatch) {
-    result.fssai_license = fssaiMatch[1]
+    result.fssai_license = fssaiMatch[1]!
     result.confidence.fssai_license = 'high'
   }
 
   // MRP
   const mrpMatch = text.match(/(?:mrp|maximum\s+retail\s+price)[:\s₹rs.]*(\d+\.?\d*)/i)
   if (mrpMatch) {
-    result.mrp = parseFloat(mrpMatch[1])
+    result.mrp = parseFloat(mrpMatch[1]!)
     result.confidence.mrp = 'high'
   }
 

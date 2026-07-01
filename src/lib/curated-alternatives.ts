@@ -276,7 +276,7 @@ export function findCuratedAlternatives(productName: string, productCategory?: s
     const lower = productCategory.toLowerCase()
     for (const keyword of Object.keys(curated)) {
       if (lower.includes(keyword)) {
-        return curated[keyword]
+        return curated[keyword]!
       }
     }
   }

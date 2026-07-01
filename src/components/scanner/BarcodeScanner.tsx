@@ -31,8 +31,8 @@ async function detectBarcode(video: HTMLVideoElement): Promise<string | null> {
     const barcodes = await barcodeDetector.detect(video)
     
     if (barcodes.length > 0) {
-      console.log('Detected barcode:', barcodes[0].rawValue)
-      return barcodes[0].rawValue
+      console.log('Detected barcode:', barcodes[0]!.rawValue)
+      return barcodes[0]!.rawValue
     }
   } catch (err) {
     console.warn('Barcode detection error:', err)

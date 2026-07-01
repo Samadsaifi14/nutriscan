@@ -1,26 +1,30 @@
+import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
+
 interface PillProps {
-  label: string
+  children: ReactNode
   active?: boolean
-  color?: string
-  bg?: string
-  className?: string
+  variant?: 'default' | 'healthy' | 'warning' | 'harmful' | 'moderate' | 'unhealthy'
+  onClick?: () => void
+  icon?: ReactNode
 }
 
-export default function Pill({ label, active, color, bg, className = '' }: PillProps) {
+export function Pill({ children, active, variant = 'default', onClick, icon }: PillProps) {
+  const variantClass = {
+    default: active ? 'chip--active' : '',
+    healthy: 'chip--healthy',
+    warning: 'chip--warning',
+    moderate: 'chip--warning',
+    unhealthy: 'chip--harmful',
+    harmful: 'chip--harmful',
+  }[variant]
+
+  const Tag = onClick ? 'button' : 'span'
+
   return (
-    <span style={{
-      padding: '2px 7px',
-      borderRadius: 20,
-      background: bg || (active ? 'var(--clay)' : 'var(--surface-3)'),
-      color: color || (active ? '#fff' : 'var(--sand)'),
-      fontSize: 6.5,
-      fontWeight: active ? 700 : 500,
-      border: '0.5px solid var(--border-2)',
-      whiteSpace: 'nowrap',
-      display: 'inline-flex',
-      alignItems: 'center',
-    }} className={className}>
-      {label}
-    </span>
+    <Tag onClick={onClick} className={cn('chip', variantClass)}>
+      {icon}
+      {children}
+    </Tag>
   )
 }

@@ -1,28 +1,29 @@
-"use client"
-
 import Link from 'next/link'
+
+const LEGAL_LINKS = [
+  { label: 'Privacy', href: '/legal/privacy' },
+  { label: 'Terms', href: '/legal/terms' },
+  { label: 'Disclaimer', href: '/legal/disclaimer' },
+  { label: 'Cookies', href: '/legal/cookies' },
+]
 
 export function Footer() {
   return (
-    <footer className="px-3 py-5"
-      style={{
-        borderTop: '0.5px solid var(--card-border)',
-        background: 'color-mix(in oklab, var(--background), black 6%)',
-      }}>
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3">
-        {[
-          { href: '/legal/privacy', label: 'Privacy' },
-          { href: '/legal/terms', label: 'Terms' },
-          { href: '/legal/disclaimer', label: 'Disclaimer' },
-          { href: '/legal/cookies', label: 'Cookies' },
-        ].map(item => (
-          <Link key={item.href} href={item.href} className="text-[10px] transition-colors" style={{ color: 'var(--muted-2)' }}>
-            {item.label}
+    <footer style={{ padding: '32px 16px 16px', textAlign: 'center' }}>
+      <div className="row--sm" style={{ justifyContent: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        {LEGAL_LINKS.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            className="text-2xs"
+            style={{ color: 'var(--muted)', textDecoration: 'none' }}
+          >
+            {l.label}
           </Link>
         ))}
       </div>
-      <p className="text-[9px]" style={{ color: 'var(--muted-2)' }}>
-        &copy; {new Date().getFullYear()} Bio You
+      <p className="text-2xs" style={{ color: 'var(--muted)' }}>
+        &copy; {new Date().getFullYear()} HealthOX. Not medical advice.
       </p>
     </footer>
   )

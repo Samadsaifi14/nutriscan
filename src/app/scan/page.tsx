@@ -1,141 +1,212 @@
-"use client"
-import { useState, useCallback } from 'react'
+'use client'
+
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
-import PageShell from '@/components/PageShell'
+import { ArrowLeft, Camera, Flashlight, Image as ImageIcon, Settings } from 'lucide-react'
+import { PageShell } from '@/components/PageShell'
+import { writeScanResult } from '@/types/scanResult'
 
-const BarcodeScanner = dynamic(
-  () => import('@/components/scanner/BarcodeScanner'),
-  { ssr: false, loading: () => null }
-)
-
-export default function ScanPage() {
+export default function Scan() {
   const router = useRouter()
-  const [mode, setMode] = useState('barcode')
-  const [scanning, setScanning] = useState(true)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [torch, setTorch] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const [mode, setMode] = useState<'barcode' | 'photo'>('barcode')
+  const [error, setError] = useState<string | null>(null)
 
-  const handleDetected = useCallback((barcode: string) => {
-    if (!barcode || !scanning) return
-    setScanning(false)
-    router.push(`/results?barcode=${encodeURIComponent(barcode)}`)
-  }, [router, scanning])
+  const startCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      })
+      if (videoRef.current) videoRef.current.srcObject = stream
+      setError(null)
+    } catch {
+      setError('Camera access denied. Please grant camera permissions.')
+    }
+  }, [])
+
+  useEffect(() => {
+    startCamera()
+    const video = videoRef.current
+    return () => {
+      if (video?.srcObject instanceof MediaStream) {
+        video.srcObject.getTracks().forEach((t: MediaStreamTrack) => t.stop())
+      }
+    }
+  }, [startCamera])
+
+  const handleDetected = useCallback(async (barcode: string) => {
+    if (scanning) return
+    setScanning(true)
+    try {
+      const res = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcode, mode }),
+      })
+      const data = await res.json()
+      if (data?.product && data?.analysis) {
+        writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives })
+        router.replace('/results')
+      } else {
+        router.replace(`/correct-product?barcode=${barcode}`)
+      }
+    } catch {
+      setError('Scan failed. Try again.')
+      setScanning(false)
+    }
+  }, [scanning, mode, router])
+
+  useEffect(() => {
+    if (mode !== 'barcode' || !('BarcodeDetector' in window)) return
+    const detector = new (window as unknown as { BarcodeDetector: new (a: string[]) => unknown })['BarcodeDetector'](['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'])
+    const interval = setInterval(async () => {
+      if (!videoRef.current) return
+      try {
+        const codes = await (detector as { detect: (v: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> }).detect(videoRef.current)
+        if (codes.length > 0) handleDetected(codes[0]!.rawValue)
+      } catch {
+        // frame skip
+      }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [mode, handleDetected])
 
   return (
     <PageShell variant="fullscreen">
-      <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: 'repeating-linear-gradient(0deg,#0f0d0b 0,#0f0d0b 1px,#0b0908 1px,#0b0908 22px),repeating-linear-gradient(90deg,#0f0d0b 0,#0f0d0b 1px,#0b0908 1px,#0b0908 22px)',
-      }} />
+      <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
 
-      {mode === 'barcode' && scanning && (
-        <div style={{ position: 'absolute', inset: 0 }}>
-          <BarcodeScanner onDetected={handleDetected} onClose={() => router.back()} />
+      {/* Top bar */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.7), transparent)',
+        padding: 'calc(env(safe-area-inset-top, 0px) + 12px) 16px 40px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <button className="icon-btn" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => router.back()}>
+          <ArrowLeft size={20} color="#fff" />
+        </button>
+        <button
+          className="icon-btn"
+          style={{ background: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setTorch((t) => !t)}
+        >
+          <Flashlight size={18} color={torch ? 'var(--clay)' : '#fff'} />
+        </button>
+      </div>
+
+      {/* Scan frame */}
+      <div className="scan-frame">
+        <div className="scan-corner--tl" />
+        <div className="scan-corner--tr" />
+        <div className="scan-corner--bl" />
+        <div className="scan-corner--br" />
+        {mode === 'barcode' && <div className="scan-line" />}
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div style={{ position: 'absolute', bottom: 180, left: 16, right: 16, zIndex: 10 }}>
+          <div className="alert alert--danger">{error}</div>
         </div>
       )}
 
+      {/* Bottom controls */}
       <div style={{
-        position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%,-50%)',
-        width: mode === 'barcode' ? 168 : 170,
-        height: mode === 'barcode' ? 90 : 168,
+        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
+        background: 'linear-gradient(0deg, rgba(0,0,0,0.8), transparent)',
+        padding: '40px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
       }}>
-        {[[0,0,'10px 0 0 0'],[1,0,'0 10px 0 0'],[0,1,'0 0 0 10px'],[1,1,'0 0 10px 0']].map(([r,b,br], i) => (
-          <div key={i} style={{
-            position: 'absolute',
-            right: r ? 0 : undefined, left: r ? undefined : 0,
-            bottom: b ? 0 : undefined, top: b ? undefined : 0,
-            width: 16, height: 16,
-            border: '2px solid var(--clay)',
-            borderRadius: br as string,
-          }} />
-        ))}
-        <div style={{
-          position: 'absolute', left: 0, right: 0, top: '40%', height: 1.5,
-          background: 'linear-gradient(90deg,transparent,var(--clay),transparent)',
-          animation: 'scanline 2s ease-in-out infinite',
-        }} />
-      </div>
-
-      <div style={{
-        position: 'absolute', top: '55%', left: '50%', transform: 'translateX(-50%)',
-        marginTop: mode === 'photo' ? 80 : 40,
-        textAlign: 'center', whiteSpace: 'nowrap',
-      }}>
-        <span style={{ fontSize: 13, color: 'var(--sand)' }}>
-          {mode === 'barcode' ? 'Point at barcode' : mode === 'photo' ? 'Frame the product label' : 'Enter barcode manually'}
-        </span>
-      </div>
-
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0,
-        background: 'linear-gradient(to bottom,rgba(8,6,4,0.9),transparent)',
-        paddingBottom: 20,
-      }}>
-        <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px' }}>
-          <button onClick={() => router.back()} style={{
-            padding: '6px 12px', borderRadius: 20, background: 'rgba(0,0,0,0.55)',
-            color: 'var(--sand)', fontSize: 12, border: 'none', cursor: 'pointer',
-          }}>
-            ← Back
-          </button>
-          <span style={{ fontSize: 15, color: '#fff', fontWeight: 700 }}>Scan Product</span>
-          <div style={{
-            padding: '6px 12px', borderRadius: 20, background: 'rgba(0,0,0,0.55)',
-            color: 'var(--sand)', fontSize: 12,
-          }}>
-            ⚡ Flash
-          </div>
-        </div>
-      </div>
-
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: 'linear-gradient(to top,rgba(8,6,4,0.96),transparent)',
-        padding: '24px 14px 20px',
-        paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
-      }}>
-        <div style={{
-          display: 'flex', gap: 4, justifyContent: 'center', marginBottom: 16,
-          background: 'rgba(0,0,0,0.55)', borderRadius: 24, padding: 4,
-          border: '0.5px solid var(--border-2)',
-        }}>
-          {['Barcode','Photo','Manual'].map(m => (
-            <button key={m} onClick={() => setMode(m.toLowerCase())} style={{
-              flex: 1, padding: '8px 0', borderRadius: 20,
-              background: mode === m.toLowerCase() ? 'var(--clay)' : 'transparent',
-              border: 'none', cursor: 'pointer',
-              color: mode === m.toLowerCase() ? '#fff' : 'var(--sand)',
-              fontSize: 13, fontWeight: 600,
-            }}>
-              {m}
+        {/* Mode pills */}
+        <div className="tab-bar" style={{ width: '100%', maxWidth: 280 }}>
+          {(['barcode', 'photo'] as const).map((m) => (
+            <button
+              key={m}
+              className={`tab-bar__item ${mode === m ? 'tab-bar__item--active' : ''}`}
+              onClick={() => setMode(m)}
+            >
+              {m === 'barcode' ? 'Barcode' : 'Photo Label'}
             </button>
           ))}
+          {/* Sliding indicator */}
+          <div
+            style={{
+              position: 'absolute', top: 4, bottom: 4,
+              width: 'calc(50% - 4px)', borderRadius: 9,
+              background: 'var(--clay)',
+              left: mode === 'barcode' ? 4 : 'calc(50% + 0px)',
+              transition: 'left 0.2s var(--ease-out)',
+              zIndex: 0,
+            }}
+          />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: 'rgba(255,255,255,0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13,
+
+        {/* Shutter + side icons */}
+        <div className="row--md" style={{ gap: 24 }}>
+          <button className="icon-btn" style={{ width: 44, height: 44, background: 'rgba(0,0,0,0.4)' }} onClick={() => {
+            const input = document.createElement('input')
+            input.type = 'file'
+            input.accept = 'image/*'
+            input.onchange = async () => {
+              const file = input.files?.[0]
+              if (!file) return
+              const formData = new FormData()
+              formData.append('image', file)
+              try {
+                const res = await fetch('/api/scan-product-photo', { method: 'POST', body: formData })
+                const data = await res.json()
+                if (data?.product && data?.analysis) {
+                  writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives })
+                  router.replace('/results')
+                }
+              } catch {
+                setError('Photo analysis failed')
+              }
+            }
+            input.click()
           }}>
-            <span>\uD83D\uDDBC\uFE0F</span>
-          </div>
-          <div style={{
-            width: 58, height: 58, borderRadius: '50%',
-            background: 'var(--clay)',
-            border: '4px solid rgba(196,113,74,0.27)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 22,
-          }}>
-            <span>\uD83D\uDCF7</span>
-          </div>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: 'rgba(255,255,255,0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13,
-          }}>
-            <span>⚙️</span>
-          </div>
+            <ImageIcon size={18} color="#fff" />
+          </button>
+          <button
+            onClick={async () => {
+              if (mode === 'photo') {
+                const canvas = document.createElement('canvas')
+                const video = videoRef.current
+                if (!video) return
+                canvas.width = video.videoWidth
+                canvas.height = video.videoHeight
+                canvas.getContext('2d')?.drawImage(video, 0, 0)
+                canvas.toBlob(async (blob) => {
+                  if (!blob) return
+                  const formData = new FormData()
+                  formData.append('image', blob, 'capture.jpg')
+                  try {
+                    const res = await fetch('/api/scan-product-photo', { method: 'POST', body: formData })
+                    const data = await res.json()
+                    if (data?.product && data?.analysis) {
+                      writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives })
+                      router.replace('/results')
+                    }
+                  } catch {
+                    setError('Photo analysis failed')
+                  }
+                }, 'image/jpeg')
+              }
+            }}
+            style={{
+              width: 64, height: 64, borderRadius: '9999px',
+              background: '#fff', border: '4px solid rgba(255,255,255,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            aria-label="Capture"
+          >
+            <Camera size={28} color="#000" />
+          </button>
+          <button className="icon-btn" style={{ width: 44, height: 44, background: 'rgba(0,0,0,0.4)' }}>
+            <Settings size={18} color="#fff" />
+          </button>
         </div>
       </div>
     </PageShell>

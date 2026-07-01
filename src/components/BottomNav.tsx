@@ -1,84 +1,53 @@
-"use client"
-import Link            from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Home, Search, Camera, Clock, User } from 'lucide-react'
+'use client'
 
-const ICONS: Record<string, React.ReactNode> = {
-  home:    <Home    size={22} strokeWidth={1.8} />,
-  search:  <Search  size={22} strokeWidth={1.8} />,
-  history: <Clock   size={22} strokeWidth={1.8} />,
-  profile: <User    size={22} strokeWidth={1.8} />,
-}
+import { usePathname, useRouter } from 'next/navigation'
+import { Home, Search, Clock, User } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 const TABS = [
-  { id: 'home',    l: 'Home',    href: '/dashboard'   },
-  { id: 'search',  l: 'Search',  href: '/search'       },
-  { id: 'scan',    l: '',        href: '/scan'         },
-  { id: 'history', l: 'History', href: '/scan-history' },
-  { id: 'profile', l: 'Profile', href: '/profile'      },
-] as const
+  { key: 'home', label: 'Home', icon: Home, href: '/dashboard', match: ['/dashboard', '/insights', '/leaderboard'] },
+  { key: 'search', label: 'Search', icon: Search, href: '/search', match: ['/search'] },
+  { key: 'scan-fab', label: '', icon: null, href: '', match: [] },
+  { key: 'history', label: 'History', icon: Clock, href: '/scan-history', match: ['/scan-history', '/history', '/favorites'] },
+  { key: 'profile', label: 'Profile', icon: User, href: '/profile', match: ['/profile', '/profile-setup', '/settings'] },
+]
 
-const PATH_TO_TAB: Record<string, string> = {
-  '/dashboard':    'home',
-  '/insights':     'home',
-  '/leaderboard':  'home',
-  '/search':       'search',
-  '/scan':         'scan',
-  '/scan-history': 'history',
-  '/history':      'history',
-  '/favorites':    'history',
-  '/profile-setup':'profile',
-  '/profile':      'profile',
-  '/settings':     'profile',
-}
+const HIDDEN_ON = ['/auth', '/signin', '/', '/legal']
 
-function getActiveTab(pathname: string | null): string {
-  if (!pathname) return 'home'
-  for (const [prefix, tab] of Object.entries(PATH_TO_TAB)) {
-    if (pathname.startsWith(prefix)) return tab
+export function BottomNav() {
+  const pathname = usePathname()
+  const router = useRouter()
+
+  if (HIDDEN_ON.some((p) => (p === '/' ? pathname === '/' : pathname.startsWith(p)))) {
+    return null
   }
-  return 'home'
-}
-
-const HIDDEN_PATHS = ['/auth', '/signin', '/', '/legal']
-
-export default function BottomNav() {
-  const pathname  = usePathname()
-  const activeTab = getActiveTab(pathname)
-
-  if (!pathname || HIDDEN_PATHS.some(p => pathname.startsWith(p))) return null
 
   return (
-    <nav className="bottom-nav">
-      {TABS.map(t => {
-        const on = activeTab === t.id
-
-        if (t.id === 'scan') {
-          return (
-            <Link key="scan" href="/scan" aria-label="Scan food" className="bottom-nav__slot--scan">
-              <div className="bottom-nav__fab">
-                <Camera size={22} strokeWidth={1.8} color="var(--cream)" />
-              </div>
-            </Link>
-          )
+    <nav className="bottom-nav" aria-label="Primary">
+      {TABS.map((tab) => {
+        if (tab.key === 'scan-fab') {
+          return <div key={tab.key} className="bottom-nav__fab" aria-hidden="true" />
         }
-
+        const Icon = tab.icon!
+        const active = tab.match.some((p) => pathname.startsWith(p))
         return (
-          <Link
-            key={t.id}
-            href={t.href}
-            aria-label={t.l}
-            aria-current={on ? 'page' : undefined}
-            className={`bottom-nav__slot${on ? ' bottom-nav__slot--active' : ''}`}
+          <button
+            key={tab.key}
+            onClick={() => router.push(tab.href)}
+            className={cn('bottom-nav__slot', active && 'bottom-nav__slot--active')}
+            aria-current={active ? 'page' : undefined}
           >
-            {on && <div className="bottom-nav__indicator" />}
-            <span className="bottom-nav__icon" style={{ color: on ? 'var(--clay)' : 'var(--muted)' }}>
-              {ICONS[t.id]}
-            </span>
-            <span className={`bottom-nav__label${on ? ' bottom-nav__label--active' : ''}`} style={{ color: on ? 'var(--clay)' : 'var(--muted)' }}>
-              {t.l}
-            </span>
-          </Link>
+            {active && (
+              <motion.span
+                layoutId="nav-indicator"
+                className="bottom-nav__indicator"
+                transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+              />
+            )}
+            <Icon size={20} className="bottom-nav__icon" strokeWidth={active ? 2.4 : 1.8} />
+            <span className="bottom-nav__label">{tab.label}</span>
+          </button>
         )
       })}
     </nav>

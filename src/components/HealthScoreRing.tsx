@@ -1,63 +1,67 @@
-"use client"
+'use client'
 
-type RingSize = 'xl' | 'lg' | 'md' | 'sm' | 'xs'
+import { motion } from 'framer-motion'
+import { ratingColor, scoreToRating } from '@/lib/utils'
 
-const SIZE_MAP: Record<RingSize, number> = {
-  xl:  88,
-  lg:  72,
-  md:  52,
-  sm:  44,
-  xs:  34,
-}
+const SIZES = { xs: 32, sm: 44, md: 64, lg: 80, xl: 96 } as const
 
 interface HealthScoreRingProps {
-  score:      number
-  size?:      RingSize
-  px?:        number
+  score: number
+  size?: keyof typeof SIZES
   showLabel?: boolean
-  className?: string
 }
 
-export default function HealthScoreRing({
-  score,
-  size      = 'md',
-  px,
-  showLabel = true,
-  className = '',
-}: HealthScoreRingProps) {
-  const diameter = px ?? SIZE_MAP[size]
-  const radius   = diameter * 0.38
-  const stroke   = diameter * 0.09
-  const circ     = 2 * Math.PI * radius
-  const offset   = circ * (1 - Math.min(Math.max(score, 0), 10) / 10)
-
-  const color = score >= 7 ? 'var(--moss)' : score >= 5 ? 'var(--amber)' : 'var(--rust)'
-
-  const scoreFontSize = diameter * 0.22
-  const subFontSize   = diameter * 0.11
+export function HealthScoreRing({ score, size = 'md', showLabel = true }: HealthScoreRingProps) {
+  const diameter = SIZES[size]
+  const stroke = Math.max(3, diameter * 0.09)
+  const radius = (diameter - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const pct = Math.max(0, Math.min(10, score)) / 10
+  const rating = scoreToRating(score)
+  const color = ratingColor(rating)
+  const fontSize = diameter * 0.34
 
   return (
-    <div
-      className={`ring-${size} ${className}`}
-      style={{ position: 'relative', flexShrink: 0, width: diameter, height: diameter }}
-      role="img"
-      aria-label={`Health score: ${score} out of 10`}
-    >
-      <svg width={diameter} height={diameter} style={{ position: 'absolute', top: 0, left: 0 }} viewBox={`0 0 ${diameter} ${diameter}`}>
-        <circle cx={diameter / 2} cy={diameter / 2} r={radius} fill="none" stroke="var(--surface-3)" strokeWidth={stroke} />
+    <div style={{ width: diameter, height: diameter, position: 'relative' }} role="img" aria-label={`Health score ${score} out of 10, ${rating}`}>
+      <svg width={diameter} height={diameter} style={{ transform: 'rotate(-90deg)' }}>
         <circle
-          cx={diameter / 2} cy={diameter / 2} r={radius} fill="none" stroke={color} strokeWidth={stroke}
-          strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-          transform={`rotate(-90 ${diameter / 2} ${diameter / 2})`}
-          style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+          cx={diameter / 2}
+          cy={diameter / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--surface-3)"
+          strokeWidth={stroke}
+        />
+        <motion.circle
+          cx={diameter / 2}
+          cy={diameter / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: circumference * (1 - pct) }}
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          style={{ filter: `drop-shadow(0 0 6px ${color}66)` }}
         />
       </svg>
       {showLabel && (
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', lineHeight: 1.1 }}>
-          <div style={{ fontSize: scoreFontSize, fontWeight: 700, color: 'var(--cream)' }}>
-            {score.toFixed(score % 1 === 0 ? 0 : 1)}
-          </div>
-          {diameter >= 40 && <div style={{ fontSize: subFontSize, color: 'var(--sand)' }}>/10</div>}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+            fontWeight: 700,
+            fontSize,
+            color,
+          }}
+        >
+          {score}
         </div>
       )}
     </div>

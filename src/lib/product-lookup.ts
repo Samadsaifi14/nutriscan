@@ -299,7 +299,7 @@ function parseServingSize(servingSize: string | number | undefined): number | nu
   const match = str.match(/(\d+)/)
   
   if (match) {
-    const num = parseInt(match[1], 10)
+    const num = parseInt(match[1]!, 10)
     if (str.toLowerCase().includes('g')) return num
     if (str.toLowerCase().includes('ml')) return num
   }

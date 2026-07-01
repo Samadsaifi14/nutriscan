@@ -191,7 +191,7 @@ export function analyzeBarcode(barcode: string): BarcodeAnalysis {
   const brandPrefix = Object.keys(KNOWN_INDIAN_BRANDS)
     .find(prefix => barcode.startsWith(prefix))
   
-  const brand = brandPrefix ? KNOWN_INDIAN_BRANDS[brandPrefix] : null
+  const brand: string | null = brandPrefix ? (KNOWN_INDIAN_BRANDS[brandPrefix] ?? null) : null
 
   const category = brand ? inferCategory(brand, brand) : null
 

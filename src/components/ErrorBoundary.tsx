@@ -1,7 +1,8 @@
-"use client"
-import { Component, ReactNode } from 'react'
-import { event, AnalyticsEvents } from '@/lib/analytics'
-import { captureException } from '@/lib/monitoring'
+'use client'
+
+import { Component } from 'react'
+import Link from 'next/link'
+import type { ErrorInfo, ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
@@ -13,7 +14,7 @@ interface State {
   error?: Error
 }
 
-export default class ErrorBoundary extends Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
     this.state = { hasError: false }
@@ -23,44 +24,26 @@ export default class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    captureException(error, {
-      componentStack: (errorInfo.componentStack ?? '').slice(0, 200),
-    })
-    event(AnalyticsEvents.SCAN_ERROR, {
-      error_message: error.name,
-      error_name: error.name,
-    })
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('ErrorBoundary caught:', error, info.componentStack)
   }
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) return this.props.fallback
-
-      return (
-        <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--background)' }}>
-          <div className="max-w-sm w-full text-center">
-            <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-display)' }}>
-              Something went wrong
-            </h1>
-            <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
-              An unexpected error occurred. Please try again.
-            </p>
-            <p className="text-xs mb-6" style={{ color: 'var(--muted-2)' }}>
-              This error has been reported. Try refreshing or go back.
-            </p>
-            <div className="flex flex-col gap-2">
-              <button onClick={() => window.location.reload()}
-                className="px-6 py-3 rounded-xl font-semibold text-sm transition-colors text-white"
-                style={{ background: 'var(--clay)' }}>
-                Reload Page
-              </button>
-              <button onClick={() => { this.setState({ hasError: false }); window.location.href = '/dashboard' }}
-                className="px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
-                style={{ background: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--card-border)' }}>
-                Go to Dashboard
-              </button>
-            </div>
+      return this.props.fallback ?? (
+        <div className="page px-page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 16, minHeight: '100dvh' }}>
+          <div className="empty-state__icon" style={{ fontSize: 32 }}>!</div>
+          <h2 className="text-h2">Something went wrong</h2>
+          <p className="text-sm text-sand" style={{ maxWidth: 300 }}>
+            An unexpected error occurred. Please try reloading.
+          </p>
+          <div className="row--sm" style={{ marginTop: 8 }}>
+            <button className="btn btn--secondary" onClick={() => window.location.reload()}>
+              Reload page
+            </button>
+            <Link href="/dashboard" className="btn btn--primary">
+              Home
+            </Link>
           </div>
         </div>
       )

@@ -245,7 +245,7 @@ function generateWhyBetter(
 
   if (alternatives.length === 0) return reasons
 
-  const alt = alternatives[0] // Best alternative
+  const alt = alternatives[0]! // Best alternative
   const currentN = current.nutrition_per_100g
   const altN = alt.nutrition_per_100g
 
@@ -378,7 +378,7 @@ export async function findHealthierAlternatives(
   }
 
   // 2. Fetch similar products from Open Food Facts
-  const searchCategory = currentProduct.category || currentProduct.name.split(' ')[0]
+  const searchCategory = currentProduct.category || currentProduct.name!.split(' ')[0]!
   let fetchedProducts = await fetchFromOpenFoodFacts(searchCategory, 30)
 
   // 2b. Fallback: search by top ingredients when category search returns nothing

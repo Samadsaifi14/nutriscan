@@ -1,162 +1,97 @@
-// src/types/scanResult.ts
-
 export interface Nutrition {
   calories: number
-  protein:  number
-  carbs:    number
-  fat:      number
-  saturated_fat?: number | null
-  sugar?:   number | null
-  sodium?:  number | null
-  fiber?:   number | null
-}
-
-export interface PhotoExtras {
-  mrp?:              number | null
-  fssai?:            string | null
-  net_weight?:       number | null
-  health_claims?:    string[] | null
-  certifications?:   string[] | null
-  variant?:          string | null
-  confidence?:       string | null
-  image_quality?:    string | null
-  what_was_visible?: string | null
+  protein: number
+  carbs: number
+  fat: number
+  saturated_fat?: number
+  sugar?: number
+  sodium?: number
+  fiber?: number
 }
 
 export interface Product {
-  barcode?:           string
-  name:               string
-  brand?:             string | null
-  category?:          string | null
-  country_of_origin?: string | null
-  image_url?:         string | null
-  source?:            string
-  nutrition:          Nutrition
-  serving_size_g?:    number | null
-  ingredients_text?:  string | null
-  allergens?:         string[]
-  additives?:         string[]
-  _photo_extras?:     PhotoExtras
+  barcode: string
+  name: string
+  brand: string
+  category: string
+  country_of_origin?: string
+  image_url?: string
+  source: string
+  nutrition: Nutrition
+  serving_size_g?: number
+  ingredients_text?: string
+  allergens: string[]
+  additives: string[]
 }
 
 export interface HarmfulIngredient {
-  name:                       string
-  also_known_as?:             string[]
-  found_in_product?:          boolean
-  concern:                    string
-  severity:                   'high' | 'medium' | 'low'
-  scientific_source?:         string
-  source_url?:                string
-  global_safe_limit?:         string
-  amount_in_this_product?:    string
-  personalized_safe_limit?:   string
-  percentage_of_daily_limit?: string
-}
-
-export interface IngredientWarning {
-  ingredient: string
-  concern:    string
-  severity:   'high' | 'medium' | 'low'
+  name: string
+  reason: string
+  severity: 'low' | 'medium' | 'high'
 }
 
 export interface Alternative {
-  name:          string
-  reason?:       string
-  availability?: string
-  type?:         string
+  name: string
+  brand: string
+  image_url?: string
+  health_score: number
+  reason: string
 }
 
 export interface Analysis {
-  health_rating:    'healthy' | 'moderate' | 'unhealthy'
-  health_score:     number
-  confidence?:      'high' | 'medium' | 'low'
-  summary:          string
-  personalized?:    boolean
-  analyzed_at:      string
+  health_rating: 'healthy' | 'moderate' | 'unhealthy'
+  health_score: number
+  confidence?: 'high' | 'medium' | 'low'
+  summary: string
   health_score_breakdown?: {
-    nutrition_score:         number
+    nutrition_score: number
     ingredient_safety_score: number
-    processing_score:        number
-    overall?:                number
+    processing_score: number
   }
-  safe_consumption?: {
-    amount?:                string
-    frequency?:             string
-    notes?:                 string
-    personalized_for_user?: string
-  }
-  harmful_ingredients?:    HarmfulIngredient[]
-  ingredient_warnings?:    IngredientWarning[]
-  long_term_risks?:        string[]
-  positives?:              string[]
+  harmful_ingredients?: HarmfulIngredient[]
   healthier_alternatives?: Alternative[]
-  detailed_breakdown?:     Record<string, string>
-  diabetic_suitability?:   string
-  bp_suitability?:         string
-  child_suitability?:      string
-  pregnancy_suitability?:  string
-  fssai_compliance?:       string
-  unreadable_fields?:      string[]
-  concerns?:               string[]
-  recommendations?:        string[]
-  personalizedWarnings?:   string[]
-  ai_ingredients?:         Array<{
-    ingredient: string
-    status: 'safe' | 'concern' | 'harmful'
-    concern?: string
-    recommendation?: string
-  }>
+  positives?: string[]
+  recommendations?: string[]
+  personalizedWarnings?: string[]
 }
 
-// Payload stored after scan
 export interface ScanResultPayload {
-  version:   1
-  product:   Product
-  analysis:  Analysis
-  quantity:  number
+  version: 1
+  product: Product
+  analysis: Analysis
+  quantity: number
   timestamp: string
-  // Pre-fetched alternatives so the Alternatives tab opens with results in one go
-  alternatives?: {
-    alternatives: any[]
-    why_better?: any[]
-    current_score?: number | null
-    current_grade?: string | null
-    source: 'dynamic' | 'curated' | 'groq_ai' | 'none'
-  } | null
+  alternatives?: Alternative[]
 }
 
-export const SCAN_RESULT_KEY = 'hox_scan_result_v1'
+export interface UserProfile {
+  user_id: string
+  email: string
+  name?: string
+  weight_kg?: number
+  height_cm?: number
+  bmi?: number
+  is_diabetic?: boolean
+  has_bp?: boolean
+  is_vegetarian?: boolean
+  is_vegan?: boolean
+}
 
-// Use localStorage so data persists across page navigations on mobile
 export function writeScanResult(payload: Omit<ScanResultPayload, 'version' | 'timestamp'>) {
-  const full: ScanResultPayload = {
-    version:   1,
-    timestamp: new Date().toISOString(),
-    ...payload,
-  }
+  const data: ScanResultPayload = { ...payload, version: 1, timestamp: new Date().toISOString() }
   try {
-    localStorage.setItem(SCAN_RESULT_KEY, JSON.stringify(full))
+    localStorage.setItem('hox_scan_result_v1', JSON.stringify(data))
+    sessionStorage.setItem('hox_scan_result_v1', JSON.stringify(data))
   } catch {
-    // localStorage full or unavailable — fallback to sessionStorage
-    try {
-      sessionStorage.setItem(SCAN_RESULT_KEY, JSON.stringify(full))
-    } catch {
-      // both unavailable — navigation will show empty state
-    }
+    /* storage full or unavailable */
   }
 }
 
 export function readScanResult(): ScanResultPayload | null {
   try {
-    // Try localStorage first
-    let raw = localStorage.getItem(SCAN_RESULT_KEY)
-    // Fallback to sessionStorage
-    if (!raw) raw = sessionStorage.getItem(SCAN_RESULT_KEY)
+    const raw = sessionStorage.getItem('hox_scan_result_v1') ?? localStorage.getItem('hox_scan_result_v1')
     if (!raw) return null
-    const parsed = JSON.parse(raw) as ScanResultPayload
-    if (parsed.version !== 1) return null
-    if (!parsed.product || !parsed.analysis) return null
-    return parsed
+    return JSON.parse(raw) as ScanResultPayload
   } catch {
     return null
   }

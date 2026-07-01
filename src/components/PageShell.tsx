@@ -1,63 +1,64 @@
-import TopBar from './TopBar'
+'use client'
 
-type PageVariant = 'default' | 'bare' | 'fullscreen' | 'no-header'
+import { motion } from 'framer-motion'
+import { cn } from '@/lib/utils'
+import { TopBar } from './TopBar'
+import type { ReactNode } from 'react'
 
 interface PageShellProps {
-  children:     React.ReactNode
-  variant?:     PageVariant
-  title?:       string
-  left?:        React.ReactNode
-  right?:       React.ReactNode
-  showBack?:    boolean
-  noBorder?:    boolean
-  className?:   string
-  noMaxWidth?:  boolean
+  children: ReactNode
+  variant?: 'default' | 'bare' | 'no-header' | 'fullscreen'
+  title?: string
+  left?: ReactNode
+  right?: ReactNode
+  showBack?: boolean
+  noBorder?: boolean
+  transparentTop?: boolean
+  className?: string
 }
 
-export default function PageShell({
+export function PageShell({
   children,
-  variant    = 'default',
+  variant = 'default',
   title,
   left,
   right,
-  showBack   = false,
-  noBorder   = false,
-  className  = '',
-  noMaxWidth = false,
+  showBack,
+  noBorder,
+  transparentTop,
+  className,
 }: PageShellProps) {
-
   if (variant === 'fullscreen') {
     return <div className="scan-overlay">{children}</div>
   }
 
-  if (variant === 'bare') {
-    return (
-      <main className="page--bare" style={{ paddingBottom: 'var(--safe-bottom)' }}>
-        <div className={`page-content ${noMaxWidth ? 'max-w-none' : ''} ${className}`}>
-          {children}
-        </div>
-      </main>
-    )
-  }
-
-  if (variant === 'no-header') {
-    return (
-      <main className="page--no-header">
-        <div className={`page-content ${noMaxWidth ? 'max-w-none' : ''} ${className}`}>
-          {children}
-        </div>
-      </main>
-    )
-  }
-
   return (
     <>
-      <TopBar title={title} left={left} right={right} showBack={showBack} noBorder={noBorder} />
-      <main className={`page ${className}`}>
-        <div className={`page-content ${noMaxWidth ? 'max-w-none' : ''}`}>
-          {children}
-        </div>
-      </main>
+      {variant === 'default' && (
+        <TopBar
+          title={title}
+          left={left}
+          right={right}
+          showBack={showBack}
+          noBorder={noBorder}
+          transparent={transparentTop}
+        />
+      )}
+      <motion.main
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className={cn(
+          'page px-page',
+          variant === 'default' && 'pb-[calc(var(--footer-offset)+24px)]',
+          variant === 'default' && 'pt-[calc(var(--header-offset)+16px)]',
+          variant === 'bare' && 'pt-[calc(var(--header-offset)+16px)] pb-[calc(var(--footer-offset)+24px)]',
+          variant === 'no-header' && 'pb-[calc(var(--footer-offset)+24px)]',
+          className
+        )}
+      >
+        {children}
+      </motion.main>
     </>
   )
 }

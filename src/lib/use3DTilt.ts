@@ -46,7 +46,7 @@ export function use3DTilt<T extends HTMLElement>(options: TiltOptions = {}) {
     const onMouseLeave = () => handleLeave()
     const onTouchMove = (e: TouchEvent) => {
       if (!mobile) return
-      const t = e.touches[0]
+      const t = e.touches[0]!
       handleMove(t.clientX, t.clientY)
     }
     const onTouchEnd = () => handleLeave()

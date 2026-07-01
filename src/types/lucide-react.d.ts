@@ -84,6 +84,7 @@ declare module 'lucide-react' {
   export const Printer: IconComponent
   export const ExternalLink: IconComponent
   export const Link: IconComponent
+  export const Link2: IconComponent
   export const Copy: IconComponent
   export const Mail: IconComponent
   export const Phone: IconComponent
@@ -268,6 +269,7 @@ declare module 'lucide-react' {
   export const Cup: IconComponent
   export const Bottle: IconComponent
   export const Tea: IconComponent
+  export const Bell: IconComponent
   export const BeerMug: IconComponent
   export const Champagne: IconComponent
   export const Croissant: IconComponent

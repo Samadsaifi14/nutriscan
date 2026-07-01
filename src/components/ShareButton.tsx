@@ -1,75 +1,111 @@
-"use client"
+'use client'
 
 import { useState } from 'react'
-import { generateShareContent } from '@/lib/share-generator'
+import { Share2, Link2, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import toast from 'react-hot-toast'
 
 interface ShareButtonProps {
-  productName: string
-  healthScore: number
-  healthRating: string
+  title: string
+  url: string
 }
 
-export function ShareButton({ productName, healthScore, healthRating }: ShareButtonProps) {
-  const [showOptions, setShowOptions] = useState(false)
-  const [copied, setCopied] = useState(false)
+export function ShareButton({ title, url }: ShareButtonProps) {
+  const [open, setOpen] = useState(false)
 
-  const content = generateShareContent(productName, healthScore, healthRating)
-
-  const handleShare = async (platform: 'whatsapp' | 'twitter' | 'facebook' | 'copy') => {
-    setShowOptions(false)
-    switch (platform) {
-      case 'whatsapp':
-        window.open(`https://wa.me/?text=${encodeURIComponent(content.text)}`, '_blank')
-        break
-      case 'twitter':
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(content.text)}`, '_blank')
-        break
-      case 'facebook':
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(content.url)}`, '_blank')
-        break
-      case 'copy':
-        await navigator.clipboard.writeText(content.text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-        break
-    }
-  }
+  const options = [
+    {
+      label: 'WhatsApp',
+      glyph: 'W',
+      href: `https://wa.me/?text=${encodeURIComponent(`${title} — ${url}`)}`,
+    },
+    {
+      label: 'Twitter',
+      glyph: 'X',
+      href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`,
+    },
+    {
+      label: 'Facebook',
+      glyph: 'F',
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+    },
+  ]
 
   return (
-    <div className="relative">
-      <button onClick={() => setShowOptions(!showOptions)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
-        style={{
-          background: 'var(--card)',
-          border: '1px solid var(--card-border)',
-          color: 'var(--muted)',
-        }}>
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-        </svg>
-        Share
+    <div style={{ position: 'relative' }}>
+      <button className="icon-btn" aria-label="Share" onClick={() => setOpen((o) => !o)}>
+        <Share2 size={18} />
       </button>
-
-      {showOptions && (
-        <div className="absolute right-0 top-full mt-2 w-40 rounded-xl shadow-xl z-50 overflow-hidden"
-          style={{ background: 'var(--card)', border: '1px solid var(--card-border)' }}>
-          {([
-            { p: 'whatsapp', label: 'WhatsApp', icon: '💬' },
-            { p: 'twitter', label: 'Twitter', icon: '🐦' },
-            { p: 'facebook', label: 'Facebook', icon: '📘' },
-            { p: 'copy', label: copied ? 'Copied! ✅' : 'Copy Text', icon: '📋', borderTop: true },
-          ] as const).map(item => (
-            <button key={item.p} onClick={() => handleShare(item.p as any)}
-              className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2 transition-colors"
+      <AnimatePresence>
+        {open && (
+          <>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 69 }}
+              onClick={() => setOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: -6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: -6 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="glass-strong"
               style={{
-                color: 'var(--foreground)',
-                borderTop: 'borderTop' in item && item.borderTop ? '1px solid var(--card-border)' : undefined,
-              }}>
-              <span>{item.icon}</span> {item.label}
-            </button>
-          ))}
-        </div>
-      )}
+                position: 'absolute', right: 0, top: 48, zIndex: 70,
+                borderRadius: 14, padding: 8, minWidth: 180,
+              }}
+            >
+              <div className="row--sm" style={{ justifyContent: 'space-between', padding: '4px 8px 8px' }}>
+                <span className="text-2xs" style={{ color: 'var(--sand)' }}>Share result</span>
+                <button onClick={() => setOpen(false)} aria-label="Close" style={{ color: 'var(--muted)' }}>
+                  <X size={14} />
+                </button>
+              </div>
+              {options.map((opt) => (
+                <a
+                  key={opt.label}
+                  href={opt.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="row--md"
+                  style={{ padding: '10px 8px', borderRadius: 10, color: 'var(--cream)' }}
+                  onClick={() => setOpen(false)}
+                >
+                  <span
+                    className="text-xs"
+                    style={{
+                      width: 26, height: 26, borderRadius: 8, background: 'var(--surface-3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
+                    }}
+                  >
+                    {opt.glyph}
+                  </span>
+                  <span className="text-sm">{opt.label}</span>
+                </a>
+              ))}
+              <button
+                className="row--md"
+                style={{ padding: '10px 8px', borderRadius: 10, width: '100%' }}
+                onClick={() => {
+                  navigator.clipboard.writeText(url)
+                  toast.success('Link copied')
+                  setOpen(false)
+                }}
+              >
+                <span
+                  className="text-xs"
+                  style={{
+                    width: 26, height: 26, borderRadius: 8, background: 'var(--surface-3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Link2 size={13} />
+                </span>
+                <span className="text-sm">Copy link</span>
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

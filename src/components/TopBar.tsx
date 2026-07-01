@@ -1,48 +1,44 @@
-"use client"
+'use client'
 
-import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import type { ReactNode } from 'react'
 
 interface TopBarProps {
-  title?:       string | null
-  left?:        React.ReactNode
-  right?:       React.ReactNode
-  showBack?:    boolean
-  noBorder?:    boolean
+  title?: string
+  left?: ReactNode
+  right?: ReactNode
+  showBack?: boolean
+  noBorder?: boolean
   transparent?: boolean
-  className?:   string
 }
 
-export default function TopBar({
-  title,
-  left,
-  right,
-  showBack    = false,
-  noBorder    = false,
-  transparent = false,
-  className   = '',
-}: TopBarProps) {
+export function TopBar({ title, left, right, showBack, noBorder, transparent }: TopBarProps) {
   const router = useRouter()
-
-  const leftSlot = left ?? (
-    showBack ? (
-      <button onClick={() => router.back()} className="icon-btn" aria-label="Go back">
-        <ArrowLeft size={18} />
-      </button>
-    ) : (
-      <div style={{ width: 36 }} />
-    )
-  )
-
-  const rightSlot = right ?? <div style={{ width: 36 }} />
-
   return (
     <header
-      className={`topbar ${transparent ? 'topbar--transparent' : ''} ${noBorder ? 'border-b-0' : ''} ${className}`}
+      className={cn(
+        'topbar',
+        transparent && 'topbar--transparent',
+        noBorder && 'topbar--noBorder'
+      )}
     >
-      <div className="topbar__left">{leftSlot}</div>
-      {title && <h1 className="topbar__title">{title}</h1>}
-      <div className="topbar__right">{rightSlot}</div>
+      <div className="topbar__left">
+        {showBack ? (
+          <button
+            aria-label="Go back"
+            onClick={() => router.back()}
+            className="icon-btn"
+          >
+            <ArrowLeft size={18} />
+          </button>
+        ) : (
+          left
+        )}
+      </div>
+      {title && <h1 className="topbar__title truncate">{title}</h1>}
+      <div className="topbar__right">{right}</div>
     </header>
   )
 }

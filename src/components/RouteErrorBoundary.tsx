@@ -1,6 +1,6 @@
 "use client"
 
-import ErrorBoundary from './ErrorBoundary'
+import { ErrorBoundary } from './ErrorBoundary'
 
 export default function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
   return (

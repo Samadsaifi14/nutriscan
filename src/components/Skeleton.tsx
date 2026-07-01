@@ -1,35 +1,34 @@
 export function SkeletonCard() {
   return (
-    <div className="card-3d p-5 space-y-4">
-      <div className="skeleton h-5 w-2/3" />
-      <div className="skeleton h-4 w-full" />
-      <div className="skeleton h-4 w-4/5" />
-      <div className="flex gap-2 pt-1">
-        <div className="skeleton h-7 w-16 rounded-pill" />
-        <div className="skeleton h-7 w-20 rounded-pill" />
+    <div className="product-card">
+      <div className="skeleton" style={{ width: 56, height: 56, borderRadius: 12 }} />
+      <div className="stack--sm flex-1">
+        <div className="skeleton" style={{ height: 14, width: '70%' }} />
+        <div className="skeleton" style={{ height: 11, width: '40%' }} />
       </div>
     </div>
   )
 }
 
-export function SkeletonRing() {
-  return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="skeleton rounded-full" style={{ width: 120, height: 120 }} />
-      <div className="skeleton h-4 w-24 rounded-md" />
-    </div>
-  )
+export function SkeletonRing({ size = 64 }: { size?: number }) {
+  return <div className="skeleton" style={{ width: size, height: size, borderRadius: '9999px' }} />
 }
 
 export function SkeletonDashboard() {
   return (
-    <div className="space-y-4 pb-nav">
-      <div className="skeleton h-32 rounded-xl" />
-      <div className="grid grid-cols-2 gap-3">
-        <div className="skeleton h-24 rounded-xl" />
-        <div className="skeleton h-24 rounded-xl" />
+    <div className="stack--md">
+      <div className="row--md">
+        <SkeletonRing size={80} />
+        <div className="stack--sm flex-1">
+          <div className="skeleton" style={{ height: 16, width: '60%' }} />
+          <div className="skeleton" style={{ height: 12, width: '40%' }} />
+        </div>
       </div>
-      <div className="skeleton h-48 rounded-xl" />
+      <div className="grid-2">
+        <div className="skeleton" style={{ height: 80, borderRadius: 14 }} />
+        <div className="skeleton" style={{ height: 80, borderRadius: 14 }} />
+      </div>
+      <SkeletonCard />
       <SkeletonCard />
       <SkeletonCard />
     </div>
@@ -38,13 +37,12 @@ export function SkeletonDashboard() {
 
 export function SkeletonMealItem() {
   return (
-    <div className="flex items-center gap-3 p-4">
-      <div className="skeleton rounded-lg flex-shrink-0" style={{ width: 48, height: 48 }} />
-      <div className="flex-1 space-y-2">
-        <div className="skeleton h-4 w-3/4" />
-        <div className="skeleton h-3 w-1/2" />
+    <div className="row--md">
+      <div className="skeleton" style={{ width: 44, height: 44, borderRadius: 12 }} />
+      <div className="stack--sm flex-1">
+        <div className="skeleton" style={{ height: 12, width: '55%' }} />
+        <div className="skeleton" style={{ height: 10, width: '30%' }} />
       </div>
-      <div className="skeleton h-8 w-16 rounded-pill" />
     </div>
   )
 }

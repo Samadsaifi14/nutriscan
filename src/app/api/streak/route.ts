@@ -36,14 +36,14 @@ export async function GET(req: NextRequest) {
         streak: 0,
         longest: calcLongest(dates),
         loggedToday: false,
-        lastLoggedAt: logs[0].logged_at,
+        lastLoggedAt: logs[0]!.logged_at,
       })
     }
 
     let streak = 1
     for (let i = 1; i < dates.length; i++) {
-      const prev = new Date(dates[i - 1])
-      const curr = new Date(dates[i])
+      const prev = new Date(dates[i - 1]!)
+      const curr = new Date(dates[i]!)
       const diff = Math.round((prev.getTime() - curr.getTime()) / 86400000)
       if (diff === 1) { streak++ } else { break }
     }
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       success: true,
       streak,
       longest: calcLongest(dates),
-      lastLoggedAt: logs[0].logged_at,
+      lastLoggedAt: logs[0]!.logged_at,
       loggedToday: dates[0] === today,
     })
   } catch (err: any) {
@@ -64,9 +64,9 @@ export async function GET(req: NextRequest) {
 function calcLongest(dates: string[]): number {
   if (!dates.length) return 0
   let max = 1, cur = 1
-  for (let i = 1; i < dates.length; i++) {
-    const prev = new Date(dates[i - 1])
-    const curr = new Date(dates[i])
+    for (let i = 1; i < dates.length; i++) {
+      const prev = new Date(dates[i - 1]!)
+      const curr = new Date(dates[i]!)
     const diff = Math.round((prev.getTime() - curr.getTime()) / 86400000)
     if (diff === 1) { cur++; max = Math.max(max, cur) } else { cur = 1 }
   }

@@ -48,19 +48,19 @@ export function extractNutrition(desc: string): {
   const result: any = { calories: null, protein: null, carbs: null, fat: null, sugar: null }
 
   const energyMatch = desc.match(/energy\s*(\d+)\s*kcal/i)
-  if (energyMatch) result.calories = parseInt(energyMatch[1], 10)
+  if (energyMatch) result.calories = parseInt(energyMatch[1]!, 10)
 
   const proteinMatch = desc.match(/protein\s*(\d+(?:\.\d+)?)\s*g/i)
-  if (proteinMatch) result.protein = parseFloat(proteinMatch[1])
+  if (proteinMatch) result.protein = parseFloat(proteinMatch[1]!)
 
   const carbsMatch = desc.match(/carbohydrate[s]?\s*(\d+(?:\.\d+)?)\s*g/i)
-  if (carbsMatch) result.carbs = parseFloat(carbsMatch[1])
+  if (carbsMatch) result.carbs = parseFloat(carbsMatch[1]!)
 
   const fatMatch = desc.match(/total\s*fat\s*(\d+(?:\.\d+)?)\s*g/i)
-  if (fatMatch) result.fat = parseFloat(fatMatch[1])
+  if (fatMatch) result.fat = parseFloat(fatMatch[1]!)
 
   const sugarMatch = desc.match(/sugar[s]?\s*(\d+(?:\.\d+)?)\s*g/i)
-  if (sugarMatch) result.sugar = parseFloat(sugarMatch[1])
+  if (sugarMatch) result.sugar = parseFloat(sugarMatch[1]!)
 
   return result
 }

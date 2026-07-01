@@ -115,12 +115,12 @@ function getAdultProfile(
 ): RDAProfile {
   const genderData  = rdaData.adults[gender] as GenderData
   const bracket     = getAdultBracket(age)
-  const bracketData = genderData[bracket]
+  const bracketData = genderData[bracket]!
 
   const activityData: MacroRow =
     bracketData[activity] ??
     bracketData['moderate'] ??
-    bracketData['sedentary']
+    bracketData['sedentary'] as MacroRow
 
   const microKey =
     age >= 60             ? 'adult_60_plus'

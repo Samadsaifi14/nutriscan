@@ -188,8 +188,8 @@ export function parseNutritionLabel(text: string): ParsedNutrition {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
   
   // Extract first line as likely product name
-  if (lines.length > 0 && lines[0].length > 3) {
-    result.name = lines[0].substring(0, 100)
+  if (lines.length > 0 && lines[0]!.length > 3) {
+    result.name = lines[0]!.substring(0, 100)
   }
   
   // Look for brand
@@ -248,7 +248,7 @@ export function parseNutritionLabel(text: string): ParsedNutrition {
     // Look for serving size
     const servingMatch = line.match(/serving\s*(?:size)?\s*[:\-]?\s*(\d+)\s*g?/i)
     if (servingMatch) {
-      result.serving_size_g = parseInt(servingMatch[1])
+      result.serving_size_g = parseInt(servingMatch[1]!)
     }
   }
   
