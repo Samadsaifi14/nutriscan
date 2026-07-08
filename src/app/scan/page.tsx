@@ -1,214 +1,219 @@
-'use client'
+"use client";
 
-import { useState, useRef, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, Camera, Flashlight, Image as ImageIcon, Settings } from 'lucide-react'
-import { PageShell } from '@/components/PageShell'
-import { writeScanResult } from '@/types/scanResult'
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { X, Zap, ZapOff, Image as ImageIcon, Keyboard } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
+import { cn } from "@/lib/utils";
+import { writeScanResult } from "@/types/scanResult";
 
-export default function Scan() {
-  const router = useRouter()
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [torch, setTorch] = useState(false)
-  const [scanning, setScanning] = useState(false)
-  const [mode, setMode] = useState<'barcode' | 'photo'>('barcode')
-  const [error, setError] = useState<string | null>(null)
+type Mode = "barcode" | "photo";
 
-  const startCamera = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      })
-      if (videoRef.current) videoRef.current.srcObject = stream
-      setError(null)
-    } catch {
-      setError('Camera access denied. Please grant camera permissions.')
-    }
-  }, [])
-
-  useEffect(() => {
-    startCamera()
-    const video = videoRef.current
-    return () => {
-      if (video?.srcObject instanceof MediaStream) {
-        video.srcObject.getTracks().forEach((t: MediaStreamTrack) => t.stop())
-      }
-    }
-  }, [startCamera])
+export default function ScanPage() {
+  const router = useRouter();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [mode, setMode] = useState<Mode>("barcode");
+  const [torchOn, setTorchOn] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [supported, setSupported] = useState(true);
 
   const handleDetected = useCallback(async (barcode: string) => {
-    if (scanning) return
-    setScanning(true)
     try {
-      const res = await fetch('/api/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ barcode, mode }),
-      })
-      const data = await res.json()
+      });
+      const data = await res.json();
       if (data?.product && data?.analysis) {
-        writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives })
-        router.replace('/results')
+        writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives });
+        router.replace("/results");
       } else {
-        router.replace(`/correct-product?barcode=${barcode}`)
+        router.replace(`/correct-product?barcode=${barcode}`);
       }
     } catch {
-      setError('Scan failed. Try again.')
-      setScanning(false)
+      // silent
     }
-  }, [scanning, mode, router])
+  }, [mode, router]);
 
   useEffect(() => {
-    if (mode !== 'barcode' || !('BarcodeDetector' in window)) return
-    const detector = new (window as unknown as { BarcodeDetector: new (a: string[]) => unknown })['BarcodeDetector'](['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'])
-    const interval = setInterval(async () => {
-      if (!videoRef.current) return
-      try {
-        const codes = await (detector as { detect: (v: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> }).detect(videoRef.current)
-        if (codes.length > 0) handleDetected(codes[0]!.rawValue)
-      } catch {
-        // frame skip
+    if (!("BarcodeDetector" in window)) {
+      setSupported(false);
+      return;
+    }
+    let stream: MediaStream;
+    let raf: number;
+
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "environment" } })
+      .then((s) => {
+        stream = s;
+        if (videoRef.current) {
+          videoRef.current.srcObject = s;
+          videoRef.current.play();
+        }
+        // @ts-expect-error - BarcodeDetector not in lib.dom.d.ts
+        const detector = new BarcodeDetector({
+          formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39"],
+        });
+
+        const tick = async () => {
+          if (videoRef.current && videoRef.current.readyState === 4) {
+            try {
+              const codes = await detector.detect(videoRef.current);
+              if (codes.length > 0) {
+                handleDetected(codes[0]!.rawValue);
+                return;
+              }
+            } catch {
+              /* frame not ready — keep polling */
+            }
+          }
+          raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+      })
+      .catch(() => setSupported(false));
+
+    return () => {
+      cancelAnimationFrame(raf);
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [handleDetected]);
+
+  async function handlePhotoCapture(blob: Blob) {
+    const formData = new FormData();
+    formData.append("image", blob, "capture.jpg");
+    try {
+      const res = await fetch("/api/scan-product-photo", { method: "POST", body: formData });
+      const data = await res.json();
+      if (data?.product && data?.analysis) {
+        writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives });
+        router.replace("/results");
       }
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [mode, handleDetected])
+    } catch {
+      // silent
+    }
+  }
 
   return (
     <PageShell variant="fullscreen">
-      <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+      <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover" muted playsInline />
+      <div className="absolute inset-0 bg-black/35" />
 
-      {/* Top bar */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.7), transparent)',
-        padding: 'calc(env(safe-area-inset-top, 0px) + 12px) 16px 40px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <button className="icon-btn" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => router.back()}>
-          <ArrowLeft size={20} color="#fff" />
+      <div className="absolute inset-x-0 top-0 z-10 row px-page pt-[calc(var(--safe-top)+12px)]" style={{ justifyContent: "space-between" }}>
+        <button onClick={() => router.back()} aria-label="Close scanner" className="icon-btn glass rounded-full">
+          <X size={20} className="text-cream" />
         </button>
         <button
-          className="icon-btn"
-          style={{ background: 'rgba(0,0,0,0.4)' }}
-          onClick={() => setTorch((t) => !t)}
+          onClick={() => setTorchOn((v) => !v)}
+          aria-label="Toggle flash"
+          className={cn("icon-btn glass rounded-full", torchOn && "icon-btn--active")}
         >
-          <Flashlight size={18} color={torch ? 'var(--clay)' : '#fff'} />
+          {torchOn ? <Zap size={18} className="text-clay" /> : <ZapOff size={18} className="text-cream" />}
         </button>
       </div>
 
-      {/* Scan frame */}
-      <div className="scan-frame">
-        <div className="scan-corner--tl" />
-        <div className="scan-corner--tr" />
-        <div className="scan-corner--bl" />
-        <div className="scan-corner--br" />
-        {mode === 'barcode' && <div className="scan-line" />}
+      <div className="absolute inset-0 z-10 flex items-center justify-center">
+        <div className="scan-frame">
+          <div className="scan-corner--tl" />
+          <div className="scan-corner--tr" />
+          <div className="scan-corner--bl" />
+          <div className="scan-corner--br" />
+          <div className="scan-line" />
+        </div>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div style={{ position: 'absolute', bottom: 180, left: 16, right: 16, zIndex: 10 }}>
-          <div className="alert alert--danger">{error}</div>
+      {!supported && (
+        <div className="absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 px-page text-center">
+          <p className="text-cream text-body">Camera scanning isn't supported on this browser.</p>
+          <p className="text-sand text-xs mt-2">Use manual entry or photo upload below instead.</p>
         </div>
       )}
 
-      {/* Bottom controls */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
-        background: 'linear-gradient(0deg, rgba(0,0,0,0.8), transparent)',
-        padding: '40px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
-      }}>
-        {/* Mode pills */}
-        <div className="tab-bar" style={{ width: '100%', maxWidth: 280 }}>
-          {(['barcode', 'photo'] as const).map((m) => (
-            <button
-              key={m}
-              className={`tab-bar__item ${mode === m ? 'tab-bar__item--active' : ''}`}
-              onClick={() => setMode(m)}
-            >
-              {m === 'barcode' ? 'Barcode' : 'Photo Label'}
-            </button>
-          ))}
-          {/* Sliding indicator */}
-          <div
-            style={{
-              position: 'absolute', top: 4, bottom: 4,
-              width: 'calc(50% - 4px)', borderRadius: 9,
-              background: 'var(--clay)',
-              left: mode === 'barcode' ? 4 : 'calc(50% + 0px)',
-              transition: 'left 0.2s var(--ease-out)',
-              zIndex: 0,
-            }}
-          />
-        </div>
+      <div className="absolute inset-x-0 bottom-0 z-10 stack--md px-page pb-[calc(var(--safe-bottom)+28px)]">
+        <p className="text-center text-cream text-sm">Align the barcode within the frame</p>
 
-        {/* Shutter + side icons */}
-        <div className="row--md" style={{ gap: 24 }}>
-          <button className="icon-btn" style={{ width: 44, height: 44, background: 'rgba(0,0,0,0.4)' }} onClick={() => {
-            const input = document.createElement('input')
-            input.type = 'file'
-            input.accept = 'image/*'
-            input.onchange = async () => {
-              const file = input.files?.[0]
-              if (!file) return
-              const formData = new FormData()
-              formData.append('image', file)
-              try {
-                const res = await fetch('/api/scan-product-photo', { method: 'POST', body: formData })
-                const data = await res.json()
-                if (data?.product && data?.analysis) {
-                  writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives })
-                  router.replace('/results')
-                }
-              } catch {
-                setError('Photo analysis failed')
-              }
-            }
-            input.click()
-          }}>
-            <ImageIcon size={18} color="#fff" />
+        <div className="row" style={{ justifyContent: "center", gap: 12 }}>
+          <button
+            onClick={() => setMode("barcode")}
+            className={cn("chip", mode === "barcode" && "chip--active")}
+          >
+            Barcode
           </button>
           <button
-            onClick={async () => {
-              if (mode === 'photo') {
-                const canvas = document.createElement('canvas')
-                const video = videoRef.current
-                if (!video) return
-                canvas.width = video.videoWidth
-                canvas.height = video.videoHeight
-                canvas.getContext('2d')?.drawImage(video, 0, 0)
-                canvas.toBlob(async (blob) => {
-                  if (!blob) return
-                  const formData = new FormData()
-                  formData.append('image', blob, 'capture.jpg')
-                  try {
-                    const res = await fetch('/api/scan-product-photo', { method: 'POST', body: formData })
-                    const data = await res.json()
-                    if (data?.product && data?.analysis) {
-                      writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives })
-                      router.replace('/results')
-                    }
-                  } catch {
-                    setError('Photo analysis failed')
-                  }
-                }, 'image/jpeg')
+            onClick={() => setMode("photo")}
+            className={cn("chip", mode === "photo" && "chip--active")}
+          >
+            Photo of label
+          </button>
+        </div>
+
+        <div className="row" style={{ justifyContent: "center", gap: 32 }}>
+          <button
+            className="icon-btn glass rounded-full"
+            aria-label="Upload from gallery"
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = "image/*";
+              input.onchange = () => {
+                const file = input.files?.[0];
+                if (file) handlePhotoCapture(file);
+              };
+              input.click();
+            }}
+          >
+            <ImageIcon size={20} className="text-cream" />
+          </button>
+          <button
+            onClick={() => {
+              if (mode === "photo") {
+                const canvas = document.createElement("canvas");
+                const video = videoRef.current;
+                if (!video) return;
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext("2d")?.drawImage(video, 0, 0);
+                canvas.toBlob((blob) => {
+                  if (blob) handlePhotoCapture(blob);
+                }, "image/jpeg");
               }
             }}
-            style={{
-              width: 64, height: 64, borderRadius: '9999px',
-              background: '#fff', border: '4px solid rgba(255,255,255,0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
+            className="icon-btn glass rounded-full"
+            style={{ width: 64, height: 64 }}
             aria-label="Capture"
           >
-            <Camera size={28} color="#000" />
+            <div style={{ width: 52, height: 52, borderRadius: "9999px", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 44, height: 44, borderRadius: "9999px", border: "2px solid rgba(0,0,0,0.15)" }} />
+            </div>
           </button>
-          <button className="icon-btn" style={{ width: 44, height: 44, background: 'rgba(0,0,0,0.4)' }}>
-            <Settings size={18} color="#fff" />
+          <button
+            onClick={() => setManualOpen(true)}
+            className="icon-btn glass rounded-full"
+            aria-label="Enter barcode manually"
+          >
+            <Keyboard size={20} className="text-cream" />
           </button>
         </div>
       </div>
+
+      {manualOpen && (
+        <div className="absolute inset-0 z-20 flex items-end bg-black/60" onClick={() => setManualOpen(false)}>
+          <div className="glass w-full rounded-t-2xl p-page pb-8" onClick={(e) => e.stopPropagation()}>
+            <p className="text-h3 text-cream mb-4">Enter barcode</p>
+            <input
+              className="input"
+              inputMode="numeric"
+              placeholder="e.g. 8901058851599"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleDetected((e.target as HTMLInputElement).value);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </PageShell>
-  )
+  );
 }

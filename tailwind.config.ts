@@ -1,8 +1,8 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
-  darkMode: 'class',
   content: ['./src/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -27,13 +27,27 @@ const config: Config = {
         mono: ['var(--font-jetbrains-mono)', 'monospace'],
       },
       borderRadius: {
-        xs: '4px', sm: '8px', md: '12px', lg: '16px', xl: '24px', '2xl': '32px', full: '9999px',
+        xs: 'var(--r-xs)',
+        sm: 'var(--r-sm)',
+        md: 'var(--r-md)',
+        lg: 'var(--r-lg)',
+        xl: 'var(--r-xl)',
+        '2xl': 'var(--r-2xl)',
       },
-      boxShadow: {
-        glass: '0 8px 32px rgba(0,0,0,0.35)',
-        glow: '0 0 24px var(--clay-glow)',
+      zIndex: {
+        content: 'var(--z-content)',
+        tabbar: 'var(--z-tabbar)',
+        nav: 'var(--z-nav)',
+        fab: 'var(--z-fab)',
+        topbar: 'var(--z-topbar)',
+        scan: 'var(--z-scan)',
+        modal: 'var(--z-modal)',
+        toast: 'var(--z-toast)',
       },
-      backdropBlur: { glass: '16px' },
+      transitionTimingFunction: {
+        out: 'var(--ease-out)',
+        spring: 'var(--ease-spring)',
+      },
       keyframes: {
         grainShift: {
           '0%,100%': { transform: 'translate(0,0)' },
@@ -44,7 +58,7 @@ const config: Config = {
           '90%': { transform: 'translate(-1%,1%)' },
         },
         fadeIn: { from: { opacity: '0' }, to: { opacity: '1' } },
-        scaleIn: { from: { opacity: '0', transform: 'scale(0.96)' }, to: { opacity: '1', transform: 'scale(1)' } },
+        scaleIn: { from: { opacity: '0', transform: 'scale(0.94)' }, to: { opacity: '1', transform: 'scale(1)' } },
         slideUp: { from: { opacity: '0', transform: 'translateY(12px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
       },
       animation: {

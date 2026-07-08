@@ -35,6 +35,7 @@ export function ProductCard({ product, analysis, onClick }: ProductCardProps) {
 
   const rating = scoreToRating(analysis.health_score)
   const ringColor = { healthy: '#8FB878', moderate: '#E49030', unhealthy: '#E06B52' }[rating]
+  const pillVariant = { healthy: 'healthy' as const, moderate: 'warning' as const, unhealthy: 'harmful' as const }[rating]
 
   return (
     <motion.button
@@ -61,7 +62,7 @@ export function ProductCard({ product, analysis, onClick }: ProductCardProps) {
         <p className="product-card__name truncate">{product.name}</p>
         <p className="product-card__brand truncate">{product.brand}</p>
         <div className="product-card__tags">
-          <Pill variant={rating}>{analysis.health_score}/10</Pill>
+          <Pill variant={pillVariant}>{analysis.health_score}/10</Pill>
         </div>
       </div>
       <div

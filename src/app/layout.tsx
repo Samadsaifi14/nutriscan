@@ -1,50 +1,32 @@
-import type { Metadata, Viewport } from 'next'
-import { DM_Sans, JetBrains_Mono } from 'next/font/google'
-import './globals.css'
-import { Providers } from '@/components/Providers'
+import type { Metadata, Viewport } from "next";
+import { DM_Sans, JetBrains_Mono } from "next/font/google";
+import "./globals.css";
+import { Providers } from "@/components/Providers";
+import { GrainOverlay } from "@/components/GrainOverlay";
+import { FloatingScanButton } from "@/components/FloatingScanButton";
+import { BottomNav } from "@/components/BottomNav";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CookieBanner } from "@/components/CookieBanner";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export const dynamic = 'force-dynamic'
-import { BottomNav } from '@/components/BottomNav'
-import { FloatingScanButton } from '@/components/FloatingScanButton'
-import { GrainOverlay } from '@/components/GrainOverlay'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { CookieBanner } from '@/components/CookieBanner'
-import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister'
 
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-dm-sans',
-})
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-jetbrains-mono',
-})
+const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: 'HealthOX — Scan. Know. Choose Better.',
-  description: 'AI-powered food scanner for Indian consumers. Scan any packaged food for instant health scores, additive alerts, and personalised insights.',
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'HealthOX',
-  },
-  icons: {
-    apple: '/icon-192.png',
-    icon: '/icon-192.png',
-  },
-}
+  title: "HealthOX — Scan. Understand. Choose better.",
+  description: "Scan any packaged food and get an instant, India-specific health verdict.",
+  manifest: "/manifest.json",
+};
 
 export const viewport: Viewport = {
-  width: 'device-width',
+  themeColor: "#0b0907",
+  viewportFit: "cover",
+  width: "device-width",
   initialScale: 1,
-  viewportFit: 'cover',
-  userScalable: false,
-  themeColor: '#0B0907',
-}
+  maximumScale: 1,
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -66,5 +48,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <BottomNav />
       </body>
     </html>
-  )
+  );
 }

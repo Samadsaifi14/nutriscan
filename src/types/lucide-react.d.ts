@@ -16,9 +16,17 @@ declare module 'lucide-react' {
   type IconComponent = ForwardRefComponent<SVGSVGElement, LucideProps>
 
   export const Scan: IconComponent
+  export const ScanLine: IconComponent
+  export const ScanBarcode: IconComponent
+  export const ScanEye: IconComponent
+  export const ScanFace: IconComponent
+  export const ScanSearch: IconComponent
+  export const ScanText: IconComponent
   export const RefreshCw: IconComponent
   export const ChevronRight: IconComponent
   export const Flame: IconComponent
+  export const ZapOff: IconComponent
+  export const CheckCircle2: IconComponent
   export const Target: IconComponent
   export const Award: IconComponent
   export const Camera: IconComponent
