@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { AlertTriangle, Info, Heart } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { AlertTriangle, Info, Heart, ExternalLink } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { TiltCard } from "@/components/TiltCard";
 import { HealthScoreRing } from "@/components/HealthScoreRing";
@@ -83,6 +83,60 @@ export default function ResultsPage() {
     setLoading(false);
   }, []);
 
+  const { product, analysis } = data || {} as any;
+  const nutrition = product?.nutrition;
+
+  // Build ingredient severity map for highlighting
+  const ingredientSeverityMap = useMemo(() => {
+    const map = new Map<string, { status: 'harmful' | 'concern' | 'safe'; reason?: string }>();
+    if (!analysis) return map;
+    // From harmful_ingredients (additive detection)
+    if (analysis.harmful_ingredients) {
+      for (const ing of analysis.harmful_ingredients) {
+        map.set(ing.name.toLowerCase(), { status: 'harmful', reason: ing.reason });
+        if (ing.also_known_as) {
+          for (const alias of ing.also_known_as.split(',').map((a: string) => a.trim().toLowerCase())) {
+            map.set(alias, { status: 'harmful', reason: ing.reason });
+          }
+        }
+      }
+    }
+    // From ai_ingredients (Groq analysis)
+    const aiIngs = (analysis as any).ai_ingredients;
+    if (Array.isArray(aiIngs)) {
+      for (const ing of aiIngs) {
+        if (!map.has(ing.ingredient?.toLowerCase())) {
+          map.set(ing.ingredient?.toLowerCase(), { status: ing.status, reason: ing.concern });
+        }
+      }
+    }
+    // From ingredient_warnings
+    const warnings = (analysis as any).ingredient_warnings;
+    if (Array.isArray(warnings)) {
+      for (const w of warnings) {
+        if (!map.has(w.ingredient?.toLowerCase())) {
+          map.set(w.ingredient?.toLowerCase(), { status: w.severity === 'high' ? 'harmful' : 'concern', reason: w.concern });
+        }
+      }
+    }
+    return map;
+  }, [analysis]);
+
+  // Parse ingredients text into individual items with severity
+  const parsedIngredients = useMemo(() => {
+    if (!product?.ingredients_text) return [];
+    const raw = product.ingredients_text.split(',').map((s: string) => s.trim()).filter(Boolean);
+    return raw.map((item: string) => {
+      const lower = item.toLowerCase();
+      for (const [key, val] of ingredientSeverityMap) {
+        if (lower.includes(key) || key.includes(lower)) {
+          return { text: item, status: val.status, reason: val.reason };
+        }
+      }
+      return { text: item, status: 'safe' as const, reason: undefined };
+    });
+  }, [product?.ingredients_text, ingredientSeverityMap]);
+
   if (loading) {
     return (
       <PageShell title="Scan result" showBack>
@@ -104,9 +158,6 @@ export default function ResultsPage() {
       </PageShell>
     );
   }
-
-  const { product, analysis } = data;
-  const nutrition = product.nutrition;
 
   async function saveFavorite() {
     try {
@@ -202,24 +253,59 @@ export default function ResultsPage() {
         {tab === "Ingredients" && (
           <div className="stack--md">
             {analysis.harmful_ingredients && analysis.harmful_ingredients.length > 0 ? (
-              analysis.harmful_ingredients.map((ing) => (
-                <div key={ing.name} className="card card--sm row--md">
-                  <AlertTriangle size={18} className="text-amber shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-cream">{ing.name}</p>
-                    <p className="text-xs text-sand mt-1">{ing.reason}</p>
-                  </div>
+              <div className="card card--sm">
+                <p className="text-xs font-bold text-amber mb-2" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  ⚠ {analysis.harmful_ingredients.length} Harmful Ingredient{analysis.harmful_ingredients.length > 1 ? 's' : ''} Detected
+                </p>
+                <div className="stack--sm">
+                  {analysis.harmful_ingredients.map((ing: any) => (
+                    <div key={ing.name} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: 'rgba(192,64,40,0.08)' }}>
+                      <AlertTriangle size={14} className="text-amber shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--risk-red, #c0392b)' }}>{ing.name}</p>
+                        <p className="text-xs text-sand mt-0.5">{ing.reason}</p>
+                        {ing.severity === 'high' && (
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold" style={{ background: 'rgba(192,64,40,0.15)', color: 'var(--risk-red, #c0392b)' }}>
+                            HIGH RISK
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))
+              </div>
             ) : (
               <div className="card card--healthy">
-                <p className="text-sm text-moss font-semibold">No harmful ingredients detected</p>
+                <p className="text-sm text-moss font-semibold">✓ No harmful ingredients detected</p>
               </div>
             )}
-            {product.ingredients_text && (
+            {parsedIngredients.length > 0 && (
               <div className="card">
-                <p className="text-2xs text-sand mb-2">Full ingredients list</p>
-                <p className="text-xs text-sand" style={{ lineHeight: 1.6 }}>{product.ingredients_text}</p>
+                <p className="text-2xs text-sand mb-2" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>Full Ingredients List</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {parsedIngredients.map((ing: any, i: number) => (
+                    <span key={i} className={`inline-block px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                      ing.status === 'harmful'
+                        ? 'border'
+                        : ing.status === 'concern'
+                        ? 'border'
+                        : ''
+                    }`} style={{
+                      ...(ing.status === 'harmful' ? { background: 'rgba(192,64,40,0.12)', borderColor: 'rgba(192,64,40,0.3)', color: 'var(--risk-red, #c0392b)' } : {}),
+                      ...(ing.status === 'concern' ? { background: 'rgba(196,113,74,0.1)', borderColor: 'rgba(196,113,74,0.25)', color: 'var(--clay, #c1714a)' } : {}),
+                      ...(ing.status === 'safe' ? { background: 'rgba(61,92,46,0.08)', color: 'var(--moss, #3d5c2e)' } : {}),
+                    }}>
+                      {ing.status === 'harmful' && <span className="mr-1">⚠</span>}
+                      {ing.status === 'concern' && <span className="mr-1">●</span>}
+                      {ing.text}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[10px] text-sand mt-3 flex gap-3">
+                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'rgba(192,64,40,0.4)' }} />Harmful</span>
+                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'rgba(196,113,74,0.4)' }} />Concern</span>
+                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'rgba(61,92,46,0.3)' }} />Safe</span>
+                </p>
               </div>
             )}
           </div>
@@ -228,19 +314,76 @@ export default function ResultsPage() {
         {tab === "Alternatives" && (
           <div className="stack--md">
             {data.alternatives && data.alternatives.length > 0 ? (
-              data.alternatives.map((alt) => (
-                <div key={alt.name} className="card card--sm product-card">
-                  <HealthScoreRing score={alt.health_score} size="sm" />
-                  <div className="product-card__body">
-                    <p className="product-card__name">{alt.name}</p>
-                    {alt.brand && <p className="product-card__brand">{alt.brand}</p>}
-                    {alt.reason && <p className="text-xs text-clay mt-1">{alt.reason}</p>}
-                  </div>
+              <>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-sand" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+                    {data.alternatives.length} Healthier Alternative{data.alternatives.length > 1 ? 's' : ''} Found
+                  </p>
+                  <p className="text-[10px] text-sand">vs current score: {analysis.health_score}/10</p>
                 </div>
-              ))
+                {data.alternatives.map((alt, idx) => (
+                  <div key={idx} className="card card--sm" style={{ borderLeft: '3px solid var(--moss)' }}>
+                    <div className="flex items-start gap-3">
+                      <HealthScoreRing score={alt.health_score} size="sm" />
+                      <div className="flex-1">
+                        <p className="text-sm font-bold" style={{ color: 'var(--cream)' }}>{alt.name}</p>
+                        {alt.brand && <p className="text-xs text-sand mt-0.5">{alt.brand}</p>}
+                        <div className="flex items-center gap-2 mt-1">
+                          {alt.grade && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: 'rgba(61,92,46,0.12)', color: 'var(--moss)' }}>
+                              Grade {alt.grade}
+                            </span>
+                          )}
+                          {alt.health_score > analysis.health_score && (
+                            <span className="text-[10px]" style={{ color: 'var(--moss)' }}>
+                              +{(alt.health_score - analysis.health_score).toFixed(1)} better
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {alt.reason && (
+                      <p className="text-xs mt-2" style={{ color: 'var(--clay)' }}>{alt.reason}</p>
+                    )}
+                    {alt.nutrition_comparison && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {alt.nutrition_comparison.sugar && (
+                          <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: 'rgba(61,92,46,0.08)' }}>
+                            Sugar {alt.nutrition_comparison.sugar.reduction}
+                          </span>
+                        )}
+                        {alt.nutrition_comparison.sodium && (
+                          <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: 'rgba(61,92,46,0.08)' }}>
+                            Sodium {alt.nutrition_comparison.sodium.reduction}
+                          </span>
+                        )}
+                        {alt.nutrition_comparison.calories && (
+                          <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: 'rgba(61,92,46,0.08)' }}>
+                            Calories {alt.nutrition_comparison.calories.reduction}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      {alt.availability && (
+                        <span className="text-[10px] text-sand">{alt.availability}</span>
+                      )}
+                      {alt.shopping_url && (
+                        <a href={alt.shopping_url} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition-all"
+                          style={{ background: 'rgba(61,92,46,0.1)', color: 'var(--moss)', border: '1px solid rgba(61,92,46,0.2)' }}>
+                          <ExternalLink size={10} />
+                          Buy on Amazon
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </>
             ) : (
               <div className="empty-state">
                 <p className="text-sm text-sand">No alternatives found</p>
+                <p className="text-xs text-sand mt-1">Try scanning a different product</p>
               </div>
             )}
           </div>

@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
   }
 
   const {
+    name,
     age,
     gender,
     weight_kg,
@@ -25,7 +26,15 @@ export async function POST(req: NextRequest) {
     is_vegetarian,
     is_vegan,
     is_jain,
+    has_thyroid,
+    has_kidney_disease,
+    has_pcod,
+    is_pregnant,
+    is_lactating,
+    ethnicity,
+    region,
     allergies,
+    food_preferences,
   } = await req.json()
 
   // ── Calculate BMI ──────────────────────────────────────────
@@ -73,6 +82,7 @@ export async function POST(req: NextRequest) {
   const { error } = await supabaseAdmin
     .from('user_profiles')
     .update({
+      name,
       age,
       gender,
       weight_kg,
@@ -88,7 +98,15 @@ export async function POST(req: NextRequest) {
       is_vegetarian: is_vegetarian || false,
       is_vegan: is_vegan || false,
       is_jain: is_jain || false,
+      has_thyroid: has_thyroid || false,
+      has_kidney_disease: has_kidney_disease || false,
+      has_pcod: has_pcod || false,
+      is_pregnant: is_pregnant || false,
+      is_lactating: is_lactating || false,
+      ethnicity: ethnicity || null,
+      region: region || null,
       allergies: allergies || [],
+      food_preferences: food_preferences || {},
       profile_completed: true,
       updated_at: new Date().toISOString(),
     })

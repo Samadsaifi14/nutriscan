@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { generateUnifiedAnalysis } from '@/lib/groq'
 import { scoreProduct, detectAdditives, getCategoryWarnings, type NutritionPer100g } from '@/lib/health-engine'
 import { findHealthierAlternatives } from '@/lib/alternatives'
+import { findCuratedAlternatives } from '@/lib/curated-alternatives'
 
 export interface UnifiedProductInput {
   barcode?: string
@@ -183,7 +184,7 @@ export async function runUnifiedAnalysis(
   if (opts?.userId && !profile) {
     const { data: dbProfile } = await supabaseAdmin
       .from('user_profiles')
-      .select('age, weight_kg, height_cm, weight_goal, is_diabetic, has_bp, is_vegetarian, gender')
+      .select('age, weight_kg, height_cm, weight_goal, gender, is_diabetic, has_bp, has_heart_disease, has_cholesterol, is_vegetarian, is_vegan, is_jain, has_thyroid, has_kidney_disease, has_pcod, is_pregnant, is_lactating, ethnicity, region, allergies, food_preferences')
       .eq('user_id', opts.userId)
       .single()
 
@@ -197,10 +198,23 @@ export async function runUnifiedAnalysis(
         age: dbProfile.age || undefined,
         bmi: bmi || undefined,
         weight_goal: dbProfile.weight_goal || undefined,
+        gender: dbProfile.gender || undefined,
         is_diabetic: dbProfile.is_diabetic || false,
         has_bp: dbProfile.has_bp || false,
+        has_heart_disease: dbProfile.has_heart_disease || false,
+        has_cholesterol: dbProfile.has_cholesterol || false,
         is_vegetarian: dbProfile.is_vegetarian || false,
-        gender: dbProfile.gender || undefined,
+        is_vegan: dbProfile.is_vegan || false,
+        is_jain: dbProfile.is_jain || false,
+        has_thyroid: dbProfile.has_thyroid || false,
+        has_kidney_disease: dbProfile.has_kidney_disease || false,
+        has_pcod: dbProfile.has_pcod || false,
+        is_pregnant: dbProfile.is_pregnant || false,
+        is_lactating: dbProfile.is_lactating || false,
+        ethnicity: dbProfile.ethnicity || undefined,
+        region: dbProfile.region || undefined,
+        allergies: dbProfile.allergies || [],
+        food_preferences: dbProfile.food_preferences || undefined,
       }
     }
   }
@@ -284,7 +298,22 @@ export async function runUnifiedAnalysis(
         additives_found: localResult.detected_additives.map((a: any) => a.name),
         nova_group: localResult.nova_group,
         ingredients_text: product.ingredients_text || '',
-        userProfile: profile ? { is_diabetic: profile.is_diabetic, has_bp: profile.has_bp, is_vegetarian: profile.is_vegetarian } : undefined,
+        userProfile: profile ? {
+          is_diabetic: profile.is_diabetic,
+          has_bp: profile.has_bp,
+          has_heart_disease: profile.has_heart_disease,
+          has_cholesterol: profile.has_cholesterol,
+          is_vegetarian: profile.is_vegetarian,
+          is_vegan: profile.is_vegan,
+          is_jain: profile.is_jain,
+          allergies: profile.allergies,
+          has_thyroid: profile.has_thyroid,
+          has_kidney_disease: profile.has_kidney_disease,
+          has_pcod: profile.has_pcod,
+          is_pregnant: profile.is_pregnant,
+          is_lactating: profile.is_lactating,
+          ethnicity: profile.ethnicity,
+        } : undefined,
       }),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error('groq timeout')), 6000)),
     ])
@@ -330,9 +359,9 @@ export async function runUnifiedAnalysis(
     ingredient_warnings: fullAnalysisWarnings.map((a: any) => ({ ingredient: a.name, concern: a.concern || a.description, reason: a.concern, severity: SEVERITY(a.risk) })),
     positives: aiEnhancement?.positives || [`Local scoring: ${localResult.score}/10 (${localResult.grade})`],
     long_term_risks: aiEnhancement?.long_term_risks || (localDetectedAdditives.length > 0 ? [`Contains ${localDetectedAdditives.length} potentially harmful additive(s)`] : ['See score breakdown for details']),
-    concerns: aiEnhancement?.concerns || [],
-    recommendations: aiEnhancement?.recommendations || [],
-    personalizedWarnings: aiEnhancement?.personalizedWarnings || [],
+    concerns: aiEnhancement?.concerns || generateLocalConcerns(localDetectedAdditives, localResult),
+    recommendations: aiEnhancement?.recommendations || generateLocalRecommendations(localResult, profile),
+    personalizedWarnings: aiEnhancement?.personalizedWarnings || generateLocalPersonalizedWarnings(localResult, profile),
     ai_ingredients: aiEnhancement?.ai_ingredients || [],
     healthier_alternatives: aiEnhancement?.healthier_alternatives || [],
     fssai_compliance: aiEnhancement?.fssai_compliance || (localResult.score >= 7 ? 'compliant' : localResult.score >= 5 ? 'concern' : 'unknown'),
@@ -374,6 +403,34 @@ export async function runUnifiedAnalysis(
   }
   if (dynamicAlternatives) analysis.dynamic_alternatives = dynamicAlternatives
 
+  // ── Curated Indian alternatives fallback (when dynamic OFF results are sparse) ──
+  try {
+    const curatedAlts = findCuratedAlternatives(product.name, product.category, localResult.score)
+    if (curatedAlts.length > 0) {
+      // Map curated alternatives to the Alternative interface
+      const curatedMapped = curatedAlts.slice(0, 5).map((ca) => ({
+        name: ca.name,
+        brand: ca.type === 'branded' ? ca.name.split(' ').slice(0, 2).join(' ') : undefined,
+        health_score: ca.score || 7,
+        grade: ca.grade || 'B',
+        reason: ca.reason,
+        availability: ca.availability,
+        shopping_url: ca.shopping_url,
+      }))
+      // Merge: curated first (Indian, with prices), then existing dynamic
+      const existingNames = new Set(
+        (analysis.dynamic_alternatives?.products || []).map((p: any) => p.name?.toLowerCase()),
+      )
+      const newCurated = curatedMapped.filter((a) => !existingNames.has(a.name.toLowerCase()))
+      if (newCurated.length > 0) {
+        analysis.curated_alternatives = newCurated
+        console.log(`🇮🇳 Found ${newCurated.length} curated Indian alternatives`)
+      }
+    }
+  } catch (curatedErr: any) {
+    console.warn('Curated alternatives skipped:', curatedErr?.message)
+  }
+
   console.log(`✅ ${product.name} → ${analysis.health_rating} (${analysis.health_score}/10) | method: ${analysis.scoring_method}`)
 
   // Cache result for non-personalized barcode scans
@@ -400,4 +457,87 @@ export async function runUnifiedAnalysis(
   }
 
   return analysis
+}
+
+// ── Local fallback generators (when Groq fails) ──
+
+function generateLocalConcerns(additives: any[], localResult: any): string[] {
+  const concerns: string[] = []
+  const harmful = additives.filter((a) => a.severity === 'high')
+  const moderate = additives.filter((a) => a.severity === 'medium')
+  if (harmful.length > 0) concerns.push(`Contains ${harmful.length} potentially harmful additive(s): ${harmful.map((a) => a.name).join(', ')}`)
+  if (moderate.length > 0) concerns.push(`Contains ${moderate.length} moderate-risk additives: ${moderate.map((a) => a.name).join(', ')}`)
+  if (localResult.nova_group >= 4) concerns.push('Ultra-processed product (NOVA Group 4) — linked to increased health risks')
+  if (localResult.breakdown.some((b: any) => b.factor === 'sugar' && b.impact === 'critical')) concerns.push('Very high sugar content')
+  if (localResult.breakdown.some((b: any) => b.factor === 'sodium' && b.impact === 'critical')) concerns.push('Very high sodium content')
+  return concerns
+}
+
+function generateLocalRecommendations(localResult: any, profile: any): string[] {
+  const recs: string[] = []
+  if (localResult.grade === 'A') recs.push('Great choice! This product is healthy and nutritious.')
+  else if (localResult.grade === 'B') recs.push('Good option — consider pairing with fresh fruits or vegetables.')
+  else if (localResult.grade === 'C') recs.push('Consume occasionally — there are healthier alternatives available.')
+  else recs.push('Consider switching to a healthier alternative — this product has significant health concerns.')
+  if (localResult.breakdown.some((b: any) => b.factor === 'sugar' && b.impact !== 'positive')) recs.push('Look for low-sugar or sugar-free alternatives.')
+  if (localResult.breakdown.some((b: any) => b.factor === 'sodium' && b.impact !== 'positive')) recs.push('Choose low-sodium options when available.')
+  if (localResult.nova_group >= 4) recs.push('Try to choose less processed (NOVA Group 1-2) alternatives.')
+  if (profile?.is_vegetarian) recs.push('Check ingredients for any non-vegetarian components.')
+  if (profile?.is_vegan) recs.push('Verify this product is free from all animal-derived ingredients.')
+  if (profile?.is_jain) recs.push('Check for root vegetables, fermented ingredients, or alcohol-derived additives.')
+  return recs
+}
+
+function generateLocalPersonalizedWarnings(localResult: any, profile: any): string[] {
+  if (!profile) return []
+  const warnings: string[] = []
+  if (profile.is_diabetic && localResult.breakdown.some((b: any) => b.factor === 'sugar' && (b.impact === 'critical' || b.impact === 'negative'))) {
+    warnings.push('High sugar content — not recommended for diabetics. Consider sugar-free alternatives.')
+  }
+  if (profile.has_bp && localResult.breakdown.some((b: any) => b.factor === 'sodium' && (b.impact === 'critical' || b.impact === 'negative'))) {
+    warnings.push('High sodium content — avoid if you have high blood pressure.')
+  }
+  if (profile.has_heart_disease && localResult.breakdown.some((b: any) => b.factor === 'sat_fat' && (b.impact === 'critical' || b.impact === 'negative'))) {
+    warnings.push('High saturated fat — not recommended for heart disease patients.')
+  }
+  if (profile.has_cholesterol && localResult.breakdown.some((b: any) => b.factor === 'sat_fat' && (b.impact === 'critical' || b.impact === 'negative'))) {
+    warnings.push('High fat content — may worsen cholesterol levels.')
+  }
+  if (profile.has_thyroid) {
+    const ingredients = (localResult.detected_additives || []).map((a: any) => a.name?.toLowerCase() || '')
+    if (ingredients.some((i: string) => i.includes('soy') || i.includes('soya'))) {
+      warnings.push('Contains soy-based ingredients — may interfere with thyroid medication absorption.')
+    }
+  }
+  if (profile.has_kidney_disease && localResult.breakdown.some((b: any) => (b.factor === 'protein' || b.factor === 'sodium') && (b.impact === 'critical' || b.impact === 'negative'))) {
+    warnings.push('High protein/sodium — consult your doctor before consuming with kidney disease.')
+  }
+  if (profile.has_pcod && localResult.breakdown.some((b: any) => b.factor === 'sugar' && (b.impact === 'critical' || b.impact === 'negative'))) {
+    warnings.push('High sugar content — avoid with PCOD/PCOS as it may worsen insulin resistance.')
+  }
+  if (profile.is_pregnant) {
+    const additives = localResult.detected_additives || []
+    const harmful = additives.filter((a: any) => a.severity === 'high')
+    if (harmful.length > 0) warnings.push('Contains artificial additives — consult your doctor during pregnancy.')
+  }
+  if (profile.is_lactating) {
+    const additives = localResult.detected_additives || []
+    if (additives.length > 0) warnings.push('Contains additives that may pass to breast milk — consume with caution.')
+  }
+  if (profile.is_vegan) {
+    const ingredients = (localResult.detected_additives || []).map((a: any) => a.name?.toLowerCase() || '')
+    const animalDerived = ['gelatin', 'shellac', 'carmine', 'isinglass', 'rennet', 'casein', 'whey']
+    const found = ingredients.filter((i: string) => animalDerived.some((a) => i.includes(a)))
+    if (found.length > 0) warnings.push(`May contain animal-derived ingredients: ${found.join(', ')}`)
+  }
+  if (profile.is_jain) {
+    const ingredients = (localResult.detected_additives || []).map((a: any) => a.name?.toLowerCase() || '')
+    const jainRestricted = ['onion', 'garlic', 'potato', 'carrot', 'beetroot', 'fermented']
+    const found = ingredients.filter((i: string) => jainRestricted.some((j) => i.includes(j)))
+    if (found.length > 0) warnings.push(`May contain ingredients restricted in Jain diet: ${found.join(', ')}`)
+  }
+  if (profile.allergies && profile.allergies.length > 0) {
+    warnings.push(`Contains allergens you selected: ${profile.allergies.join(', ')} — verify ingredient list.`)
+  }
+  return warnings
 }

@@ -29,48 +29,42 @@ export default function OverviewTab({ analysis }: Props) {
 
   return (
     <div className="space-y-4">
-      <Panel title="AI Summary" icon="🤖">
-        {(s as any).summary ? (
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--foreground)' }}>{(s as any).summary}</p>
-        ) : (
-          <div className="space-y-2">
-            <div className="h-3 rounded animate-pulse w-full shimmer" />
-            <div className="h-3 rounded animate-pulse w-11/12 shimmer" />
-            <div className="h-3 rounded animate-pulse w-3/4 shimmer" />
-          </div>
-        )}
-        {(s as any).recommendation && (
-          <div className="mt-3 px-3 py-2 rounded-xl" style={{ background: 'rgba(61,92,46,0.08)', border: '1px solid rgba(61,92,46,0.15)' }}>
-            <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: 'var(--moss)' }}>Verdict</p>
-            <p className="text-sm" style={{ color: 'var(--foreground)' }}>{(s as any).recommendation}</p>
-          </div>
-        )}
-        {(s as any).confidence && (s as any).confidence !== 'high' && (
-          <div className="mt-3 px-3 py-2 rounded-xl" style={{ background: 'rgba(196,113,74,0.08)', border: '1px solid rgba(196,113,74,0.15)' }}>
-            <p className="text-[11px]" style={{ color: 'var(--clay)' }}>
-              ⚠ {(s as any).confidence === 'medium' ? 'Some fields were unreadable — verify manually' : 'Low confidence result'}
-            </p>
-          </div>
-        )}
-      </Panel>
+      {s.summary && (
+        <Panel title="AI Summary" icon="🤖">
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--foreground)' }}>{s.summary}</p>
+          {s.recommendation && (
+            <div className="mt-3 px-3 py-2 rounded-xl" style={{ background: 'rgba(61,92,46,0.08)', border: '1px solid rgba(61,92,46,0.15)' }}>
+              <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: 'var(--moss)' }}>Verdict</p>
+              <p className="text-sm" style={{ color: 'var(--foreground)' }}>{s.recommendation}</p>
+            </div>
+          )}
+          {s.confidence && s.confidence !== 'high' && (
+            <div className="mt-3 px-3 py-2 rounded-xl" style={{ background: 'rgba(196,113,74,0.08)', border: '1px solid rgba(196,113,74,0.15)' }}>
+              <p className="text-[11px]" style={{ color: 'var(--clay)' }}>
+                ⚠ {s.confidence === 'medium' ? 'Some fields were unreadable — verify manually' : 'Low confidence result'}
+              </p>
+            </div>
+          )}
+        </Panel>
+      )}
 
-      {analysis?.health_score !== undefined && (
+      {s.health_score !== undefined && (
         <Panel title="Health Score Breakdown" icon="📊">
           <div className="space-y-2">
-            {analysis.health_score_breakdown ? (
+            {s.health_score_breakdown ? (
               <>
-                <MiniStat label="Nutrition" score={analysis.health_score_breakdown.nutrition_score} />
-                <MiniStat label="Ingredients" score={analysis.health_score_breakdown.ingredient_safety_score} />
-                <MiniStat label="Processing" score={analysis.health_score_breakdown.processing_score} />
+                <MiniStat label="Nutrition" score={s.health_score_breakdown.nutrition_score} />
+                <MiniStat label="Ingredients" score={s.health_score_breakdown.ingredient_safety_score} />
+                <MiniStat label="Processing" score={s.health_score_breakdown.processing_score} />
               </>
             ) : (
               <div className="flex items-center gap-3">
-                <span className="text-2xl font-black" style={{ color: scoreColor(analysis.health_score), fontFamily: 'var(--font-display)' }}>{analysis.health_score}</span>
+                <span className="text-2xl font-black" style={{ color: scoreColor(s.health_score), fontFamily: 'var(--font-display)' }}>{s.health_score}</span>
                 <span className="text-sm" style={{ color: 'var(--muted-2)' }}>
                   / 10 &mdash; {
-                    analysis.health_score >= 7.5 ? 'Healthy' :
-                    analysis.health_score >= 5.5 ? 'Moderate' :
-                    analysis.health_score >= 3.5 ? 'Caution' : 'Unhealthy'
+                    s.health_score >= 7.5 ? 'Healthy' :
+                    s.health_score >= 5.5 ? 'Moderate' :
+                    s.health_score >= 3.5 ? 'Caution' : 'Unhealthy'
                   }
                 </span>
               </div>
@@ -79,10 +73,10 @@ export default function OverviewTab({ analysis }: Props) {
         </Panel>
       )}
 
-      {isArr((s as any).personalizedWarnings) && (
+      {isArr(s.personalizedWarnings) && (
         <Panel title="Personalized For You" icon="⚠️">
           <div className="space-y-2">
-            {(s as any).personalizedWarnings.map((w: string, i: number) => (
+            {s.personalizedWarnings!.map((w: string, i: number) => (
               <div key={i} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: 'rgba(196,113,74,0.08)' }}>
                 <span style={{ color: 'var(--clay)' }}>→</span>
                 <span className="text-xs" style={{ color: 'var(--foreground)' }}>{w}</span>
@@ -92,25 +86,38 @@ export default function OverviewTab({ analysis }: Props) {
         </Panel>
       )}
 
-      {isArr((s as any).ai_ingredients) && (
+      {isArr(s.ai_ingredients) && (
         <Panel title="Ingredient Breakdown" icon="🔬">
-          <div className="flex flex-wrap gap-2">
-            {(s as any).ai_ingredients.slice(0, 8).map((ing: any, i: number) => (
-              <span key={i} className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                ing.status === 'harmful' ? 'chip-bad border' :
-                ing.status === 'concern' ? 'chip-warn border' : 'chip-safe'
-              }`}>
-                {ing.ingredient}
-              </span>
+          <div className="space-y-2">
+            {s.ai_ingredients!.slice(0, 12).map((ing: any, i: number) => (
+              <div key={i} className="flex items-start gap-2 py-1.5 border-b last:border-0" style={{ borderColor: 'var(--card-border)' }}>
+                <span className={`inline-block w-2 h-2 rounded-full mt-1 flex-shrink-0 ${
+                  ing.status === 'harmful' ? 'bg-red-500' :
+                  ing.status === 'concern' ? 'bg-amber-400' : 'bg-green-500'
+                }`} />
+                <div className="flex-1">
+                  <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{ing.ingredient}</span>
+                  {ing.concern && (
+                    <p className="text-[10px] mt-0.5" style={{ color: ing.status === 'harmful' ? 'var(--risk-red)' : 'var(--clay)' }}>
+                      {ing.concern}
+                    </p>
+                  )}
+                  {ing.recommendation && (
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--moss)' }}>
+                      {ing.recommendation}
+                    </p>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </Panel>
       )}
 
-      {isArr((s as any).long_term_risks) && (
+      {isArr(s.long_term_risks) && (
         <Panel title="Long-Term Risks" icon="⏳">
           <div className="space-y-2">
-            {(s as any).long_term_risks.map((risk: string, i: number) => (
+            {s.long_term_risks!.map((risk: string, i: number) => (
               <div key={i} className="flex items-start gap-2 p-3 rounded-xl" style={{ background: 'rgba(180,60,40,0.05)', border: '1px solid rgba(180,60,40,0.1)' }}>
                 <span className="flex-shrink-0 text-sm mt-0.5" style={{ color: 'var(--risk-red)' }}>⚠</span>
                 <p className="text-sm" style={{ color: 'var(--foreground)' }}>{risk}</p>
@@ -120,20 +127,20 @@ export default function OverviewTab({ analysis }: Props) {
         </Panel>
       )}
 
-      {isArr((s as any).recommendations) && (
+      {isArr(s.recommendations) && (
         <Panel title="Recommendations" icon="💡">
           <div className="space-y-1">
-            {(s as any).recommendations.slice(0, 3).map((rec: string, i: number) => (
+            {s.recommendations!.slice(0, 4).map((rec: string, i: number) => (
               <p key={i} className="text-xs" style={{ color: 'var(--muted-2)' }}>• {rec}</p>
             ))}
           </div>
         </Panel>
       )}
 
-      {isArr((s as any).concerns) && (
+      {isArr(s.concerns) && (
         <Panel title="Concerns" icon="⚡">
           <div className="space-y-2">
-            {(s as any).concerns.map((c: string, i: number) => (
+            {s.concerns!.map((c: string, i: number) => (
               <div key={i} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: 'rgba(196,113,74,0.08)' }}>
                 <span style={{ color: 'var(--clay)' }}>•</span>
                 <span className="text-sm" style={{ color: 'var(--foreground)' }}>{c}</span>
@@ -143,10 +150,10 @@ export default function OverviewTab({ analysis }: Props) {
         </Panel>
       )}
 
-      {isArr((s as any).positives) && (
+      {isArr(s.positives) && (
         <Panel title="What's Good" icon="👍">
           <div className="space-y-2">
-            {(s as any).positives.map((p: string, i: number) => (
+            {s.positives!.map((p: string, i: number) => (
               <div key={i} className="flex items-start gap-2.5 py-2 border-b last:border-0" style={{ borderColor: 'var(--card-border)' }}>
                 <span className="flex-shrink-0 mt-0.5" style={{ color: 'var(--moss)' }}>•</span>
                 <p className="text-sm" style={{ color: 'var(--foreground)' }}>{p}</p>
@@ -156,35 +163,35 @@ export default function OverviewTab({ analysis }: Props) {
         </Panel>
       )}
 
-      {(s as any).safe_consumption && (
+      {s.safe_consumption && (
         <Panel title="Safe Consumption" icon="✅">
           <div className="space-y-2">
-            {(s as any).safe_consumption.amount && (
-              <Row label="Amount" value={(s as any).safe_consumption.amount} />
+            {s.safe_consumption.amount && (
+              <Row label="Amount" value={s.safe_consumption.amount} />
             )}
-            {(s as any).safe_consumption.frequency && (
-              <Row label="Frequency" value={(s as any).safe_consumption.frequency} />
+            {s.safe_consumption.frequency && (
+              <Row label="Frequency" value={s.safe_consumption.frequency} />
             )}
-            {(s as any).safe_consumption.notes && (
+            {s.safe_consumption.notes && (
               <div className="pt-2 mt-2 border-t" style={{ borderColor: 'var(--card-border)' }}>
-                <p className="text-[11px] leading-relaxed" style={{ color: 'var(--muted-2)' }}>💡 {(s as any).safe_consumption.notes}</p>
+                <p className="text-[11px] leading-relaxed" style={{ color: 'var(--muted-2)' }}>💡 {s.safe_consumption.notes}</p>
               </div>
             )}
-            {(s as any).safe_consumption.personalized_for_user && (
+            {s.safe_consumption.personalized_for_user && (
               <div className="pt-2 mt-2 border-t rounded-xl p-3" style={{ borderColor: 'var(--card-border)', background: 'rgba(61,92,46,0.05)' }}>
                 <p className="text-[11px] font-bold mb-1" style={{ color: 'var(--moss)' }}>✨ Personalised for you</p>
-                <p className="text-xs" style={{ color: 'var(--foreground)' }}>{(s as any).safe_consumption.personalized_for_user}</p>
+                <p className="text-xs" style={{ color: 'var(--foreground)' }}>{s.safe_consumption.personalized_for_user}</p>
               </div>
             )}
           </div>
         </Panel>
       )}
 
-      {(s as any).detailed_breakdown && (
+      {s.detailed_breakdown && (
         <Panel title="Nutrition Details" icon="📊">
           <div className="space-y-0">
             {(['calories', 'protein', 'sugar', 'sodium', 'fat', 'fiber'] as const).map(key => {
-              const val = (s as any).detailed_breakdown[key]
+              const val = s.detailed_breakdown![key]
               if (!val) return null
               const lower = val.toLowerCase()
               const isGood = lower.startsWith('good') || lower.startsWith('low')
@@ -200,18 +207,18 @@ export default function OverviewTab({ analysis }: Props) {
         </Panel>
       )}
 
-      {(s as any).fssai_compliance && (s as any).fssai_compliance !== 'unknown' && (
+      {s.fssai_compliance && s.fssai_compliance !== 'unknown' && (
         <div className="px-4 py-3 rounded-2xl flex items-center gap-3 text-sm font-medium border"
           style={{
-            background: (s as any).fssai_compliance === 'compliant' ? 'rgba(61,92,46,0.05)' : 'rgba(196,113,74,0.05)',
-            borderColor: (s as any).fssai_compliance === 'compliant' ? 'rgba(61,92,46,0.15)' : 'rgba(196,113,74,0.15)',
-            color: (s as any).fssai_compliance === 'compliant' ? 'var(--moss)' : 'var(--clay)',
+            background: s.fssai_compliance === 'compliant' ? 'rgba(61,92,46,0.05)' : 'rgba(196,113,74,0.05)',
+            borderColor: s.fssai_compliance === 'compliant' ? 'rgba(61,92,46,0.15)' : 'rgba(196,113,74,0.15)',
+            color: s.fssai_compliance === 'compliant' ? 'var(--moss)' : 'var(--clay)',
           }}>
           <span className="text-xl">🛡️</span>
           <div>
             <p className="font-bold">FSSAI Compliance</p>
             <p className="text-[11px] opacity-80">
-              {(s as any).fssai_compliance === 'compliant'
+              {s.fssai_compliance === 'compliant'
                 ? 'No compliance concerns detected'
                 : 'Possible FSSAI compliance concern — verify label'}
             </p>

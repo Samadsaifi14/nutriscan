@@ -27,6 +27,12 @@ export interface UnifiedAnalysisRequest {
     is_vegan?: boolean
     is_jain?: boolean
     allergies?: string[]
+    has_thyroid?: boolean
+    has_kidney_disease?: boolean
+    has_pcod?: boolean
+    is_pregnant?: boolean
+    is_lactating?: boolean
+    ethnicity?: string
   }
 }
 
@@ -154,18 +160,26 @@ Respond in exactly this JSON format (no markdown, no code fences):
 function buildProfileContext(profile?: UnifiedAnalysisRequest['userProfile']): string {
   if (!profile) return ''
   const conditions: string[] = []
-  if (profile.is_diabetic) conditions.push('- User has Diabetes - flag high sugar/sucrose products')
-  if (profile.has_bp) conditions.push('- User has High Blood Pressure - flag high sodium products')
-  if (profile.has_heart_disease) conditions.push('- User has Heart Disease - flag high saturated fat, trans fats')
-  if (profile.has_cholesterol) conditions.push('- User has High Cholesterol - flag high fat content')
-  if (profile.is_vegetarian) conditions.push('- User is Vegetarian - note any non-vegetarian ingredients')
-  if (profile.is_vegan) conditions.push('- User is Vegan - flag all animal-derived ingredients')
-  if (profile.is_jain) conditions.push('- User follows Jain diet - avoid root vegetables, fermented items')
+  if (profile.is_diabetic) conditions.push('- User has Diabetes — flag high sugar/sucrose products, suggest sugar-free alternatives')
+  if (profile.has_bp) conditions.push('- User has High Blood Pressure — flag high sodium products, suggest low-sodium alternatives')
+  if (profile.has_heart_disease) conditions.push('- User has Heart Disease — flag high saturated fat, trans fats, cholesterol')
+  if (profile.has_cholesterol) conditions.push('- User has High Cholesterol — flag high fat content, suggest low-fat options')
+  if (profile.has_thyroid) conditions.push('- User has Thyroid Disorder — flag soy-based products (may interfere with medication), check iodine content')
+  if (profile.has_kidney_disease) conditions.push('- User has Kidney Disease — flag high protein, high potassium, high phosphorus products')
+  if (profile.has_pcod) conditions.push('- User has PCOD/PCOS — flag high GI foods, high sugar, processed carbs that worsen insulin resistance')
+  if (profile.is_pregnant) conditions.push('- User is Pregnant — flag caffeine, high mercury, artificial additives, unpasteurized products')
+  if (profile.is_lactating) conditions.push('- User is Lactating — flag allergens that pass to breast milk, limit caffeine')
+  if (profile.is_vegetarian) conditions.push('- User is Vegetarian — note any non-vegetarian ingredients (gelatin, rennet, etc.)')
+  if (profile.is_vegan) conditions.push('- User is Vegan — flag all animal-derived ingredients (gelatin, casein, whey, honey, carmine)')
+  if (profile.is_jain) conditions.push('- User follows Jain diet — flag root vegetables (onion, garlic, potato, carrot), fermented items, alcohol-derived additives')
   if (profile.allergies && profile.allergies.length > 0) {
-    conditions.push(`- User has allergies: ${profile.allergies.join(', ')} - flag these ingredients`)
+    conditions.push(`- User has allergies: ${profile.allergies.join(', ')} — flag these ingredients and cross-contamination risks`)
+  }
+  if (profile.ethnicity) {
+    conditions.push(`- User's ethnicity/background: ${profile.ethnicity} — recommend traditional alternatives from their cuisine where applicable`)
   }
   return conditions.length > 0
-    ? `USER PROFILE (Personalize warnings based on):\n${conditions.join('\n')}\n`
+    ? `USER PROFILE (Personalize warnings, recommendations, and alternatives based on):\n${conditions.join('\n')}\n`
     : ''
 }
 

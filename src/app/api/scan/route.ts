@@ -618,19 +618,27 @@ export async function POST(req: NextRequest) {
     const product = formatProduct(result.product)
     const analysis = await runUnifiedAnalysis(toUnifiedInput(result.product), { userId: auth.userId })
     const dyn = (analysis as any).dynamic_alternatives
-    const alternatives = (dyn?.products || []).map((p: any) => ({
+    const curatedAlts = (analysis as any).curated_alternatives || []
+    const dynamicAlts = (dyn?.products || []).map((p: any) => ({
       name: p.name,
       brand: p.brand || '',
       image_url: p.image_url || undefined,
       health_score: p.score,
+      grade: p.grade,
       reason: dyn.why_better?.[0]?.improvement || `Healthier alternative — score ${p.score}/10`,
     }))
+    // Merge: curated first (Indian, with prices), then dynamic (OFF)
+    const seen = new Set(dynamicAlts.map((a: any) => a.name.toLowerCase()))
+    const mergedAlts = [
+      ...curatedAlts.filter((a: any) => !seen.has(a.name.toLowerCase())),
+      ...dynamicAlts,
+    ]
 
     return NextResponse.json({
       success: true,
       product,
       analysis,
-      alternatives,
+      alternatives: mergedAlts,
       source: result.source,
       confidence: result.confidence,
     })

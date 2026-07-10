@@ -47,28 +47,32 @@ export async function POST(req: NextRequest) {
 
     console.log('Scanning product photo with Gemini...')
 
-    const prompt = `You are an expert Indian food product analyst and nutritionist.
+    const prompt = `You are an expert Indian food product analyst and nutritionist specializing in Indian packaged foods.
 
-A user has taken a photo of a packaged food product. Your job is to extract ALL possible information from this image — front of pack, back of pack, nutrition label, ingredients list, barcode number, brand name, everything visible.
+A user has taken a photo of a packaged food product (likely Indian). Your job is to extract ALL possible information from this image — front of pack, back of pack, nutrition label, ingredients list, barcode number, brand name, everything visible.
+
+IMPORTANT: Indian product labels often have text in both Hindi and English. Read the English text primarily, but use Hindi text as backup if English is unclear.
 
 Look carefully at:
-1. Product name and brand (usually large text on front)
-2. Barcode number (the number printed below the parallel lines)
-3. Nutrition facts table (per 100g values)
-4. Ingredients list
-5. Allergen information
-6. FSSAI license number (14-digit number)
-7. MRP (Maximum Retail Price in rupees)
-8. Net weight / serving size
-9. Any health claims on the packaging
-10. Additives and preservatives mentioned
+1. Product name and brand (usually large text on front, may be in Hindi and English)
+2. Barcode number (the 12-13 digit number printed below the parallel lines, starts with 890 for Indian products)
+3. Nutrition facts table (per 100g values — Indian labels show "per 100g" or "per 100 ml")
+4. Ingredients list (may be in small print, often in English with Hindi translation)
+5. Allergen information (look for "Contains:" or allergen icons)
+6. FSSAI license number (14-digit number, always present on Indian food products)
+7. MRP (Maximum Retail Price in ₹ rupees, usually near barcode or bottom)
+8. Net weight / serving size (in grams or ml)
+9. Any health claims on the packaging (e.g., "No added sugar", "High protein", "Natural")
+10. Additives and preservatives mentioned (E-numbers, chemical names)
+11. Veg/Non-veg mark (green dot = veg, red dot = non-veg)
+12. Manufacturing date and expiry date if visible
 
 Return ONLY valid JSON with no markdown, no code fences, no extra text:
 {
   "found": true,
   "barcode": "<barcode number if visible, or null>",
-  "name": "<full product name>",
-  "brand": "<brand name>",
+  "name": "<full product name in English>",
+  "brand": "<brand name in English>",
   "variant": "<flavour or variant if mentioned, or null>",
   "net_weight_g": <number or null>,
   "serving_size_g": <number or null>,
@@ -86,7 +90,7 @@ Return ONLY valid JSON with no markdown, no code fences, no extra text:
     "saturated_fat": <number or null>,
     "trans_fat": <number or null>
   },
-  "ingredients_text": "<full ingredients list as written on pack, or null>",
+  "ingredients_text": "<full ingredients list as written on pack in English, or null>",
   "allergens": ["<allergen>"],
   "additives": ["<E-number or additive name>"],
   "health_claims": ["<any health claims on the pack>"],
@@ -164,19 +168,26 @@ IMPORTANT: Extract whatever is visible. Even if only partial information is avai
     const product = formatProduct(productForAnalysis)
     const analysis = await runUnifiedAnalysis(toUnifiedInput(productForAnalysis), { userId })
     const dyn = (analysis as any).dynamic_alternatives
-    const alternatives = (dyn?.products || []).map((p: any) => ({
+    const curatedAlts = (analysis as any).curated_alternatives || []
+    const dynamicAlts = (dyn?.products || []).map((p: any) => ({
       name: p.name,
       brand: p.brand || '',
       image_url: p.image_url || undefined,
       health_score: p.score,
+      grade: p.grade,
       reason: dyn.why_better?.[0]?.improvement || `Healthier alternative — score ${p.score}/10`,
     }))
+    const seen = new Set(dynamicAlts.map((a: any) => a.name.toLowerCase()))
+    const mergedAlts = [
+      ...curatedAlts.filter((a: any) => !seen.has(a.name.toLowerCase())),
+      ...dynamicAlts,
+    ]
 
     return NextResponse.json({
       success: true,
       product,
       analysis,
-      alternatives,
+      alternatives: mergedAlts,
       source: 'photo_scan',
       confidence: extracted.confidence === 'high' ? 'high' : extracted.confidence === 'medium' ? 'estimated' : 'low',
       photoDetails: {
