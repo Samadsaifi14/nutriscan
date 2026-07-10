@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { callGemini, GeminiError } from '@/lib/gemini'
 import { formatProduct } from '@/lib/scan-helpers'
-import { computeAnalysisResult } from '@/lib/scan-product'
+import { runUnifiedAnalysis, toUnifiedInput } from '@/lib/analysis-runner'
 
 export async function POST(req: NextRequest) {
   try {
@@ -162,7 +162,15 @@ IMPORTANT: Extract whatever is visible. Even if only partial information is avai
     }
 
     const product = formatProduct(productForAnalysis)
-    const { analysis, alternatives } = await computeAnalysisResult(productForAnalysis)
+    const analysis = await runUnifiedAnalysis(toUnifiedInput(productForAnalysis), { userId })
+    const dyn = (analysis as any).dynamic_alternatives
+    const alternatives = (dyn?.products || []).map((p: any) => ({
+      name: p.name,
+      brand: p.brand || '',
+      image_url: p.image_url || undefined,
+      health_score: p.score,
+      reason: dyn.why_better?.[0]?.improvement || `Healthier alternative — score ${p.score}/10`,
+    }))
 
     return NextResponse.json({
       success: true,

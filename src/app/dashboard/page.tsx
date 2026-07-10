@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Flame, ChevronRight, ScanLine, Search, Heart } from "lucide-react";
+import { Flame, ChevronRight, ScanLine, Search, Heart, Activity, Trophy, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/PageShell";
@@ -37,14 +37,14 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <PageShell title="HealthOX">
+      <PageShell title="BioYou">
         <SkeletonDashboard />
       </PageShell>
     );
   }
 
   return (
-    <PageShell title="HealthOX">
+    <PageShell title="BioYou">
       <div className="stack">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div>
@@ -84,6 +84,21 @@ export default function DashboardPage() {
           </button>
         </div>
 
+        <div className="grid-3">
+          <button onClick={() => router.push("/insights")} className="stat-card row--sm">
+            <Activity size={18} className="text-sand" />
+            <span className="text-xs font-semibold text-cream">Insights</span>
+          </button>
+          <button onClick={() => router.push("/leaderboard")} className="stat-card row--sm">
+            <Trophy size={18} className="text-sand" />
+            <span className="text-xs font-semibold text-cream">Leaderboard</span>
+          </button>
+          <button onClick={() => router.push("/contribute")} className="stat-card row--sm">
+            <Plus size={18} className="text-sand" />
+            <span className="text-xs font-semibold text-cream">Contribute</span>
+          </button>
+        </div>
+
         <div className="mt-section">
           <div className="section-header">
             <span className="section-header__title">Recent scans</span>
@@ -96,8 +111,8 @@ export default function DashboardPage() {
                 const analysis = item.analysis as { health_score: number; health_rating: string } | undefined;
                 return (
                   <motion.button
-                    key={item.id as string ?? i}
-                    onClick={() => router.push("/results")}
+                    key={(item.product as { barcode?: string })?.barcode ?? i}
+                    onClick={() => router.push(`/results?barcode=${(item.product as { barcode?: string })?.barcode ?? ""}`)}
                     className="card card--sm product-card"
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}

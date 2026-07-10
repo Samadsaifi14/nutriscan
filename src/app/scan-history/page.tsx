@@ -40,10 +40,10 @@ export default function ScanHistory() {
         <div className="stack--sm">
           {scans.map((scan: Record<string, unknown>, i: number) => (
             <ProductCard
-              key={i}
+              key={(scan.product as { barcode?: string })?.barcode ?? i}
               product={scan.product as { name: string; brand: string; image_url?: string }}
               analysis={scan.analysis as { health_score: number; health_rating: 'healthy' | 'moderate' | 'unhealthy' }}
-              onClick={() => router.push('/results')}
+              onClick={() => router.push(`/results?barcode=${(scan.product as { barcode?: string })?.barcode ?? ''}`)}
             />
           ))}
         </div>

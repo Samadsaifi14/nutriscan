@@ -38,10 +38,10 @@ export default function Favorites() {
         <div className="stack--sm">
           {items.map((item: Record<string, unknown>, i: number) => (
             <ProductCard
-              key={i}
+              key={(item.product as { barcode?: string })?.barcode ?? i}
               product={item.product as { name: string; brand: string; image_url?: string }}
               analysis={item.analysis as { health_score: number; health_rating: 'healthy' | 'moderate' | 'unhealthy' }}
-              onClick={() => router.push('/results')}
+              onClick={() => router.push(`/results?barcode=${(item.product as { barcode?: string })?.barcode ?? ''}`)}
             />
           ))}
         </div>

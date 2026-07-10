@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { PageShell } from '@/components/PageShell'
-import { Bell, Mail, Download, Trash, Sun, ChevronRight } from 'lucide-react'
+import { Bell, Download, Trash, Sun, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Settings() {
@@ -45,11 +45,16 @@ export default function Settings() {
           <div className="toggle__knob" />
         </div>
       )},
-      { icon: <Mail size={16} />, label: 'Email Preferences', right: <ChevronRight size={14} style={{ color: 'var(--muted)' }} />, onClick: () => router.push('/settings') },
       { icon: <Sun size={16} />, label: 'Theme', right: <span className="text-xs" style={{ color: 'var(--muted)' }}>Dark</span> },
     ]},
     { title: 'Data', items: [
       { icon: <Download size={16} />, label: 'Export Data', onClick: handleExport },
+    ]},
+    { title: 'Legal', items: [
+      { icon: <ChevronRight size={16} />, label: 'Privacy Policy', onClick: () => router.push('/legal/privacy') },
+      { icon: <ChevronRight size={16} />, label: 'Terms of Service', onClick: () => router.push('/legal/terms') },
+      { icon: <ChevronRight size={16} />, label: 'Disclaimer', onClick: () => router.push('/legal/disclaimer') },
+      { icon: <ChevronRight size={16} />, label: 'Cookies', onClick: () => router.push('/legal/cookies') },
     ]},
     { title: 'Account', items: [
       { icon: <Trash size={16} />, label: 'Delete Account', dangerous: true, onClick: handleDelete },

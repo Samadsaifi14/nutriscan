@@ -1,7 +1,5 @@
 import { supabaseAdmin } from './supabaseAdmin'
 import { analyzeBarcode, inferCategory } from './barcode-intelligence'
-import { scoreProduct, type NutritionPer100g } from './health-engine/scorer'
-import { findHealthierAlternatives } from './alternatives'
 import { formatProduct, cacheProduct, searchIndianProductWeb, estimateProductWithAI, parseNum, parseSodium, parseList, extractNutrition } from './scan-helpers'
 import { fillNutritionIfMissing, getCategoryNutrition } from './nutrition-helpers'
 
@@ -26,7 +24,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
 
   let offFallback: any = null
 
-  // Layer 1 — Supabase cache
+  // Layer 1 â€” Supabase cache
   try {
     const { data: cached } = await supabaseAdmin
       .from('products')
@@ -39,7 +37,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   } catch { /* continue */ }
 
-  // Layer 2 — Open Food Facts exact
+  // Layer 2 â€” Open Food Facts exact
   try {
     const offRes = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${trimmedBarcode}.json`,
@@ -105,7 +103,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   } catch { /* continue */ }
 
-  // Layer 3 — OFF keyword search
+  // Layer 3 â€” OFF keyword search
   try {
     const barcodeAnalysis = analyzeBarcode(trimmedBarcode)
     const searchBrand = barcodeAnalysis.brand
@@ -169,7 +167,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   } catch { /* continue */ }
 
-  // Layer 4 — UPC Item DB
+  // Layer 4 â€” UPC Item DB
   try {
     const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${trimmedBarcode}`)
     if (upcRes.ok) {
@@ -222,7 +220,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   } catch { /* continue */ }
 
-  // Layer 5 — Indian web search
+  // Layer 5 â€” Indian web search
   const analysis = analyzeBarcode(trimmedBarcode)
   if (analysis.isIndian) {
     const webResult = await searchIndianProductWeb(analysis.searchHint, analysis.brand)
@@ -244,7 +242,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   }
 
-  // Layer 6 — community_products
+  // Layer 6 â€” community_products
   try {
     const { data: community } = await supabaseAdmin
       .from('community_products')
@@ -281,7 +279,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   } catch { /* continue */ }
 
-  // Layer 7 — Category nutrition estimation
+  // Layer 7 â€” Category nutrition estimation
   try {
     const analysis7 = analyzeBarcode(trimmedBarcode)
     const cat = analysis7.category || (analysis7.brand ? inferCategory(analysis7.brand, analysis7.brand) : null)
@@ -322,7 +320,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   } catch { /* continue */ }
 
-  // Layer 8 — AI estimation (Gemini)
+  // Layer 8 â€” AI estimation (Gemini)
   try {
     const aiResult = await estimateProductWithAI(trimmedBarcode, analysis.brand, analysis.isIndian)
     if (aiResult) {
@@ -358,7 +356,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   } catch { /* continue */ }
 
-  // Layer 9 — Static keyword nutrition from offFallback name
+  // Layer 9 â€” Static keyword nutrition from offFallback name
   if (offFallback?.name) {
     const estimated = await fillNutritionIfMissing(offFallback.name, {})
     if (estimated) {
@@ -375,7 +373,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   }
 
-  // Final — OFF metadata without AI
+  // Final â€” OFF metadata without AI
   if (offFallback) {
     cacheProduct(offFallback)
     return {
@@ -387,95 +385,3 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
   return { success: false, error: 'PRODUCT_NOT_FOUND', source: '', confidence: 'none', barcode, message: 'This product is not in our database yet.' }
 }
 
-export async function computeAnalysisResult(product: any) {
-  const nutrition: NutritionPer100g = {
-    calories: product.calories_per_100g ?? product.calories ?? 0,
-    sugar: product.sugar_per_100g ?? product.sugar ?? 0,
-    sodium: product.sodium_per_100g ?? product.sodium ?? 0,
-    saturated_fat: product.saturated_fat_per_100g ?? product.saturated_fat ?? 0,
-    total_fat: product.fat_per_100g ?? product.fat ?? 0,
-    protein: product.protein_per_100g ?? product.protein ?? 0,
-    fiber: product.fiber_per_100g ?? product.fiber ?? 0,
-    carbohydrates: product.carbs_per_100g ?? product.carbohydrates ?? 0,
-  }
-
-  const scored = scoreProduct(nutrition, product.ingredients_text || '')
-  const healthScore = scored.score
-  const healthRating = healthScore >= 7 ? 'healthy' as const : healthScore >= 4 ? 'moderate' as const : 'unhealthy' as const
-
-  const altResult = await findHealthierAlternatives({
-    name: product.name || '',
-    brand: product.brand || null,
-    category: product.category || null,
-    barcode: product.barcode || null,
-    nutrition_per_100g: {
-      calories: nutrition.calories,
-      protein: nutrition.protein,
-      carbs: nutrition.carbohydrates,
-      fat: nutrition.total_fat,
-      saturated_fat: nutrition.saturated_fat,
-      sugar: nutrition.sugar,
-      sodium: nutrition.sodium,
-      fiber: nutrition.fiber,
-    },
-    ingredients_text: product.ingredients_text || null,
-  })
-
-  const generalReason = altResult.why_better.map((w) => w.improvement).filter(Boolean).join('. ') || undefined
-  const alternatives = altResult.alternatives.map((a) => ({
-    name: a.name,
-    brand: a.brand || '',
-    image_url: a.image_url || undefined,
-    health_score: a.score,
-    reason: generalReason || `Healthier alternative — score ${a.score}/10`,
-  }))
-
-  const harmful_ingredients = scored.detected_additives.map((a: any) => ({
-    name: a.name || a.additive || a,
-    reason: a.concern || a.reason || `${a.name || a.additive || a} may be harmful with regular consumption`,
-    severity: ((a.risk === 'harmful' || a.risk === 'high') ? 'high' : a.risk === 'moderate' ? 'medium' : 'low') as 'high' | 'medium' | 'low',
-  }))
-
-  const positives: string[] = []
-  if (harmful_ingredients.length === 0) positives.push('No harmful additives detected')
-  if ((nutrition.fiber || 0) >= 3) positives.push(`Good source of fiber (${nutrition.fiber}g/100g)`)
-  if ((nutrition.protein || 0) >= 10) positives.push(`High in protein (${nutrition.protein}g/100g)`)
-  if (scored.nova_group <= 2) positives.push(`Minimally processed (NOVA ${scored.nova_group})`)
-  if (positives.length === 0) positives.push(`Score: ${healthScore}/10 (${scored.grade})`)
-
-  const recommendations: string[] = []
-  if (healthRating === 'unhealthy' || healthScore < 4) {
-    recommendations.push('Better alternatives available. Look for products with less sugar, sodium, and saturated fat.')
-  } else if (healthScore < 7) {
-    if ((nutrition.sugar || 0) > 10) recommendations.push('High sugar content — consider limiting intake.')
-    if ((nutrition.sodium || 0) > 400) recommendations.push('High sodium — watch your portion size.')
-    if ((nutrition.saturated_fat || 0) > 5) recommendations.push('High saturated fat — consume in moderation.')
-    if (recommendations.length === 0) recommendations.push('Moderate nutrition profile — enjoy in moderation.')
-  } else {
-    recommendations.push('Great choice! Nutrient-rich with minimal additives.')
-  }
-
-  return {
-    analysis: {
-      health_score: healthScore,
-      health_rating: healthRating,
-      grade: scored.grade,
-      label: scored.label,
-      summary: scored.summary,
-      nutrition_score: scored.nutrition_score,
-      additive_score: scored.additive_score,
-      nova_group: scored.nova_group,
-      nova_label: scored.nova_label,
-      detected_additives: scored.detected_additives,
-      positives,
-      recommendations,
-      harmful_ingredients,
-      health_score_breakdown: {
-        nutrition_score: scored.nutrition_score,
-        ingredient_safety_score: scored.additive_score,
-        processing_score: scored.nova_score,
-      },
-    },
-    alternatives,
-  }
-}

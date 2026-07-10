@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, CheckCircle2, ShoppingBag, Info } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { AlertTriangle, Info, Heart } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { TiltCard } from "@/components/TiltCard";
 import { HealthScoreRing } from "@/components/HealthScoreRing";
 import { Pill } from "@/components/Pill";
+import { ShoppingLinks } from "@/components/ShoppingLinks";
+import OverviewTab from "@/components/results/OverviewTab";
 import { cn } from "@/lib/utils";
 import type { ScanResultPayload } from "@/types/scanResult";
 import { writeScanResult } from "@/types/scanResult";
+import toast from "react-hot-toast";
 
 const TABS = ["Overview", "Nutrition", "Ingredients", "Alternatives"] as const;
 type Tab = (typeof TABS)[number];
@@ -41,7 +43,55 @@ function cnCard(rating: string) {
 
 export default function ResultsPage() {
   const [tab, setTab] = useState<Tab>("Overview");
-  const [data] = useState<ScanResultPayload | null>(loadFromStorage);
+  const [data, setData] = useState<ScanResultPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const stored = loadFromStorage();
+    if (stored) {
+      setData(stored);
+      setLoading(false);
+      return;
+    }
+    const barcode = new URLSearchParams(window.location.search).get("barcode");
+    if (barcode) {
+      setLoading(true);
+      fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barcode }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d?.product && d?.analysis) {
+            writeScanResult({ product: d.product, analysis: d.analysis, quantity: 1, alternatives: d.alternatives });
+            setData({
+              version: 1,
+              timestamp: new Date().toISOString(),
+              product: d.product,
+              analysis: d.analysis,
+              quantity: 1,
+              alternatives: d.alternatives,
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+      return;
+    }
+    setLoading(false);
+  }, []);
+
+  if (loading) {
+    return (
+      <PageShell title="Scan result" showBack>
+        <div className="empty-state" style={{ minHeight: "60dvh", justifyContent: "center" }}>
+          <p className="text-body" style={{ fontWeight: 600 }}>Loading…</p>
+        </div>
+      </PageShell>
+    );
+  }
 
   if (!data) {
     return (
@@ -58,8 +108,48 @@ export default function ResultsPage() {
   const { product, analysis } = data;
   const nutrition = product.nutrition;
 
+  async function saveFavorite() {
+    try {
+      const res = await fetch("/api/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_name: product.name,
+          barcode: product.barcode,
+          calories_per_100g: nutrition.calories,
+          protein_per_100g: nutrition.protein,
+          carbs_per_100g: nutrition.carbs,
+          fat_per_100g: nutrition.fat,
+          sodium_per_100g: nutrition.sodium,
+        }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        toast.success("Saved to favorites");
+      } else {
+        toast.error("Could not save");
+      }
+    } catch {
+      toast.error("Could not save");
+    }
+  }
+
   return (
-    <PageShell variant="default" title={product.name} showBack>
+    <PageShell
+      variant="default"
+      title={product.name}
+      showBack
+      topBarRight={
+        <button
+          onClick={saveFavorite}
+          aria-label="Save to favorites"
+          className="icon-btn glass rounded-full"
+          style={{ color: saved ? "var(--clay)" : "var(--cream)" }}
+        >
+          <Heart size={18} fill={saved ? "var(--clay)" : "none"} />
+        </button>
+      }
+    >
       <div className="stack">
         <TiltCard intensity={5} className={cnCard(analysis.health_rating)}>
           <div className="row--lg">
@@ -87,30 +177,7 @@ export default function ResultsPage() {
           ))}
         </div>
 
-        {tab === "Overview" && (
-          <div className="stack--md">
-            {analysis.positives && analysis.positives.length > 0 && (
-              <div className="alert alert--info">
-                <CheckCircle2 size={16} className="text-moss shrink-0" />
-                <span>{analysis.positives.join(" · ")}</span>
-              </div>
-            )}
-            <div className="card card--sm stack--sm">
-              <p className="text-2xs text-sand">Per {product.serving_size_g ? `${product.serving_size_g}g` : "serving"}</p>
-              <div className="grid-3">
-                <Stat label="Calories" value={nutrition.calories} unit="kcal" />
-                <Stat label="Protein" value={nutrition.protein} unit="g" />
-                <Stat label="Sodium" value={nutrition.sodium ?? 0} unit="mg" tone="rust" />
-              </div>
-            </div>
-            {analysis.recommendations && analysis.recommendations.length > 0 && (
-              <div className="alert alert--warning">
-                <AlertTriangle size={16} className="shrink-0" />
-                <span>{analysis.recommendations[0]}</span>
-              </div>
-            )}
-          </div>
-        )}
+        {tab === "Overview" && <OverviewTab analysis={analysis} />}
 
         {tab === "Nutrition" && (
           <div className="card stack--sm">
@@ -184,23 +251,10 @@ export default function ResultsPage() {
             <span className="section-header__title">Where to buy</span>
           </div>
           <div className="filter-row">
-            {["Amazon", "Flipkart", "Blinkit", "Instamart"].map((s) => (
-              <a key={s} href="#" className="chip row--sm shrink-0">
-                <ShoppingBag size={12} /> {s}
-              </a>
-            ))}
+            <ShoppingLinks productName={product.name} variant="compact" />
           </div>
         </div>
       </div>
     </PageShell>
-  );
-}
-
-function Stat({ label, value, unit, tone }: { label: string; value: number; unit: string; tone?: "rust" }) {
-  return (
-    <div>
-      <p className={cn("text-mono text-h3", tone === "rust" ? "text-rust" : "text-cream")}>{value}</p>
-      <p className="text-2xs text-sand">{label} ({unit})</p>
-    </div>
   );
 }

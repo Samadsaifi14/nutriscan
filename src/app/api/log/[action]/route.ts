@@ -2,17 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { isAdminSession } from '@/lib/admin'
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { action: string } }
 ) {
   const session = await getServerSession(authOptions)
-  const userId = (session as any)?.userId
 
-  if (!userId) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  if (!session || !isAdminSession(session)) {
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
   }
+
+  const userId = (session as any)?.userId
 
   const { action } = params
   if (action !== 'approve' && action !== 'reject') {
@@ -26,7 +28,7 @@ export async function POST(
 
   const status = action === 'approve' ? 'approved' : 'rejected'
   const { error } = await supabaseAdmin
-    .from('corrections')
+    .from('product_corrections')
     .update({ status, reviewed_by: userId, reviewed_at: new Date().toISOString() })
     .eq('id', id)
 

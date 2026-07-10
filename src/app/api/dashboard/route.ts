@@ -111,6 +111,17 @@ export async function GET(req: NextRequest) {
 
     const avgScore = overallScore
 
+    // Real 7-day breakdown (Mon..Sun) from daily stats
+    const weeklyBreakdown = [0, 0, 0, 0, 0, 0, 0]
+    for (const d of dailyStats) {
+      const date = new Date(d.log_date + 'T00:00:00')
+      if (date >= sevenDaysAgo) {
+        const wd = date.getDay() // 0=Sun..6=Sat
+        const idx = wd === 0 ? 6 : wd - 1 // Mon=0..Sun=6
+        weeklyBreakdown[idx] = (weeklyBreakdown[idx] ?? 0) + d.scan_count
+      }
+    }
+
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
     const monthLabel = monthNames[today.getMonth()] || ''
 
@@ -121,6 +132,7 @@ export async function GET(req: NextRequest) {
       totalScans,
       avgScore,
       thisWeek,
+      weeklyBreakdown,
       recentScans,
       bestWeek,
       trend,

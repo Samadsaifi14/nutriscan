@@ -48,20 +48,26 @@ export default function Insights() {
 
       <div className="section-header">
         <span className="section-header__title">Weekly Breakdown</span>
+        <span className="section-header__action">{data?.thisWeek ?? 0} scans</span>
       </div>
       <div className="h-scroll">
-        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
-          <div key={day} className="scroll-card">
-            <div className="scroll-card__thumb" style={{ height: 64, display: 'flex', alignItems: 'flex-end', padding: 4 }}>
-              <div style={{
-                width: '100%', height: `${40 + Math.random() * 40}%`, borderRadius: 6,
-                background: i === new Date().getDay() ? 'var(--clay)' : 'var(--surface-3)',
-                transition: 'height 0.5s',
-              }} />
+        {(() => {
+          const week = data?.weeklyBreakdown ?? [0, 0, 0, 0, 0, 0, 0]
+          const max = Math.max(1, ...week)
+          const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
+          return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+            <div key={day} className="scroll-card">
+              <div className="scroll-card__thumb" style={{ height: 64, display: 'flex', alignItems: 'flex-end', padding: 4 }}>
+                <div style={{
+                  width: '100%', height: `${Math.round((week[i]! / max) * 100)}%`, borderRadius: 6,
+                  background: i === todayIdx ? 'var(--clay)' : 'var(--surface-3)',
+                  transition: 'height 0.5s',
+                }} />
+              </div>
+              <span className="scroll-card__name" style={{ textAlign: 'center', fontSize: 10 }}>{day}</span>
             </div>
-            <span className="scroll-card__name" style={{ textAlign: 'center', fontSize: 10 }}>{day}</span>
-          </div>
-        ))}
+          ))
+        })()}
       </div>
     </PageShell>
   )
