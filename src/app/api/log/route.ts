@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
+import { transformLogToCard } from '@/lib/frontend-transform'
 
 // GET handler - retrieve meal history
 export async function GET(req: NextRequest) {
@@ -15,25 +16,43 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data: logs, error: logsError } = await supabaseAdmin
       .from('food_logs')
       .select('*')
       .eq('user_id', userId)
       .order('logged_at', { ascending: false })
       .limit(50)
 
-    if (error) {
-      console.error('Get logs error:', error.message)
+    if (logsError) {
+      console.error('Get logs error:', logsError.message)
       return NextResponse.json(
         { success: false, error: 'Failed to load meal history' },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({ success: true, data: data || [] })
+    // Fetch product data for all barcodes
+    const barcodes = (logs || []).map((l) => l.barcode).filter(Boolean) as string[]
+    const productMap = new Map<string, { brand: string | null; image_url: string | null; health_score: number | null }>()
+    if (barcodes.length > 0) {
+      const { data: products } = await supabaseAdmin
+        .from('products')
+        .select('barcode, brand, image_url, health_score')
+        .in('barcode', barcodes)
+      for (const p of products || []) {
+        productMap.set(p.barcode, p)
+      }
+    }
+
+    const scans = (logs || []).map((log: any) => {
+      const product = log.barcode ? productMap.get(log.barcode) : undefined
+      return transformLogToCard(log, product ? { brand: product.brand, image_url: product.image_url, health_score: product.health_score } : undefined)
+    })
+
+    return NextResponse.json({ success: true, scans })
   } catch (err: any) {
     console.error('Get logs route error:', err.message)
-    return NextResponse.json({ success: false, data: [], error: err.message })
+    return NextResponse.json({ success: false, scans: [], error: err.message })
   }
 }
 

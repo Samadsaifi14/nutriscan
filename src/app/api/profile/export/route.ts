@@ -35,5 +35,10 @@ export async function GET(req: NextRequest) {
     },
   }
 
-  return NextResponse.json({ success: true, data: exportData })
+  return new NextResponse(JSON.stringify(exportData, null, 2), {
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Disposition': `attachment; filename="healthox-export-${Date.now()}.json"`,
+    },
+  })
 }

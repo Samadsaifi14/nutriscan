@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { transformProductToCard } from '@/lib/frontend-transform'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -10,13 +11,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Query must be at least 2 characters' }, { status: 400 })
   }
 
-  // Escape PostgREST ilike wildcard characters so the user query is treated literally
   const safe = q.replace(/[%_\\]/g, (m) => `\\${m}`)
   const pattern = `%${safe}%`
 
-  // Run both queries in parallel. We only select the columns we render so the
-  // round-trip is small. We also set a 4-second timeout via AbortController so
-  // the client never waits forever.
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 4000)
 
@@ -37,12 +34,12 @@ export async function GET(req: NextRequest) {
         .abortSignal(controller.signal),
     ])
 
+    const products = (productsRes.data || []).map((p: any) => transformProductToCard(p))
+
     return NextResponse.json({
       success: true,
-      data: {
-        products: productsRes.data || [],
-        community: communityRes.data || [],
-      },
+      products,
+      community: communityRes.data || [],
     })
   } finally {
     clearTimeout(timeoutId)

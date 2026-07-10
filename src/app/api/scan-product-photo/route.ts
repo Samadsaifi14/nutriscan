@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { callGemini, GeminiError } from '@/lib/gemini'
+import { formatProduct } from '@/lib/scan-helpers'
+import { computeAnalysisResult } from '@/lib/scan-product'
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,7 +17,26 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { imageBase64 } = await req.json()
+    // Accept both FormData and JSON body for backward compat
+    let imageBase64: string | null = null
+    let barcode: string | null = null
+
+    const contentType = req.headers.get('content-type') || ''
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData()
+      const imageFile = formData.get('image') as File | Blob | null
+      if (imageFile) {
+        const buffer = Buffer.from(await imageFile.arrayBuffer())
+        imageBase64 = buffer.toString('base64')
+      }
+      const barcodeField = formData.get('barcode')
+      if (barcodeField && typeof barcodeField === 'string') barcode = barcodeField
+    } else {
+      const body = await req.json()
+      imageBase64 = body.imageBase64 || null
+      barcode = body.barcode || null
+    }
 
     if (!imageBase64) {
       return NextResponse.json(
@@ -118,12 +139,49 @@ IMPORTANT: Extract whatever is visible. Even if only partial information is avai
 
     console.log('Photo scan success:', extracted.name, '| Confidence:', extracted.confidence)
 
+    // Map Gemini output to product shape for analysis
+    const nut = extracted.nutrition_per_100g || {}
+    const productForAnalysis = {
+      name: extracted.name || 'Unknown Product',
+      brand: extracted.brand || null,
+      barcode: extracted.barcode || barcode || null,
+      category: null,
+      calories_per_100g: nut.calories ?? null,
+      protein_per_100g: nut.protein ?? null,
+      carbs_per_100g: nut.carbs ?? null,
+      fat_per_100g: nut.fat ?? null,
+      saturated_fat_per_100g: nut.saturated_fat ?? null,
+      sugar_per_100g: nut.sugar ?? null,
+      sodium_per_100g: nut.sodium ?? null,
+      fiber_per_100g: nut.fiber ?? null,
+      serving_size_g: extracted.serving_size_g ?? null,
+      ingredients_text: extracted.ingredients_text || null,
+      allergens: extracted.allergens || [],
+      additives: extracted.additives || [],
+      image_url: null,
+    }
+
+    const product = formatProduct(productForAnalysis)
+    const { analysis, alternatives } = await computeAnalysisResult(productForAnalysis)
+
     return NextResponse.json({
       success: true,
-      data: extracted,
-      message: extracted.confidence === 'low'
-        ? 'Some values may be inaccurate due to image quality. Please verify before logging.'
-        : null,
+      product,
+      analysis,
+      alternatives,
+      source: 'photo_scan',
+      confidence: extracted.confidence === 'high' ? 'high' : extracted.confidence === 'medium' ? 'estimated' : 'low',
+      photoDetails: {
+        barcode: extracted.barcode,
+        variant: extracted.variant,
+        net_weight_g: extracted.net_weight_g,
+        mrp_rupees: extracted.mrp_rupees,
+        fssai_number: extracted.fssai_number,
+        health_claims: extracted.health_claims,
+        certifications: extracted.certifications,
+        image_quality: extracted.image_quality,
+        what_was_visible: extracted.what_was_visible,
+      },
     })
 
   } catch (err: any) {
@@ -147,4 +205,3 @@ IMPORTANT: Extract whatever is visible. Even if only partial information is avai
     )
   }
 }
-

@@ -11,7 +11,7 @@ export default function AdminPendingProducts() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['admin-pending'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/check')
+      const res = await fetch('/api/admin/pending')
       if (!res.ok) throw new Error('Failed')
       return res.json()
     },

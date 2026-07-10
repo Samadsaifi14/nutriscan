@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { transformLogToCard, computeStreak, computeTrend } from '@/lib/frontend-transform'
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,114 +13,118 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
     }
 
-    // Get today's date range
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    const thirtyDaysAgo = new Date(today)
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const sevenDaysAgo = new Date(today)
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const fourteenDaysAgo = new Date(today)
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
 
-    // Get today's logs
-    const { data: todayLogs } = await supabaseAdmin
-      .from('food_logs')
-      .select('calories, protein_g, carbs_g, fat_g')
-      .eq('user_id', userId)
-      .gte('logged_at', today.toISOString())
-      .lt('logged_at', tomorrow.toISOString())
+    // Run all queries in parallel
+    const [dailyStatsResult, recentLogsResult, totalCountResult, currentWeekResult, priorWeekResult] = await Promise.all([
+      supabaseAdmin.rpc('get_user_daily_stats', { uid: userId, since_date: thirtyDaysAgo.toISOString().split('T')[0]! }),
+      supabaseAdmin
+        .from('food_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('logged_at', { ascending: false })
+        .limit(10),
+      supabaseAdmin
+        .from('food_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+      supabaseAdmin
+        .from('food_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('logged_at', sevenDaysAgo.toISOString()),
+      supabaseAdmin
+        .from('food_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('logged_at', fourteenDaysAgo.toISOString())
+        .lt('logged_at', sevenDaysAgo.toISOString()),
+    ])
 
-    // Calculate totals
-    const totalCalories = todayLogs?.reduce((sum, log) => sum + (log.calories || 0), 0) || 0
-    const totalProtein = todayLogs?.reduce((sum, log) => sum + (log.protein_g || 0), 0) || 0
-    const totalCarbs = todayLogs?.reduce((sum, log) => sum + (log.carbs_g || 0), 0) || 0
-    const totalFat = todayLogs?.reduce((sum, log) => sum + (log.fat_g || 0), 0) || 0
+    const dailyStats: { log_date: string; scan_count: number; avg_score: number }[] = dailyStatsResult.data || []
+    const recentLogsRaw = recentLogsResult.data || []
+    const totalScans = totalCountResult.count || 0
+    const thisWeek = currentWeekResult.count || 0
 
-    // Get user's profile for daily goal
-    const { data: profile } = await supabaseAdmin
-      .from('user_profiles')
-      .select('daily_calorie_goal')
-      .eq('user_id', userId)
-      .single()
-
-    const dailyCalorieGoal = profile?.daily_calorie_goal || 2000
-    const mealCount = todayLogs?.length || 0
-
-    // Get profile info
-    const { data: profileData } = await supabaseAdmin
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
-
-    // Get last 7 days for weekly stats
-    const weekAgo = new Date(today)
-    weekAgo.setDate(weekAgo.getDate() - 7)
-
-    const { data: weekLogs } = await supabaseAdmin
-      .from('food_logs')
-      .select('calories, protein_g, carbs_g, fat_g, logged_at')
-      .eq('user_id', userId)
-      .gte('logged_at', weekAgo.toISOString())
-
-    // Calculate weekly daily averages
-    const daysWithLogs = new Set(weekLogs?.map(l => new Date(l.logged_at).toDateString()) || [])
-    const daysCount = Math.max(daysWithLogs.size, 1)
-
-    const weeklyAvg = {
-      calories: Math.round((weekLogs?.reduce((s, l) => s + (l.calories || 0), 0) || 0) / daysCount),
-      protein: Math.round((weekLogs?.reduce((s, l) => s + (l.protein_g || 0), 0) || 0) / daysCount),
-      carbs: Math.round((weekLogs?.reduce((s, l) => s + (l.carbs_g || 0), 0) || 0) / daysCount),
-      fat: Math.round((weekLogs?.reduce((s, l) => s + (l.fat_g || 0), 0) || 0) / daysCount),
+    // Fetch product data for recent logs by barcode
+    const barcodes = recentLogsRaw.map((l) => l.barcode).filter(Boolean) as string[]
+    const productMap = new Map<string, { brand: string | null; image_url: string | null; health_score: number | null }>()
+    if (barcodes.length > 0) {
+      const { data: products } = await supabaseAdmin
+        .from('products')
+        .select('barcode, brand, image_url, health_score')
+        .in('barcode', barcodes)
+      for (const p of products || []) {
+        productMap.set(p.barcode, p)
+      }
     }
 
-    // Generate insights
-    const insights: string[] = []
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
+    // Compute streak from daily stats
+    const streak = computeStreak(dailyStats)
 
-    const yesterdayLogs = weekLogs?.filter(l => 
-      new Date(l.logged_at).toDateString() === yesterday.toDateString()
-    ) || []
+    // Compute overallScore = average of recent daily averages
+    const recentDays = dailyStats.filter((d) => d.avg_score > 0)
+    const overallScore = recentDays.length > 0
+      ? Math.round((recentDays.reduce((s, d) => s + d.avg_score, 0) / recentDays.length) * 10) / 10
+      : 7
 
-    const yesterdayCals = yesterdayLogs.reduce((s, l) => s + (l.calories || 0), 0)
+    // Compute weekly averages for trend
+    const currentWeekStats = dailyStats.filter((d) => {
+      const date = new Date(d.log_date + 'T00:00:00')
+      return date >= sevenDaysAgo
+    })
+    const priorWeekStats = dailyStats.filter((d) => {
+      const date = new Date(d.log_date + 'T00:00:00')
+      return date >= fourteenDaysAgo && date < sevenDaysAgo
+    })
 
-    if (totalCalories > dailyCalorieGoal) {
-      insights.push(`⚠️ You've exceeded today's calorie goal by ${totalCalories - dailyCalorieGoal} kcal`)
-    } else if (totalCalories > dailyCalorieGoal * 0.85) {
-      insights.push(`📊 You're at ${Math.round((totalCalories / dailyCalorieGoal) * 100)}% of daily goal`)
+    const currentWeekAvg = currentWeekStats.length > 0
+      ? currentWeekStats.reduce((s, d) => s + d.avg_score, 0) / currentWeekStats.length
+      : 0
+    const priorWeekAvg = priorWeekStats.length > 0
+      ? priorWeekStats.reduce((s, d) => s + d.avg_score, 0) / priorWeekStats.length
+      : null
+
+    const trend = computeTrend(currentWeekAvg, priorWeekAvg)
+
+    // Best week = highest avg_score across any week in the daily stats
+    let bestWeek = 0
+    for (let i = 0; i < dailyStats.length; i += 7) {
+      const chunk = dailyStats.slice(i, i + 7)
+      if (chunk.length === 0) continue
+      const weekAvg = chunk.reduce((s, d) => s + d.avg_score, 0) / chunk.length
+      if (weekAvg > bestWeek) bestWeek = Math.round(weekAvg * 10) / 10
     }
 
-    if (yesterdayCals > totalCalories * 1.2 && totalCalories > 0) {
-      insights.push(`📉 Your calorie intake is lower than yesterday - great progress!`)
-    }
+    // Transform recent logs into product/analysis CardItem shape
+    const recentScans = recentLogsRaw.map((log: any) => {
+      const product = log.barcode ? productMap.get(log.barcode) : undefined
+      return transformLogToCard(log, product ? { brand: product.brand, image_url: product.image_url, health_score: product.health_score } : undefined)
+    })
 
-    if (weeklyAvg.calories > dailyCalorieGoal + 200) {
-      insights.push(`📈 Weekly average (${weeklyAvg.calories} kcal) is above your goal`)
-    }
+    const avgScore = overallScore
 
-    if (totalProtein < 30) {
-      insights.push(`💪 Protein intake is low (${totalProtein}g) - consider adding more`)
-    }
-
-    if (weekLogs && weekLogs.length < 3) {
-      insights.push(`📝 You've logged ${weekLogs.length} meals this week - keep tracking!`)
-    }
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    const monthLabel = monthNames[today.getMonth()] || ''
 
     return NextResponse.json({
       success: true,
-      data: {
-        totalCalories,
-        totalProtein,
-        totalCarbs,
-        totalFat,
-        dailyCalorieGoal,
-        mealCount,
-        profile: profileData,
-        weeklyStats: {
-          average: weeklyAvg,
-          totalLogs: weekLogs?.length || 0,
-          daysTracked: daysCount,
-        },
-        insights,
-      }
+      overallScore,
+      streak,
+      totalScans,
+      avgScore,
+      thisWeek,
+      recentScans,
+      bestWeek,
+      trend,
+      monthLabel,
     })
   } catch (err: any) {
     console.error('Dashboard API error:', err.message)

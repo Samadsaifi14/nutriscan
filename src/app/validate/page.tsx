@@ -11,7 +11,7 @@ export default function Validate() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['pending-corrections'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/check')
+      const res = await fetch('/api/admin/pending')
       if (!res.ok) throw new Error('Failed')
       return res.json()
     },

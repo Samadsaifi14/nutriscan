@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/api-auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { transformLogToCard } from '@/lib/frontend-transform'
 
 const FavoriteSchema = z.object({
   product_name: z.string().min(1),
@@ -17,7 +18,7 @@ export async function GET() {
   const auth = await requireAuth()
   if ('response' in auth) return auth.response
 
-  const { data, error } = await supabaseAdmin
+  const { data: favorites, error } = await supabaseAdmin
     .from('meal_favorites')
     .select('*')
     .eq('user_id', auth.userId)
@@ -26,7 +27,29 @@ export async function GET() {
   if (error) {
     return NextResponse.json({ success: false, error: 'Failed to load favorites' }, { status: 500 })
   }
-  return NextResponse.json({ success: true, data: data || [] })
+
+  // Fetch product data for favorites with barcodes
+  const barcodes = (favorites || []).map((f) => f.barcode).filter(Boolean) as string[]
+  const productMap = new Map<string, { brand: string | null; image_url: string | null; health_score: number | null }>()
+  if (barcodes.length > 0) {
+    const { data: products } = await supabaseAdmin
+      .from('products')
+      .select('barcode, brand, image_url, health_score')
+      .in('barcode', barcodes)
+    for (const p of products || []) {
+      productMap.set(p.barcode, p)
+    }
+  }
+
+  const items = (favorites || []).map((fav: any) => {
+    const product = fav.barcode ? productMap.get(fav.barcode) : undefined
+    return transformLogToCard(
+      { product_name: fav.product_name, barcode: fav.barcode, brand: fav.brand, image_url: fav.image_url, health_score: fav.health_score },
+      product ? { brand: product.brand, image_url: product.image_url, health_score: product.health_score } : undefined
+    )
+  })
+
+  return NextResponse.json({ success: true, favorites: items })
 }
 
 export async function POST(req: NextRequest) {

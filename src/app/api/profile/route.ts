@@ -109,6 +109,28 @@ export async function POST(req: NextRequest) {
   })
 }
 
+export async function PUT(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  const userId = (session as any)?.userId
+
+  if (!userId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body = await req.json()
+
+  const { error } = await supabaseAdmin
+    .from('user_profiles')
+    .update({ ...body, updated_at: new Date().toISOString() })
+    .eq('user_id', userId)
+
+  if (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
+}
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const userId = (session as any)?.userId
@@ -117,16 +139,41 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data, error } = await supabaseAdmin
-    .from('user_profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .single()
+  const [profileRes, scoreRes] = await Promise.all([
+    supabaseAdmin
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single(),
+    supabaseAdmin
+      .from('food_logs')
+      .select('barcode, logged_at')
+      .eq('user_id', userId)
+      .order('logged_at', { ascending: false })
+      .limit(50),
+  ])
 
-  if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  if (profileRes.error) {
+    return NextResponse.json({ success: false, error: profileRes.error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ success: true, data })
+  // Compute overallScore from recent scan health scores
+  const barcodes = (scoreRes.data || []).map((l) => l.barcode).filter(Boolean) as string[]
+  let overallScore = 7
+  if (barcodes.length > 0) {
+    const { data: products } = await supabaseAdmin
+      .from('products')
+      .select('health_score')
+      .in('barcode', barcodes)
+    const scores = (products || []).map((p) => p.health_score).filter((s): s is number => s != null)
+    if (scores.length > 0) {
+      overallScore = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    data: { ...profileRes.data, overallScore },
+  })
 }
 

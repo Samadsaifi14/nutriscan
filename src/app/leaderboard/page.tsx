@@ -11,13 +11,13 @@ export default function Leaderboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['leaderboard'],
     queryFn: async () => {
-      const res = await fetch('/api/dashboard')
+      const res = await fetch('/api/leaderboard')
       if (!res.ok) throw new Error('Failed')
       return res.json()
     },
   })
 
-  const users = data?.leaderboard ?? data?.users ?? []
+  const users = data?.leaderboard ?? []
 
   return (
     <PageShell title="Leaderboard" showBack>

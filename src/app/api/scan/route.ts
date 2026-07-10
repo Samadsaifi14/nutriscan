@@ -9,6 +9,7 @@ import {
   estimateProductWithAI,
 } from '@/lib/scan-helpers'
 import { fillNutritionIfMissing, getCategoryNutrition } from '@/lib/nutrition-helpers'
+import { lookupBarcode, computeAnalysisResult } from '@/lib/scan-product'
 
 type Confidence = 'exact' | 'high' | 'estimated' | 'low' | 'none'
 
@@ -578,4 +579,54 @@ export async function GET(req: NextRequest) {
     barcode,
     message: 'This product is not in our database yet. Contribute it and help others!',
   })
+}
+
+export async function POST(req: NextRequest) {
+  const auth = await requireAuth()
+  if ('response' in auth) return auth.response
+
+  const rate = await enforceRateLimit(auth.userId, 'scan')
+  if ('response' in rate) return rate.response
+
+  try {
+    const { barcode } = await req.json()
+    if (!barcode || typeof barcode !== 'string') {
+      return NextResponse.json({ success: false, error: 'Missing barcode' }, { status: 400 })
+    }
+
+    const result = await lookupBarcode(barcode)
+
+    if (!result.success) {
+      return NextResponse.json({
+        success: false,
+        error: result.error,
+        barcode: result.barcode,
+        message: result.message,
+      }, { status: 404 })
+    }
+
+    // Fire background enrichment for estimated/low confidence scans
+    if (result.confidence === 'estimated' || result.confidence === 'low') {
+      fetch(`${req.nextUrl.origin}/api/enrich`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcode, name: result.product.name, brand: result.product.brand, confidence: result.confidence }),
+      }).catch(() => {})
+    }
+
+    const product = formatProduct(result.product)
+    const { analysis, alternatives } = await computeAnalysisResult(result.product)
+
+    return NextResponse.json({
+      success: true,
+      product,
+      analysis,
+      alternatives,
+      source: result.source,
+      confidence: result.confidence,
+    })
+  } catch (err: any) {
+    console.error('Scan POST error:', err.message)
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+  }
 }

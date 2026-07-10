@@ -3,6 +3,37 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
+export async function DELETE(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  const userId = (session as any)?.userId
+
+  if (!userId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Collect all user data for deletion
+  const tables = ['user_profiles', 'food_logs']
+  const errors: string[] = []
+
+  for (const table of tables) {
+    const { error } = await supabaseAdmin
+      .from(table)
+      .delete()
+      .eq('user_id', userId)
+
+    if (error) {
+      errors.push(`${table}: ${error.message}`)
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error('Deletion errors:', errors)
+    return NextResponse.json({ success: false, error: errors.join('; ') }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const userId = (session as any)?.userId
