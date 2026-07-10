@@ -8,13 +8,13 @@ export function computeHealthRating(score: number | null | undefined): 'healthy'
 }
 
 export interface CardItem {
-  product: { name: string; brand: string; image_url: string | null }
+  product: { barcode: string; name: string; brand: string; image_url: string | null }
   analysis: { health_score: number; health_rating: 'healthy' | 'moderate' | 'unhealthy' }
 }
 
 export function transformLogToCard(
   log: any,
-  product?: { brand?: string | null; image_url?: string | null; health_score?: number | null }
+  product?: { barcode?: string | null; brand?: string | null; image_url?: string | null; health_score?: number | null }
 ): CardItem {
   const name = log.product_name || 'Unknown Product'
   const brand = product?.brand ?? log.brand ?? ''
@@ -22,7 +22,7 @@ export function transformLogToCard(
   const healthScore = product?.health_score ?? log.health_score ?? 5
 
   return {
-    product: { name, brand, image_url: imageUrl },
+    product: { barcode: product?.barcode ?? log.barcode ?? '', name, brand, image_url: imageUrl },
     analysis: { health_score: healthScore, health_rating: computeHealthRating(healthScore) },
   }
 }
@@ -30,7 +30,7 @@ export function transformLogToCard(
 export function transformProductToCard(p: any): CardItem {
   const healthScore = p.health_score ?? 5
   return {
-    product: { name: p.name || 'Unknown', brand: p.brand || '', image_url: p.image_url || null },
+    product: { barcode: p.barcode || '', name: p.name || 'Unknown', brand: p.brand || '', image_url: p.image_url || null },
     analysis: { health_score: healthScore, health_rating: computeHealthRating(healthScore) },
   }
 }

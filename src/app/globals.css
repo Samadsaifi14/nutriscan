@@ -176,7 +176,7 @@ html, body {
   margin: 0 auto;
   min-height: 100dvh;
   padding-top: var(--header-offset);
-  padding-bottom: calc(var(--footer-offset) + var(--sp-6));
+  padding-bottom: calc(var(--footer-offset) + var(--fab-size) - var(--fab-lift));
 }
 .px-page { padding-left: var(--sp-5); padding-right: var(--sp-5); }
 .mt-section { margin-top: var(--sp-7); }

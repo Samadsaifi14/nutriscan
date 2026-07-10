@@ -430,6 +430,31 @@ export async function computeAnalysisResult(product: any) {
     reason: generalReason || `Healthier alternative — score ${a.score}/10`,
   }))
 
+  const harmful_ingredients = scored.detected_additives.map((a: any) => ({
+    name: a.name || a.additive || a,
+    reason: a.concern || a.reason || `${a.name || a.additive || a} may be harmful with regular consumption`,
+    severity: ((a.risk === 'harmful' || a.risk === 'high') ? 'high' : a.risk === 'moderate' ? 'medium' : 'low') as 'high' | 'medium' | 'low',
+  }))
+
+  const positives: string[] = []
+  if (harmful_ingredients.length === 0) positives.push('No harmful additives detected')
+  if ((nutrition.fiber || 0) >= 3) positives.push(`Good source of fiber (${nutrition.fiber}g/100g)`)
+  if ((nutrition.protein || 0) >= 10) positives.push(`High in protein (${nutrition.protein}g/100g)`)
+  if (scored.nova_group <= 2) positives.push(`Minimally processed (NOVA ${scored.nova_group})`)
+  if (positives.length === 0) positives.push(`Score: ${healthScore}/10 (${scored.grade})`)
+
+  const recommendations: string[] = []
+  if (healthRating === 'unhealthy' || healthScore < 4) {
+    recommendations.push('Better alternatives available. Look for products with less sugar, sodium, and saturated fat.')
+  } else if (healthScore < 7) {
+    if ((nutrition.sugar || 0) > 10) recommendations.push('High sugar content — consider limiting intake.')
+    if ((nutrition.sodium || 0) > 400) recommendations.push('High sodium — watch your portion size.')
+    if ((nutrition.saturated_fat || 0) > 5) recommendations.push('High saturated fat — consume in moderation.')
+    if (recommendations.length === 0) recommendations.push('Moderate nutrition profile — enjoy in moderation.')
+  } else {
+    recommendations.push('Great choice! Nutrient-rich with minimal additives.')
+  }
+
   return {
     analysis: {
       health_score: healthScore,
@@ -442,6 +467,9 @@ export async function computeAnalysisResult(product: any) {
       nova_group: scored.nova_group,
       nova_label: scored.nova_label,
       detected_additives: scored.detected_additives,
+      positives,
+      recommendations,
+      harmful_ingredients,
       health_score_breakdown: {
         nutrition_score: scored.nutrition_score,
         ingredient_safety_score: scored.additive_score,

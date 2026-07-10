@@ -6,6 +6,7 @@ import { PageShell } from '@/components/PageShell'
 import { ProductCard } from '@/components/ProductCard'
 import { SkeletonCard } from '@/components/Skeleton'
 import { Search, X } from 'lucide-react'
+import { writeScanResult } from '@/types/scanResult'
 
 export default function SearchPage() {
   const router = useRouter()
@@ -58,7 +59,13 @@ export default function SearchPage() {
               key={i}
               product={item.product as { name: string; brand: string; image_url?: string }}
               analysis={item.analysis as { health_score: number; health_rating: 'healthy' | 'moderate' | 'unhealthy' }}
-              onClick={() => router.push('/results')}
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ barcode: (item.product as Record<string, string>).barcode }) });
+                  const data = await res.json();
+                  if (data?.product && data?.analysis) { writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives }); router.replace("/results"); }
+                } catch { /* silent */ }
+              }}
             />
           ))}
         </div>
