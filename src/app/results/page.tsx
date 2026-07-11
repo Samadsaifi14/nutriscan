@@ -206,8 +206,14 @@ export default function ResultsPage() {
           <div className="row--lg">
             <HealthScoreRing score={analysis.health_score} size="xl" />
             <div className="flex-1">
-              <p className="text-h3 text-cream">{product.name}</p>
-              <p className="text-xs text-sand">{product.brand}</p>
+              <p className="text-h3 text-cream leading-tight">{product.name}</p>
+              <p className="text-xs text-sand mt-1">
+                {product.brand ? (
+                  <>by <span style={{ color: 'var(--cream)', fontWeight: 600 }}>{product.brand}</span></>
+                ) : (
+                  <>Brand not listed</>
+                )}
+              </p>
               <Pill variant={ratingVariant(analysis.health_rating)} className="mt-2">
                 {analysis.health_rating}
               </Pill>
