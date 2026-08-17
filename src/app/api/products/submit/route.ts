@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { ANONYMOUS_USER_ID } from '@/lib/config'
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    const userId = (session as any)?.userId || 'guest'
+    const userId = ANONYMOUS_USER_ID
     const body = await req.json()
 
     // Save product

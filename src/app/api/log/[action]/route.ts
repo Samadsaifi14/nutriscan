@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { isAdminSession } from '@/lib/admin'
+import { ANONYMOUS_USER_ID } from '@/lib/config'
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { action: string } }
 ) {
-  const session = await getServerSession(authOptions)
-
-  if (!session || !isAdminSession(session)) {
-    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
-  }
-
-  const userId = (session as any)?.userId
+  const userId = ANONYMOUS_USER_ID
 
   const { action } = params
   if (action !== 'approve' && action !== 'reject') {

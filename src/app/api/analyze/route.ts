@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { ANONYMOUS_USER_ID } from '@/lib/config'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { GeminiError } from '@/lib/gemini'
 import { runUnifiedAnalysis } from '@/lib/analysis-runner'
@@ -45,8 +44,8 @@ const RequestSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    const userId = (session as any)?.userId
+    const session = { userId: ANONYMOUS_USER_ID }
+    const userId = ANONYMOUS_USER_ID
 
     const rateLimitKey = userId || req.headers.get('x-forwarded-for') || 'anonymous'
     const rateCheck = await checkRateLimit(rateLimitKey, 'analyze')

@@ -52,7 +52,7 @@ vi.mock('@/lib/gemini', () => ({
 }))
 
 vi.mock('next-auth', () => ({
-  getServerSession: vi.fn().mockResolvedValue(null),
+  getServerSession: vi.fn().mockResolvedValue({ user: { name: 'Test' }, userId: 'anonymous' }),
 }))
 
 describe('Analyze API — Schema Validation', () => {

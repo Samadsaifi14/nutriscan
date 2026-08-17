@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Flame, ChevronRight, ScanLine, Search, Heart, Activity, Trophy, Plus } from "lucide-react";
 import { motion } from "framer-motion";
@@ -19,7 +18,6 @@ function ratingVariant(rating: string) {
 }
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
   const router = useRouter();
 
   const { data: dashboard, isLoading } = useQuery({
@@ -31,7 +29,7 @@ export default function DashboardPage() {
     },
   });
 
-  const name = session?.user?.name?.split(" ")[0] ?? "there";
+  const name = "there";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 

@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { ANONYMOUS_USER_ID } from '@/lib/config'
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  const userId = (session as any)?.userId
-
-  if (!userId) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
-  }
+  const userId = ANONYMOUS_USER_ID
 
   const {
     name,
@@ -128,12 +122,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  const userId = (session as any)?.userId
-
-  if (!userId) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
-  }
+  const userId = ANONYMOUS_USER_ID
 
   const body = await req.json()
 
@@ -150,12 +139,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  const userId = (session as any)?.userId
-
-  if (!userId) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
-  }
+  const userId = ANONYMOUS_USER_ID
 
   const [profileRes, scoreRes] = await Promise.all([
     supabaseAdmin

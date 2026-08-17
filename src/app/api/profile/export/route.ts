@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { ANONYMOUS_USER_ID } from '@/lib/config'
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  const userId = (session as any)?.userId
-
-  if (!userId) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
-  }
+  const userId = ANONYMOUS_USER_ID
 
   // Fetch profile
   const { data: profile } = await supabaseAdmin

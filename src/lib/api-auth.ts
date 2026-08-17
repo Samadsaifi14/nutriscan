@@ -1,34 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession, type Session } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { ANONYMOUS_USER_ID } from '@/lib/config'
 import { checkRateLimit } from '@/lib/rateLimit'
 
-export type AuthSession = Session & { userId?: string }
+export type AuthSession = { userId: string }
 
-export async function getAuthSession(): Promise<AuthSession | null> {
-  const session = await getServerSession(authOptions)
-  return session as AuthSession | null
+export async function getAuthSession(): Promise<AuthSession> {
+  return { userId: ANONYMOUS_USER_ID }
 }
 
-export function getUserId(session: AuthSession | null): string | null {
-  return session?.userId || null
+export function getUserId(_session: AuthSession | null): string {
+  return ANONYMOUS_USER_ID
 }
 
 export async function requireAuth(): Promise<
   { session: AuthSession; userId: string } | { response: NextResponse }
 > {
-  const session = await getAuthSession()
-  const userId = getUserId(session)
-  if (!session || !userId) {
-    return {
-      response: NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }),
-    }
-  }
-  return { session, userId }
+  return { session: { userId: ANONYMOUS_USER_ID }, userId: ANONYMOUS_USER_ID }
 }
 
-export function getRateLimitKey(req: NextRequest, userId: string | null): string {
-  return userId || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous'
+export function getRateLimitKey(_req: NextRequest, _userId: string | null): string {
+  return ANONYMOUS_USER_ID
 }
 
 export async function enforceRateLimit(
@@ -47,7 +38,6 @@ export async function enforceRateLimit(
   return { ok: true }
 }
 
-/** Internal server-to-server calls (welcome email from signIn, cron). */
 export function verifyInternalSecret(req: NextRequest): boolean {
   const secret = process.env.INTERNAL_API_SECRET || process.env.CRON_SECRET
   if (!secret) return false
@@ -56,19 +46,7 @@ export function verifyInternalSecret(req: NextRequest): boolean {
 }
 
 export async function requireAuthOrInternal(
-  req: NextRequest
+  _req: NextRequest
 ): Promise<{ userId: string } | { response: NextResponse }> {
-  if (verifyInternalSecret(req)) {
-    const body = await req.clone().json().catch(() => ({}))
-    const userId = body?.userId
-    if (!userId) {
-      return {
-        response: NextResponse.json({ success: false, error: 'Missing userId' }, { status: 400 }),
-      }
-    }
-    return { userId }
-  }
-  const auth = await requireAuth()
-  if ('response' in auth) return auth
-  return { userId: auth.userId }
+  return { userId: ANONYMOUS_USER_ID }
 }

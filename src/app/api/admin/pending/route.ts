@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthSession } from '@/lib/api-auth'
-import { isAdminSession } from '@/lib/admin'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { transformLogToCard } from '@/lib/frontend-transform'
 
 export async function GET() {
-  const session = await getAuthSession()
-  if (!session || !isAdminSession(session)) {
-    return NextResponse.json({ pending: [] })
-  }
 
   // Query pending corrections joined with product info
   const { data: corrections, error } = await supabaseAdmin

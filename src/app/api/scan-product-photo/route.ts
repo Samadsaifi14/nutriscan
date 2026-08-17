@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { ANONYMOUS_USER_ID } from '@/lib/config'
 import { callGemini, GeminiError } from '@/lib/gemini'
 import { formatProduct } from '@/lib/scan-helpers'
 import { runUnifiedAnalysis, toUnifiedInput } from '@/lib/analysis-runner'
@@ -15,15 +14,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const session = await getServerSession(authOptions)
-    const userId = (session as any)?.userId
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required', tip: 'Please sign in to scan product photos.' },
-        { status: 401 }
-      )
-    }
+    const userId = ANONYMOUS_USER_ID
 
     // Accept both FormData and JSON body for backward compat
     let imageBase64: string | null = null

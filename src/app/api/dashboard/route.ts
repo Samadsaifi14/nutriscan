@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { transformLogToCard, computeStreak, computeTrend } from '@/lib/frontend-transform'
+import { ANONYMOUS_USER_ID } from '@/lib/config'
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    const userId = (session as any)?.userId
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
-    }
+    const userId = ANONYMOUS_USER_ID
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)

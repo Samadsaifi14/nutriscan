@@ -1,13 +1,11 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { PageShell } from '@/components/PageShell'
 import { Download, Trash, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Settings() {
-  const { data: session } = useSession()
   const router = useRouter()
 
   async function handleExport() {
@@ -32,7 +30,6 @@ export default function Settings() {
     try {
       const res = await fetch('/api/profile/delete', { method: 'DELETE' })
       if (!res.ok) { toast.error('Delete failed'); return }
-      await signOut({ redirect: false })
       router.push('/')
     } catch {
       toast.error('Delete failed')

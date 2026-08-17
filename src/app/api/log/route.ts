@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { ANONYMOUS_USER_ID } from '@/lib/config'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { transformLogToCard } from '@/lib/frontend-transform'
@@ -9,12 +8,7 @@ import { transformLogToCard } from '@/lib/frontend-transform'
 // GET handler - retrieve meal history
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    const userId = (session as any)?.userId
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
-    }
+    const userId = ANONYMOUS_USER_ID
 
     const { data: logs, error: logsError } = await supabaseAdmin
       .from('food_logs')
@@ -71,19 +65,10 @@ const LogSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    const userId = (session as any)?.userId
+    const userId = ANONYMOUS_USER_ID
 
     console.log('=== MEAL LOG API ===')
-    console.log('Session:', session ? 'exists' : 'null')
-    console.log('UserId from session:', userId)
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'You must be signed in to log meals' },
-        { status: 401 }
-      )
-    }
+    console.log('UserId:', userId)
 
     // Rate limit
     const rateCheck = await checkRateLimit(userId, 'log')

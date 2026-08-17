@@ -1,6 +1,5 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { PageShell } from '@/components/PageShell'
 import { HealthScoreRing } from '@/components/HealthScoreRing'
@@ -9,10 +8,9 @@ import { Settings, User, Award, Download, Trash, ChevronRight } from 'lucide-rea
 import { useQuery } from '@tanstack/react-query'
 
 export default function Profile() {
-  const { data: session, status } = useSession()
   const router = useRouter()
 
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
       const res = await fetch('/api/profile')
@@ -21,10 +19,9 @@ export default function Profile() {
     },
   })
 
-  if (status === 'loading') return <PageShell title="Profile" showBack><SkeletonDashboard /></PageShell>
+  if (isLoading) return <PageShell title="Profile" showBack><SkeletonDashboard /></PageShell>
 
-  const user = session?.user
-  const initials = user?.name?.split(' ').map((n) => n[0]).join('').toUpperCase() ?? '?'
+  const initials = 'U'
 
   const menuItems = [
     { label: 'Profile Setup', icon: <User size={16} />, href: '/profile-setup' },
@@ -41,18 +38,18 @@ export default function Profile() {
           {initials}
         </div>
         <div className="stack--sm flex-1">
-          <span className="text-body" style={{ fontWeight: 700 }}>{user?.name ?? 'User'}</span>
-          <span className="text-xs" style={{ color: 'var(--sand)' }}>{user?.email}</span>
+          <span className="text-body" style={{ fontWeight: 700 }}>{'User'}</span>
+          <span className="text-xs" style={{ color: 'var(--sand)' }}>{''}</span>
         </div>
         <HealthScoreRing score={profile?.overallScore ?? 7} size="sm" />
       </div>
 
       <div className="stack--sm">
         {menuItems.map((item) => (
-          <button
+          <div
             key={item.label}
             className="card card--sm row--md"
-            style={{ justifyContent: 'space-between', ...(item.dangerous ? { borderColor: 'rgba(192,64,40,0.3)' } : {}) }}
+            style={{ justifyContent: 'space-between', cursor: 'pointer', borderColor: item.dangerous ? 'rgba(192,64,40,0.3)' : undefined }}
             onClick={() => router.push(item.href)}
           >
             <div className="row--sm">
@@ -64,7 +61,7 @@ export default function Profile() {
               </span>
             </div>
             <ChevronRight size={16} style={{ color: 'var(--muted)' }} />
-          </button>
+          </div>
         ))}
       </div>
     </PageShell>

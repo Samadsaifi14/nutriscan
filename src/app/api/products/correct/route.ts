@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { ANONYMOUS_USER_ID } from '@/lib/config'
 import { z } from 'zod'
 
 const correctionSchema = z.object({
@@ -22,8 +21,7 @@ const correctionSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    const userId = (session as any)?.userId
+    const userId = ANONYMOUS_USER_ID
 
     // Validate input
     const body = await req.json()
@@ -98,23 +96,6 @@ export async function POST(req: NextRequest) {
 // GET endpoint to fetch corrections (for admin)
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    const userId = (session as any)?.userId
-    
-    // Check if user is admin (simple check - in production use proper role)
-    const { data: profile } = await supabaseAdmin
-      .from('user_profiles')
-      .select('role')
-      .eq('user_id', userId)
-      .single()
-
-    if (!profile?.role || profile.role !== 'admin') {
-      return NextResponse.json({
-        success: false,
-        error: 'Unauthorized'
-      }, { status: 401 })
-    }
-
     const url = new URL(req.url)
     const status = url.searchParams.get('status') || 'pending_review'
 
