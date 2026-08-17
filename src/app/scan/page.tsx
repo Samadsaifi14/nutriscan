@@ -40,9 +40,18 @@ export default function ScanPage() {
         body: JSON.stringify({ barcode, mode }),
         signal: controller.signal,
       });
-      const data = await res.json();
       clearTimeout(timeout);
+      if (res.status === 429) {
+        setScanning(false);
+        setScanError("Too many scans. Please wait a moment and try again.");
+        return;
+      }
+      const data = await res.json();
       setScanning(false);
+      if (!res.ok || data?.error) {
+        setScanError(data?.error || "Scan failed. Please try again.");
+        return;
+      }
       if (data?.product && data?.analysis) {
         writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives });
         router.replace("/results");
@@ -123,9 +132,18 @@ export default function ScanPage() {
         body: formData,
         signal: controller.signal,
       });
-      const data = await res.json();
       clearTimeout(timeout);
+      if (res.status === 429) {
+        setScanning(false);
+        toast.error("Too many scans. Please wait and try again.");
+        return;
+      }
+      const data = await res.json();
       setScanning(false);
+      if (!res.ok || data?.error) {
+        toast.error(data?.error || "Photo scan failed");
+        return;
+      }
       if (data?.product && data?.analysis) {
         writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives });
         router.replace("/results");

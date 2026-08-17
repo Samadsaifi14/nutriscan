@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const auth = await requireAuth()
   if ('response' in auth) return auth.response
 
-  const rate = await enforceRateLimit(auth.userId, 'scan')
+  const rate = await enforceRateLimit(auth.userId, 'scan', req)
   if ('response' in rate) return rate.response
 
   const barcode = req.nextUrl.searchParams.get('barcode')
@@ -586,7 +586,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuth()
   if ('response' in auth) return auth.response
 
-  const rate = await enforceRateLimit(auth.userId, 'scan')
+  const rate = await enforceRateLimit(auth.userId, 'scan', req)
   if ('response' in rate) return rate.response
 
   try {

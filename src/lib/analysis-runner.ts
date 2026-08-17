@@ -260,7 +260,7 @@ export async function runUnifiedAnalysis(
   // AI insights + medical-condition warnings are tailored to the user — the cached
   // analysis is non-personalized and would otherwise show empty recommendations.
   const CACHE_DURATION_MS = 30 * 24 * 60 * 60 * 1000
-  const isPersonalizedScan = !!opts?.userId
+  const isPersonalizedScan = !!opts?.userId && opts.userId !== 'anonymous'
   if (product.barcode && !isPersonalizedScan) {
     let cached: any = null
     try {

@@ -18,15 +18,17 @@ export async function requireAuth(): Promise<
   return { session: { userId: ANONYMOUS_USER_ID }, userId: ANONYMOUS_USER_ID }
 }
 
-export function getRateLimitKey(_req: NextRequest, _userId: string | null): string {
-  return ANONYMOUS_USER_ID
+export function getRateLimitKey(req: NextRequest, _userId: string | null): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
 }
 
 export async function enforceRateLimit(
-  userId: string,
-  action: Parameters<typeof checkRateLimit>[1]
+  _userId: string,
+  action: Parameters<typeof checkRateLimit>[1],
+  req?: NextRequest
 ): Promise<{ ok: true } | { response: NextResponse }> {
-  const rateCheck = await checkRateLimit(userId, action)
+  const key = req ? getRateLimitKey(req, _userId) : _userId
+  const rateCheck = await checkRateLimit(key, action)
   if (!rateCheck.allowed) {
     return {
       response: NextResponse.json(
