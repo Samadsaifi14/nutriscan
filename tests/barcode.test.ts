@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest'
-import { analyzeBarcode, KNOWN_INDIAN_BRANDS, INDIAN_PREFIXES } from '@/lib/barcode-intelligence'
+import { analyzeBarcode, isValidIndianEan13, isValidRetailBarcode, KNOWN_INDIAN_BRANDS, INDIAN_PREFIXES, normalizeBarcode } from '@/lib/barcode-intelligence'
+
+describe('Retail barcode validation', () => {
+  it('accepts the scanned EAN-13 when its check digit is valid', () => {
+    expect(isValidRetailBarcode('8901491101837')).toBe(true)
+  })
+
+  it('rejects the false UPC camera read from automatic Indian scanning', () => {
+    expect(isValidRetailBarcode('410221701837')).toBe(true)
+    expect(isValidIndianEan13('410221701837')).toBe(false)
+  })
+
+  it('normalizes spaces and hyphens before validating a manual entry', () => {
+    expect(normalizeBarcode('8901-4911 01837')).toBe('8901491101837')
+    expect(isValidRetailBarcode('8901-4911 01837')).toBe(true)
+  })
+})
 
 describe('Indian Barcode Detection', () => {
   it('should detect 890 prefix as Indian', () => {

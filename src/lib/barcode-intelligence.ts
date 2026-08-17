@@ -309,3 +309,33 @@ export const ICMR_RDA = {
   iron: { adult_male: 17, adult_female: 21 },
   calcium: { adult: 600 },
 }
+
+/** Removes spaces and separators commonly introduced by camera/OCR readers. */
+export function normalizeBarcode(value: string): string {
+  return value.replace(/[^0-9]/g, '')
+}
+
+/**
+ * Validates the GS1 modulo-10 check digit used by EAN-8, UPC-A, EAN-13 and
+ * GTIN-14. Rejecting a checksum mismatch prevents camera false positives from
+ * being sent to product lookup.
+ */
+export function isValidRetailBarcode(value: string): boolean {
+  const barcode = normalizeBarcode(value)
+  if (![8, 12, 13, 14].includes(barcode.length)) return false
+
+  const body = barcode.slice(0, -1)
+  const checkDigit = Number(barcode.at(-1))
+  let sum = 0
+  for (let index = body.length - 1; index >= 0; index -= 1) {
+    const digit = Number(body[index])
+    sum += digit * ((body.length - 1 - index) % 2 === 0 ? 3 : 1)
+  }
+  return (10 - (sum % 10)) % 10 === checkDigit
+}
+
+/** Indian retail products use an EAN-13/GTIN-13 code allocated under 890. */
+export function isValidIndianEan13(value: string): boolean {
+  const barcode = normalizeBarcode(value)
+  return barcode.length === 13 && barcode.startsWith('890') && isValidRetailBarcode(barcode)
+}

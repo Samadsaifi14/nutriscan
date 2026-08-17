@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { X, Zap, ZapOff, Image as ImageIcon, Keyboard, RefreshCw } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { cn } from "@/lib/utils";
+import { isValidIndianEan13, isValidRetailBarcode, normalizeBarcode } from "@/lib/barcode-intelligence";
 import { writeScanResult } from "@/types/scanResult";
 import toast from "react-hot-toast";
 
@@ -31,9 +32,14 @@ export default function ScanPage() {
   }, []);
 
   const handleDetected = useCallback(async (barcode: string) => {
+    const normalizedBarcode = normalizeBarcode(barcode);
+    if (!isValidRetailBarcode(normalizedBarcode)) {
+      setScanError("That scan was incomplete. Keep the full barcode inside the frame and try again.");
+      return;
+    }
     const now = Date.now();
-    if (barcode === lastScanRef.current && now - lastScanTimeRef.current < 5000) return;
-    lastScanRef.current = barcode;
+    if (normalizedBarcode === lastScanRef.current && now - lastScanTimeRef.current < 5000) return;
+    lastScanRef.current = normalizedBarcode;
     lastScanTimeRef.current = now;
 
     setScanError(null);
@@ -45,7 +51,7 @@ export default function ScanPage() {
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barcode, mode }),
+        body: JSON.stringify({ barcode: normalizedBarcode, mode }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
@@ -64,7 +70,7 @@ export default function ScanPage() {
         writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives });
         router.replace("/results");
       } else {
-        router.replace(`/correct-product?barcode=${barcode}`);
+        router.replace(`/correct-product?barcode=${normalizedBarcode}`);
       }
     } catch (err: any) {
       clearTimeout(timeout);
@@ -104,7 +110,9 @@ export default function ScanPage() {
         }
         // @ts-expect-error - BarcodeDetector not in lib.dom.d.ts
         const detector = new BarcodeDetector({
-          formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39"],
+          // NutriScan targets Indian packaged food. Only accept its GS1 EAN-13
+          // format (890...) so a valid but unrelated UPC cannot hijack a scan.
+          formats: ["ean_13"],
         });
 
         const tick = async (now: number) => {
@@ -113,9 +121,10 @@ export default function ScanPage() {
             lastFrameAt = now;
             try {
               const codes = await detector.detect(videoRef.current);
-              if (codes.length > 0) {
+              const validCode = codes.find((code: { rawValue: string }) => isValidIndianEan13(code.rawValue));
+              if (validCode) {
                 stopCamera();
-                handleDetected(codes[0]!.rawValue);
+                handleDetected(validCode.rawValue);
                 return;
               }
             } catch {
@@ -244,6 +253,7 @@ export default function ScanPage() {
 
       <div className="absolute inset-x-0 bottom-0 z-10 stack--md px-page pb-[calc(var(--safe-bottom)+28px)]">
         <p className="text-center text-cream text-sm">{cameraReady ? "Align the barcode within the frame" : "Starting camera…"}</p>
+        <p className="text-center text-sand text-xs">Only a complete, checksum-valid Indian EAN‑13 barcode (890…) will be accepted.</p>
 
         <div className="row" style={{ justifyContent: "center", gap: 12 }}>
           <button
