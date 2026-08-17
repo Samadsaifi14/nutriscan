@@ -41,7 +41,12 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
   try {
     const offRes = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${trimmedBarcode}.json`,
-      { headers: { 'User-Agent': 'BioYou/1.0 (BioYou@example.com)' } }
+      {
+        headers: { 'User-Agent': 'BioYou/1.0 (BioYou@example.com)' },
+        // The exact barcode record is the only source required for a normal
+        // scan. Do not allow an unavailable upstream to stall the request.
+        signal: AbortSignal.timeout(4500),
+      }
     )
 
     if (offRes.ok) {

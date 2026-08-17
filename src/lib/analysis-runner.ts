@@ -61,7 +61,7 @@ const SEVERITY = (risk: string) =>
 
 export async function runUnifiedAnalysis(
   product: UnifiedProductInput,
-  opts?: { userId?: string; userProfile?: any }
+  opts?: { userId?: string; userProfile?: any; fast?: boolean }
 ): Promise<any> {
   const hasRealNutrition = [product.nutrition.calories, product.nutrition.protein, product.nutrition.carbs, product.nutrition.fat].some(
     (v) => v !== undefined && v !== null && v > 0
@@ -75,7 +75,7 @@ export async function runUnifiedAnalysis(
   // Fetch user profile from DB if not passed (needed by the no-nutrition Groq
   // enrichment below and by the main personalized path).
   let profile = opts?.userProfile
-  if (opts?.userId && !profile) {
+  if (opts?.userId && !profile && !opts.fast) {
     const { data: dbProfile } = await supabaseAdmin
       .from('user_profiles')
       .select('age, weight_kg, height_cm, weight_goal, gender, is_diabetic, has_bp, has_heart_disease, has_cholesterol, is_vegetarian, is_vegan, is_jain, has_thyroid, has_kidney_disease, has_pcod, is_pregnant, is_lactating, ethnicity, region, allergies, food_preferences')
@@ -155,7 +155,7 @@ export async function runUnifiedAnalysis(
     // the results page still renders AI insights (the user asked for AI to run when
     // OFF / web search don't return nutrition). Skip if there's nothing to analyze.
     let aiEnh: any = null
-    if (product.ingredients_text) {
+    if (product.ingredients_text && !opts?.fast) {
       try {
         aiEnh = await Promise.race([
           generateUnifiedAnalysis({
@@ -320,7 +320,7 @@ export async function runUnifiedAnalysis(
 
   // ── PHASE 4 + PHASE 3: run Groq enrichment and healthier-alternatives lookup
   // in PARALLEL (they are independent) so a scan isn't slowed by waiting for both. ──
-  const groqPromise = Promise.race([
+  const groqPromise = opts?.fast ? Promise.resolve(null) : Promise.race([
     generateUnifiedAnalysis({
       product_name: product.name,
       score: localResult.score,
@@ -371,7 +371,7 @@ export async function runUnifiedAnalysis(
     return null
   })
 
-  const altPromise = Promise.race([
+  const altPromise = opts?.fast ? Promise.resolve(null) : Promise.race([
     findHealthierAlternatives({
       name: product.name,
       brand: product.brand || null,

@@ -12,6 +12,11 @@ import { fillNutritionIfMissing, getCategoryNutrition } from '@/lib/nutrition-he
 import { lookupBarcode } from '@/lib/scan-product'
 import { runUnifiedAnalysis, toUnifiedInput } from '@/lib/analysis-runner'
 
+// Vercel may otherwise terminate a serverless request before product analysis
+// has finished on a cold start. The live path below is local-only and normally
+// completes well within this limit.
+export const maxDuration = 60
+
 type Confidence = 'exact' | 'high' | 'estimated' | 'low' | 'none'
 
 export async function GET(req: NextRequest) {
@@ -616,7 +621,10 @@ export async function POST(req: NextRequest) {
     }
 
     const product = formatProduct(result.product)
-    const analysis = await runUnifiedAnalysis(toUnifiedInput(result.product), { userId: auth.userId })
+    // Return the deterministic label/nutrition report immediately. AI prose and
+    // remote alternative lookup are intentionally omitted from the scan-critical
+    // path so one slow provider cannot make a valid barcode time out.
+    const analysis = await runUnifiedAnalysis(toUnifiedInput(result.product), { userId: auth.userId, fast: true })
     const dyn = (analysis as any).dynamic_alternatives
     const curatedAlts = (analysis as any).curated_alternatives || []
     const dynamicAlts = (dyn?.products || []).map((p: any) => ({
