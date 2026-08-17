@@ -6,14 +6,15 @@ export function getAdminEmails(): string[] {
     .filter(Boolean)
 }
 
-export function isAdminEmail(_email: string | null | undefined): boolean {
-  return false
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false
+  return getAdminEmails().includes(email.trim().toLowerCase())
 }
 
-export function isAdminSession(_session: any): boolean {
-  return false
+export function isAdminSession(session: any): boolean {
+  return isAdminEmail(session?.user?.email)
 }
 
-export function requireAdmin(_session: any): { ok: true } | { ok: false; status: 403 } {
-  return { ok: true }
+export function requireAdmin(session: any): { ok: true } | { ok: false; status: 403 } {
+  return isAdminSession(session) ? { ok: true } : { ok: false, status: 403 }
 }

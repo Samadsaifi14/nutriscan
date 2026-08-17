@@ -301,7 +301,34 @@ export default function ResultsPage() {
               </div>
             ) : (
               <div className="card card--healthy">
-                <p className="text-sm text-moss font-semibold">✓ No harmful ingredients detected</p>
+                <p className="text-sm text-moss font-semibold">✓ No high-concern additives matched</p>
+                <p className="text-xs text-sand mt-1">This is not a guarantee that every ingredient is suitable for every person.</p>
+              </div>
+            )}
+            {analysis.ingredient_report && analysis.ingredient_report.length > 0 && (
+              <div className="card stack--sm">
+                <div>
+                  <p className="text-2xs text-sand" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>Plain-language ingredient guide</p>
+                  <p className="text-xs text-sand mt-1">Each item is kept as written on the label, then explained without guessing missing details.</p>
+                </div>
+                {analysis.ingredient_report.map((item, index) => {
+                  const colors = item.status === 'high_concern'
+                    ? { background: 'rgba(192,64,40,0.10)', border: 'rgba(192,64,40,0.3)', text: 'var(--risk-red, #c0392b)' }
+                    : item.status === 'watch'
+                    ? { background: 'rgba(196,113,74,0.10)', border: 'rgba(196,113,74,0.25)', text: 'var(--clay, #c1714a)' }
+                    : { background: 'rgba(61,92,46,0.08)', border: 'rgba(61,92,46,0.2)', text: 'var(--moss, #3d5c2e)' };
+                  return (
+                    <div key={`${item.name}-${index}`} className="rounded-lg p-3" style={{ background: colors.background, border: `1px solid ${colors.border}` }}>
+                      <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+                        <p className="text-sm font-semibold" style={{ color: colors.text }}>{item.name}</p>
+                        <span className="text-[10px] text-sand">{item.evidence === 'additive_database' ? 'Additive reference' : 'Label explanation'}</span>
+                      </div>
+                      <p className="text-xs text-cream mt-1">{item.plainLanguage}</p>
+                      <p className="text-xs text-sand mt-1">{item.note}</p>
+                    </div>
+                  );
+                })}
+                <p className="text-[10px] text-sand">Reference framework: product label, FSSAI food-additive rules, and public-health guidance. This is food information, not medical advice.</p>
               </div>
             )}
             {parsedIngredients.length > 0 && (

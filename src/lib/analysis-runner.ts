@@ -7,6 +7,7 @@ import { generateUnifiedAnalysis } from '@/lib/groq'
 import { scoreProduct, detectAdditives, getCategoryWarnings, type NutritionPer100g } from '@/lib/health-engine'
 import { findHealthierAlternatives } from '@/lib/alternatives'
 import { findCuratedAlternatives } from '@/lib/curated-alternatives'
+import { buildIngredientReport } from '@/lib/ingredient-report'
 
 export interface UnifiedProductInput {
   barcode?: string
@@ -67,6 +68,7 @@ export async function runUnifiedAnalysis(
   )
 
   const harmfulFromIngredients = detectAdditives(product.ingredients_text || '')
+  const ingredientReport = buildIngredientReport(product.ingredients_text)
   const categoryWarnings = getCategoryWarnings(product.category || '')
   const combinedHarmful = harmfulFromIngredients.length > 0 ? harmfulFromIngredients : categoryWarnings.length > 0 ? categoryWarnings : harmfulFromIngredients
 
@@ -208,6 +210,7 @@ export async function runUnifiedAnalysis(
       recommendations: aiEnh?.recommendations || [],
       personalizedWarnings: aiEnh?.personalizedWarnings || [],
       ai_ingredients: aiEnh?.ai_ingredients || [],
+      ingredient_report: ingredientReport,
       fssai_compliance: activeWarnings.length > 0 ? 'concern' : 'unknown',
       diabetic_suitability: activeWarnings.some((a: any) => ['Monosodium Glutamate', 'Sodium Benzoate', 'Potassium Sorbate', 'TBHQ', 'BHA', 'BHT', 'Aspartame', 'Acesulfame K', 'Saccharin', 'Sucralose'].includes(a.name)) ? 'consume_with_caution' : 'suitable',
       bp_suitability: activeWarnings.some((a: any) => ['Sodium Benzoate', 'Sodium Nitrite', 'MSG/E621'].includes(a.name)) ? 'consume_with_caution' : 'suitable',
@@ -427,6 +430,7 @@ export async function runUnifiedAnalysis(
     recommendations: aiEnhancement?.recommendations || generateLocalRecommendations(localResult, profile),
     personalizedWarnings: aiEnhancement?.personalizedWarnings || generateLocalPersonalizedWarnings(localResult, profile),
     ai_ingredients: aiEnhancement?.ai_ingredients || [],
+    ingredient_report: ingredientReport,
     healthier_alternatives: aiEnhancement?.healthier_alternatives || [],
     fssai_compliance: aiEnhancement?.fssai_compliance || (localResult.score >= 7 ? 'compliant' : localResult.score >= 5 ? 'concern' : 'unknown'),
     diabetic_suitability: aiEnhancement?.diabetic_suitability || (localResult.breakdown.some((b: any) => b.factor === 'sugar' && b.impact === 'critical') ? 'avoid' : localResult.breakdown.some((b: any) => b.factor === 'sugar' && b.impact === 'negative') ? 'consume_with_caution' : 'suitable'),

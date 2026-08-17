@@ -19,8 +19,16 @@ export default function ScanPage() {
   const [supported, setSupported] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const lastScanRef = useRef<string>("");
   const lastScanTimeRef = useRef(0);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraReady(false);
+  }, []);
 
   const handleDetected = useCallback(async (barcode: string) => {
     const now = Date.now();
@@ -31,7 +39,7 @@ export default function ScanPage() {
     setScanError(null);
     setScanning(true);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), 90000);
 
     try {
       const res = await fetch("/api/scan", {
@@ -62,7 +70,7 @@ export default function ScanPage() {
       clearTimeout(timeout);
       setScanning(false);
       if (err?.name === "AbortError") {
-        setScanError("Scan timed out. Please try again.");
+        setScanError("The product lookup took too long. Try again, or use a photo of the back label.");
       } else {
         setScanError("Scan failed. Please try again.");
       }
@@ -74,8 +82,10 @@ export default function ScanPage() {
       setSupported(false);
       return;
     }
-    let stream: MediaStream;
+    let stream: MediaStream | undefined;
     let raf: number;
+    let detecting = false;
+    let lastFrameAt = 0;
 
     navigator.mediaDevices
       .getUserMedia({
@@ -87,25 +97,31 @@ export default function ScanPage() {
       })
       .then((s) => {
         stream = s;
+        streamRef.current = s;
         if (videoRef.current) {
           videoRef.current.srcObject = s;
-          videoRef.current.play().catch(() => setSupported(false));
+          videoRef.current.play().then(() => setCameraReady(true)).catch(() => setSupported(false));
         }
         // @ts-expect-error - BarcodeDetector not in lib.dom.d.ts
         const detector = new BarcodeDetector({
           formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39"],
         });
 
-        const tick = async () => {
-          if (videoRef.current && videoRef.current.readyState === 4) {
+        const tick = async (now: number) => {
+          if (videoRef.current && videoRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && !detecting && now - lastFrameAt >= 120) {
+            detecting = true;
+            lastFrameAt = now;
             try {
               const codes = await detector.detect(videoRef.current);
               if (codes.length > 0) {
+                stopCamera();
                 handleDetected(codes[0]!.rawValue);
                 return;
               }
             } catch {
               /* frame not ready — keep polling */
+            } finally {
+              detecting = false;
             }
           }
           raf = requestAnimationFrame(tick);
@@ -117,15 +133,32 @@ export default function ScanPage() {
     return () => {
       cancelAnimationFrame(raf);
       stream?.getTracks().forEach((t) => t.stop());
+      if (streamRef.current === stream) streamRef.current = null;
     };
-  }, [handleDetected]);
+  }, [handleDetected, stopCamera]);
+
+  useEffect(() => () => stopCamera(), [stopCamera]);
+
+  async function toggleTorch() {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      const capabilities = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+      if (!capabilities?.torch) return toast.error("Flash is not available on this camera.");
+      const next = !torchOn;
+      await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
+      setTorchOn(next);
+    } catch {
+      toast.error("Could not change the flash setting.");
+    }
+  }
 
   async function handlePhotoCapture(blob: Blob) {
     const formData = new FormData();
     formData.append("image", blob, "capture.jpg");
     setScanning(true);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), 90000);
     try {
       const res = await fetch("/api/scan-product-photo", {
         method: "POST",
@@ -154,7 +187,7 @@ export default function ScanPage() {
       clearTimeout(timeout);
       setScanning(false);
       if (err?.name === "AbortError") {
-        toast.error("Analysis timed out. Try a clearer photo.");
+        toast.error("Analysis took too long. Try a clearer photo or scan the barcode.");
       } else {
         toast.error("Photo scan failed");
       }
@@ -170,7 +203,7 @@ export default function ScanPage() {
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/60">
           <RefreshCw size={40} className="text-cream animate-spin mb-4" />
           <p className="text-cream text-body font-semibold">Analyzing product…</p>
-          <p className="text-sand text-xs mt-1">This may take up to 30 seconds</p>
+          <p className="text-sand text-xs mt-1">Looking up the product and label details…</p>
         </div>
       )}
 
@@ -179,7 +212,7 @@ export default function ScanPage() {
           <X size={20} className="text-cream" />
         </button>
         <button
-          onClick={() => setTorchOn((v) => !v)}
+          onClick={toggleTorch}
           aria-label="Toggle flash"
           className={cn("icon-btn glass rounded-full", torchOn && "icon-btn--active")}
         >
@@ -210,7 +243,7 @@ export default function ScanPage() {
       )}
 
       <div className="absolute inset-x-0 bottom-0 z-10 stack--md px-page pb-[calc(var(--safe-bottom)+28px)]">
-        <p className="text-center text-cream text-sm">Align the barcode within the frame</p>
+        <p className="text-center text-cream text-sm">{cameraReady ? "Align the barcode within the frame" : "Starting camera…"}</p>
 
         <div className="row" style={{ justifyContent: "center", gap: 12 }}>
           <button

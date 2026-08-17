@@ -49,6 +49,14 @@ export interface IngredientWarning {
   severity?: 'low' | 'medium' | 'high'
 }
 
+export interface IngredientReportItem {
+  name: string
+  plainLanguage: string
+  status: 'information' | 'watch' | 'high_concern'
+  note: string
+  evidence: 'label' | 'additive_database'
+}
+
 export interface Alternative {
   name: string
   brand: string
@@ -99,6 +107,7 @@ export interface Analysis {
   harmful_ingredients?: HarmfulIngredient[]
   ingredient_warnings?: IngredientWarning[]
   ai_ingredients?: AiIngredient[]
+  ingredient_report?: IngredientReportItem[]
   healthier_alternatives?: Alternative[]
   positives?: string[]
   recommendations?: string[]
