@@ -45,8 +45,7 @@ export const authOptions: NextAuthOptions = {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' })
         if (error) {
-          console.error('Supabase upsert error:', error.message)
-          return false
+          console.error('Supabase upsert error (sign-in continuing):', error.message)
         }
         if (isNewUser) {
           const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
@@ -62,8 +61,8 @@ export const authOptions: NextAuthOptions = {
         }
         return true
       } catch (err) {
-        console.error('SignIn error:', err)
-        return false
+        console.error('SignIn error (allowing login):', err)
+        return true
       }
     },
 
