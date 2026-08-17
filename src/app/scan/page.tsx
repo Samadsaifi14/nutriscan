@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { X, Zap, ZapOff, Image as ImageIcon, Keyboard } from "lucide-react";
+import { X, Zap, ZapOff, Image as ImageIcon, Keyboard, RefreshCw } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { cn } from "@/lib/utils";
 import { writeScanResult } from "@/types/scanResult";
+import toast from "react-hot-toast";
 
 type Mode = "barcode" | "photo";
 
@@ -17,24 +18,45 @@ export default function ScanPage() {
   const [manualOpen, setManualOpen] = useState(false);
   const [supported, setSupported] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const lastScanRef = useRef<string>("");
+  const lastScanTimeRef = useRef(0);
 
   const handleDetected = useCallback(async (barcode: string) => {
+    const now = Date.now();
+    if (barcode === lastScanRef.current && now - lastScanTimeRef.current < 5000) return;
+    lastScanRef.current = barcode;
+    lastScanTimeRef.current = now;
+
     setScanError(null);
+    setScanning(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
     try {
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ barcode, mode }),
+        signal: controller.signal,
       });
       const data = await res.json();
+      clearTimeout(timeout);
+      setScanning(false);
       if (data?.product && data?.analysis) {
         writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives });
         router.replace("/results");
       } else {
         router.replace(`/correct-product?barcode=${barcode}`);
       }
-    } catch {
-      setScanError("Scan failed. Please try again.");
+    } catch (err: any) {
+      clearTimeout(timeout);
+      setScanning(false);
+      if (err?.name === "AbortError") {
+        setScanError("Scan timed out. Please try again.");
+      } else {
+        setScanError("Scan failed. Please try again.");
+      }
     }
   }, [mode, router]);
 
@@ -47,7 +69,13 @@ export default function ScanPage() {
     let raf: number;
 
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "environment" } })
+      .getUserMedia({
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      })
       .then((s) => {
         stream = s;
         if (videoRef.current) {
@@ -86,15 +114,32 @@ export default function ScanPage() {
   async function handlePhotoCapture(blob: Blob) {
     const formData = new FormData();
     formData.append("image", blob, "capture.jpg");
+    setScanning(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     try {
-      const res = await fetch("/api/scan-product-photo", { method: "POST", body: formData });
+      const res = await fetch("/api/scan-product-photo", {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      });
       const data = await res.json();
+      clearTimeout(timeout);
+      setScanning(false);
       if (data?.product && data?.analysis) {
         writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives });
         router.replace("/results");
+      } else {
+        toast.error("Could not identify product from photo");
       }
-    } catch {
-      // silent
+    } catch (err: any) {
+      clearTimeout(timeout);
+      setScanning(false);
+      if (err?.name === "AbortError") {
+        toast.error("Analysis timed out. Try a clearer photo.");
+      } else {
+        toast.error("Photo scan failed");
+      }
     }
   }
 
@@ -102,6 +147,14 @@ export default function ScanPage() {
     <PageShell variant="fullscreen">
       <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover" muted playsInline />
       <div className="absolute inset-0 bg-black/35" />
+
+      {scanning && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/60">
+          <RefreshCw size={40} className="text-cream animate-spin mb-4" />
+          <p className="text-cream text-body font-semibold">Analyzing product…</p>
+          <p className="text-sand text-xs mt-1">This may take up to 30 seconds</p>
+        </div>
+      )}
 
       <div className="absolute inset-x-0 top-0 z-10 row px-page pt-[calc(var(--safe-top)+12px)]" style={{ justifyContent: "space-between" }}>
         <button onClick={() => router.back()} aria-label="Close scanner" className="icon-btn glass rounded-full">
