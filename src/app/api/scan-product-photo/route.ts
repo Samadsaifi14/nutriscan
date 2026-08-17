@@ -7,6 +7,14 @@ import { runUnifiedAnalysis, toUnifiedInput } from '@/lib/analysis-runner'
 
 export async function POST(req: NextRequest) {
   try {
+    const contentLength = parseInt(req.headers.get('content-length') || '0', 10)
+    if (contentLength > 13_631_488) {
+      return NextResponse.json(
+        { success: false, error: 'Image too large. Maximum size is 10MB.' },
+        { status: 413 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     const userId = (session as any)?.userId
 

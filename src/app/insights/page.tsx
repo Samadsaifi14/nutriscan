@@ -52,7 +52,8 @@ export default function Insights() {
       </div>
       <div className="h-scroll">
         {(() => {
-          const week = data?.weeklyBreakdown ?? [0, 0, 0, 0, 0, 0, 0]
+          const weekRaw = data?.weeklyBreakdown ?? []
+          const week = Array.from({ length: 7 }, (_, i) => weekRaw[i] ?? 0)
           const max = Math.max(1, ...week)
           const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
           return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (

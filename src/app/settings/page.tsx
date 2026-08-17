@@ -1,26 +1,26 @@
 'use client'
 
-import { useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { PageShell } from '@/components/PageShell'
-import { Bell, Download, Trash, Sun, ChevronRight } from 'lucide-react'
+import { Download, Trash, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Settings() {
   const { data: session } = useSession()
   const router = useRouter()
-  const [notifications, setNotifications] = useState(true)
 
   async function handleExport() {
     try {
       const res = await fetch('/api/profile/export')
+      if (!res.ok) { toast.error('Export failed'); return }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = 'healthox-data.json'
       a.click()
+      URL.revokeObjectURL(url)
       toast.success('Data exported')
     } catch {
       toast.error('Export failed')
@@ -30,7 +30,9 @@ export default function Settings() {
   async function handleDelete() {
     if (!confirm('Are you sure? This cannot be undone.')) return
     try {
-      await fetch('/api/profile/delete', { method: 'DELETE' })
+      const res = await fetch('/api/profile/delete', { method: 'DELETE' })
+      if (!res.ok) { toast.error('Delete failed'); return }
+      await signOut({ redirect: false })
       router.push('/')
     } catch {
       toast.error('Delete failed')
@@ -39,14 +41,6 @@ export default function Settings() {
 
   type SectionItem = { icon: React.ReactNode; label: string; right?: React.ReactNode; onClick?: () => void; dangerous?: boolean }
   const sections: { title: string; items: SectionItem[] }[] = [
-    { title: 'Preferences', items: [
-      { icon: <Bell size={16} />, label: 'Notifications', right: (
-        <div className={`toggle ${notifications ? 'toggle--on' : ''}`} onClick={() => setNotifications(!notifications)} style={{ cursor: 'pointer' }}>
-          <div className="toggle__knob" />
-        </div>
-      )},
-      { icon: <Sun size={16} />, label: 'Theme', right: <span className="text-xs" style={{ color: 'var(--muted)' }}>Dark</span> },
-    ]},
     { title: 'Data', items: [
       { icon: <Download size={16} />, label: 'Export Data', onClick: handleExport },
     ]},

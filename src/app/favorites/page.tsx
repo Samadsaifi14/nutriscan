@@ -10,7 +10,7 @@ import { Heart } from 'lucide-react'
 export default function Favorites() {
   const router = useRouter()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['favorites'],
     queryFn: async () => {
       const res = await fetch('/api/favorites')
@@ -25,6 +25,11 @@ export default function Favorites() {
     <PageShell title="Favorites" showBack>
       {isLoading ? (
         <div className="stack--sm">{Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}</div>
+      ) : error ? (
+        <div className="empty-state" style={{ minHeight: '60dvh', justifyContent: 'center' }}>
+          <p className="text-sm" style={{ fontWeight: 600, color: 'var(--rust)' }}>Failed to load favorites</p>
+          <p className="text-xs text-sand">Please try again later</p>
+        </div>
       ) : items.length === 0 ? (
         <div className="empty-state" style={{ minHeight: '60dvh', justifyContent: 'center' }}>
           <div className="empty-state__icon"><Heart size={24} /></div>
@@ -41,7 +46,10 @@ export default function Favorites() {
               key={(item.product as { barcode?: string })?.barcode ?? i}
               product={item.product as { name: string; brand: string; image_url?: string }}
               analysis={item.analysis as { health_score: number; health_rating: 'healthy' | 'moderate' | 'unhealthy' }}
-              onClick={() => router.push(`/results?barcode=${(item.product as { barcode?: string })?.barcode ?? ''}`)}
+              onClick={() => {
+                const barcode = (item.product as { barcode?: string })?.barcode;
+                if (barcode) router.push(`/results?barcode=${barcode}`);
+              }}
             />
           ))}
         </div>

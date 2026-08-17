@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { PageShell } from '@/components/PageShell'
 import toast from 'react-hot-toast'
 
 function CorrectForm() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const barcode = searchParams.get('barcode') ?? ''
   const [name, setName] = useState('')
@@ -22,8 +23,12 @@ function CorrectForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ barcode, name, brand }),
       })
-      if (res.ok) toast.success('Correction submitted')
-      else toast.error('Failed')
+      if (res.ok) {
+        toast.success('Correction submitted')
+        router.push('/scan')
+      } else {
+        toast.error('Failed')
+      }
     } catch {
       toast.error('Network error')
     } finally {

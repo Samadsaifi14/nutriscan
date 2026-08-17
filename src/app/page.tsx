@@ -23,7 +23,13 @@ export default function Home() {
     }
   }, [session, status, router])
 
-  if (status === 'loading') return null
+  if (status === 'loading') return (
+    <PageShell variant="no-header">
+      <div style={{ height: '80dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 32, height: 32, border: '3px solid var(--surface-3)', borderTopColor: 'var(--clay)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      </div>
+    </PageShell>
+  )
   if (session) return null
 
   return (

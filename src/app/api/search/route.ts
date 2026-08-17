@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { transformProductToCard } from '@/lib/frontend-transform'
+import { escapeIlike } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Query must be at least 2 characters' }, { status: 400 })
   }
 
-  const safe = q.replace(/[%_\\]/g, (m) => `\\${m}`)
+  const safe = escapeIlike(q)
   const pattern = `%${safe}%`
 
   const controller = new AbortController()

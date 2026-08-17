@@ -3,8 +3,8 @@ import { createHmac, timingSafeEqual } from 'crypto'
 const TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000 // 1 year
 
 function getSecret(): string {
-  const secret = process.env.NEXTAUTH_SECRET
-  if (!secret) throw new Error('NEXTAUTH_SECRET is required for unsubscribe tokens')
+  const secret = process.env.UNSUBSCRIBE_SECRET || process.env.NEXTAUTH_SECRET
+  if (!secret) throw new Error('UNSUBSCRIBE_SECRET or NEXTAUTH_SECRET is required for unsubscribe tokens')
   return secret
 }
 

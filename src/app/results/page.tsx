@@ -83,8 +83,9 @@ export default function ResultsPage() {
     setLoading(false);
   }, []);
 
-  const { product, analysis } = data || {} as any;
-  const nutrition = product?.nutrition;
+  const product = data?.product;
+  const analysis = data?.analysis;
+  const nutrition = product?.nutrition ?? {} as Record<string, number | null | undefined>;
 
   // Build ingredient severity map for highlighting
   const ingredientSeverityMap = useMemo(() => {
@@ -159,7 +160,20 @@ export default function ResultsPage() {
     );
   }
 
+  if (!product || !analysis) {
+    return (
+      <PageShell title="Scan result" showBack>
+        <div className="empty-state" style={{ minHeight: "60dvh", justifyContent: "center" }}>
+          <Info size={24} className="empty-state__icon" />
+          <p className="text-body" style={{ fontWeight: 600 }}>Incomplete scan data</p>
+          <p className="text-xs text-sand">Try scanning the product again</p>
+        </div>
+      </PageShell>
+    );
+  }
+
   async function saveFavorite() {
+    if (!product || !nutrition) return;
     try {
       const res = await fetch("/api/favorites", {
         method: "POST",
@@ -236,7 +250,7 @@ export default function ResultsPage() {
 
         {tab === "Overview" && <OverviewTab analysis={analysis} />}
 
-        {tab === "Nutrition" && (
+        {tab === "Nutrition" && nutrition && (
           <div className="card stack--sm">
             {[
               { label: "Calories", value: nutrition.calories, unit: "kcal" },
@@ -253,6 +267,11 @@ export default function ResultsPage() {
                 <span className="text-mono text-sm text-cream">{item.value}<span className="text-muted text-xs"> {item.unit}</span></span>
               </div>
             ))}
+          </div>
+        )}
+        {tab === "Nutrition" && !nutrition && (
+          <div className="empty-state">
+            <p className="text-sm text-sand">Nutrition data not available</p>
           </div>
         )}
 

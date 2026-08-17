@@ -17,6 +17,10 @@ export default function Contribute() {
       toast.error('Product name and barcode are required')
       return
     }
+    if (!/^\d{8,13}$/.test(barcode.trim())) {
+      toast.error('Barcode must be 8-13 digits')
+      return
+    }
     setSubmitting(true)
     try {
       const res = await fetch('/api/products/submit', {
@@ -56,9 +60,9 @@ export default function Contribute() {
         </div>
         <div className="input-group">
           <label className="input-label">Barcode *</label>
-          <input className="input" value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="e.g. 8901234567890" />
+          <input className="input" value={barcode} onChange={(e) => setBarcode(e.target.value)} inputMode="numeric" maxLength={13} placeholder="e.g. 8901234567890" />
         </div>
-        <button type="submit" className="btn btn--primary btn--full" disabled={submitting}>
+        <button type="submit" className="btn btn--primary btn--full" disabled={submitting} style={{ opacity: submitting ? 0.6 : 1 }}>
           {submitting ? 'Submitting...' : 'Submit Product'}
         </button>
       </form>

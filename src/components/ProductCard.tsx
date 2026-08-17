@@ -33,8 +33,8 @@ export function ProductCard({ product, analysis, onClick }: ProductCardProps) {
     rotateY.set(0)
   }
 
-  const rating = scoreToRating(analysis.health_score)
-  const ringColor = { healthy: '#8FB878', moderate: '#E49030', unhealthy: '#E06B52' }[rating]
+  const rating = scoreToRating(analysis.health_score ?? 5)
+  const ringColor = { healthy: '#8FB878', moderate: '#E49030', unhealthy: '#E06B52' }[rating] ?? '#E49030'
   const pillVariant = { healthy: 'healthy' as const, moderate: 'warning' as const, unhealthy: 'harmful' as const }[rating]
 
   return (

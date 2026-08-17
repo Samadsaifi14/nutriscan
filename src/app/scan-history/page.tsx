@@ -10,7 +10,7 @@ import { Clock } from 'lucide-react'
 export default function ScanHistory() {
   const router = useRouter()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['scanHistory'],
     queryFn: async () => {
       const res = await fetch('/api/log')
@@ -26,6 +26,11 @@ export default function ScanHistory() {
       {isLoading ? (
         <div className="stack--sm">
           {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : error ? (
+        <div className="empty-state" style={{ minHeight: '60dvh', justifyContent: 'center' }}>
+          <p className="text-sm" style={{ fontWeight: 600, color: 'var(--rust)' }}>Failed to load scan history</p>
+          <p className="text-xs text-sand">Please try again later</p>
         </div>
       ) : scans.length === 0 ? (
         <div className="empty-state" style={{ minHeight: '60dvh', justifyContent: 'center' }}>
@@ -43,7 +48,10 @@ export default function ScanHistory() {
               key={(scan.product as { barcode?: string })?.barcode ?? i}
               product={scan.product as { name: string; brand: string; image_url?: string }}
               analysis={scan.analysis as { health_score: number; health_rating: 'healthy' | 'moderate' | 'unhealthy' }}
-              onClick={() => router.push(`/results?barcode=${(scan.product as { barcode?: string })?.barcode ?? ''}`)}
+              onClick={() => {
+                const barcode = (scan.product as { barcode?: string })?.barcode;
+                if (barcode) router.push(`/results?barcode=${barcode}`);
+              }}
             />
           ))}
         </div>

@@ -1,8 +1,7 @@
 // lib/shopping-links.ts
 // Generate shopping links for alternatives
 
-// Your Amazon Associates Store ID
-const AMAZON_AFFILIATE_ID = 'BioYou-21'
+import { AMAZON_AFFILIATE_TAG } from '@/lib/config'
 
 export interface ShoppingLink {
   platform: 'amazon' | 'flipkart' | 'bigbasket' | 'blinkit' | 'zepto' | 'instamart' | 'jiomart'
@@ -21,7 +20,7 @@ const PLATFORM_SEARCH_URLS = {
 
 export function getAmazonLink(productName: string, brand?: string): string {
   const searchTerm = encodeURIComponent(`${brand || ''} ${productName}`.trim())
-  const tag = AMAZON_AFFILIATE_ID ? `ref=as_li_ss_tl&tag=${AMAZON_AFFILIATE_ID}` : ''
+  const tag = AMAZON_AFFILIATE_TAG ? `ref=as_li_ss_tl&tag=${AMAZON_AFFILIATE_TAG}` : ''
   const base = `https://www.amazon.in/s?k=${searchTerm}`
   return tag ? `${base}&${tag}` : base
 }

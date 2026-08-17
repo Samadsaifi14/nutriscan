@@ -1,11 +1,11 @@
+import { GA_MEASUREMENT_ID } from '@/lib/config'
+
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void
     dataLayer?: unknown[]
   }
 }
-
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
 
 export function pageView(url: string): void {
   if (!GA_MEASUREMENT_ID || typeof window === 'undefined') return

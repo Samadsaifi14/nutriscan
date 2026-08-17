@@ -78,33 +78,24 @@ export function extractBarcodeFromText(text: string): string | null {
 // TEXT EXTRACTION (Tesseract.js)
 // ─────────────────────────────────────────────────────────────────────────────
 
-let tesseractWorker: Tesseract.Worker | null = null
-
-async function getTesseractWorker(): Promise<Tesseract.Worker> {
-  if (!tesseractWorker) {
-    tesseractWorker = await Tesseract.createWorker('eng', 1, {
+export async function extractTextFromImage(
+  imageBase64: string,
+  onProgress?: (progress: number) => void
+): Promise<OCRResult> {
+  const warnings: string[] = []
+  let worker: Tesseract.Worker | null = null
+  
+  try {
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '')
+    const imageBuffer = Buffer.from(base64Data, 'base64')
+    
+    worker = await Tesseract.createWorker('eng', 1, {
       logger: (m) => {
         if (m.status === 'recognizing text') {
           console.log(`OCR progress: ${Math.round(m.progress * 100)}%`)
         }
       },
     })
-  }
-  return tesseractWorker
-}
-
-export async function extractTextFromImage(
-  imageBase64: string,
-  onProgress?: (progress: number) => void
-): Promise<OCRResult> {
-  const warnings: string[] = []
-  
-  try {
-    // Remove data URL prefix if present
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '')
-    const imageBuffer = Buffer.from(base64Data, 'base64')
-    
-    const worker = await getTesseractWorker()
     
     console.log('Starting OCR...')
     const result = await worker.recognize(imageBuffer, {
@@ -138,6 +129,10 @@ export async function extractTextFromImage(
   } catch (error: any) {
     console.error('OCR error:', error.message)
     throw new Error(`OCR failed: ${error.message}`)
+  } finally {
+    if (worker) {
+      await worker.terminate()
+    }
   }
 }
 
@@ -335,10 +330,3 @@ export async function performLocalOCR(imageBase64: string): Promise<LocalOCRResp
     method: 'local_ocr',
   }
 }
-
-// Clean up worker on process exit
-process.on('exit', () => {
-  if (tesseractWorker) {
-    tesseractWorker.terminate()
-  }
-})

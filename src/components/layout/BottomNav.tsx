@@ -13,7 +13,7 @@ const TABS = [
   { key: "profile", label: "Profile", icon: User, href: "/profile", match: ["/profile", "/profile-setup", "/settings"] },
 ];
 
-const HIDDEN_PREFIXES = ["/auth", "/signin", "/legal"];
+const HIDDEN_PREFIXES = ["/auth", "/signin", "/legal", "/admin"];
 
 export function BottomNav() {
   const pathname = usePathname();

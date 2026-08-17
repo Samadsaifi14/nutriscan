@@ -54,14 +54,16 @@ export default function SearchPage() {
         <div className="stack--sm">{Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}</div>
       ) : results.length > 0 ? (
         <div className="stack--sm">
-          {results.map((item, i) => (
+          {results.filter((item) => item.product).map((item, i) => (
             <ProductCard
               key={i}
               product={item.product as { name: string; brand: string; image_url?: string }}
               analysis={item.analysis as { health_score: number; health_rating: 'healthy' | 'moderate' | 'unhealthy' }}
               onClick={async () => {
+                const barcode = (item.product as Record<string, string>)?.barcode;
+                if (!barcode) return;
                 try {
-                  const res = await fetch("/api/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ barcode: (item.product as Record<string, string>).barcode }) });
+                  const res = await fetch("/api/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ barcode }) });
                   const data = await res.json();
                   if (data?.product && data?.analysis) { writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives }); router.replace("/results"); }
                 } catch { /* silent */ }

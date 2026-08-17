@@ -9,10 +9,10 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CookieBanner } from "@/components/CookieBanner";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
-export const dynamic = 'force-dynamic'
-
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", display: "swap" });
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: "HealthOX — Scan. Understand. Choose better.",
@@ -43,9 +43,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ServiceWorkerRegister />
             <CookieBanner />
           </ErrorBoundary>
+          <FloatingScanButton />
+          <BottomNav />
         </Providers>
-        <FloatingScanButton />
-        <BottomNav />
       </body>
     </html>
   );

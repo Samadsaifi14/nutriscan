@@ -38,6 +38,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(signInUrl)
   }
 
+  if (pathname.startsWith('/admin')) {
+    const role = (token as any).role
+    if (role !== 'admin') {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+  }
+
   return NextResponse.next()
 }
 

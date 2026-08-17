@@ -16,8 +16,10 @@ export default function ScanPage() {
   const [torchOn, setTorchOn] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [supported, setSupported] = useState(true);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   const handleDetected = useCallback(async (barcode: string) => {
+    setScanError(null);
     try {
       const res = await fetch("/api/scan", {
         method: "POST",
@@ -32,7 +34,7 @@ export default function ScanPage() {
         router.replace(`/correct-product?barcode=${barcode}`);
       }
     } catch {
-      // silent
+      setScanError("Scan failed. Please try again.");
     }
   }, [mode, router]);
 
@@ -50,7 +52,7 @@ export default function ScanPage() {
         stream = s;
         if (videoRef.current) {
           videoRef.current.srcObject = s;
-          videoRef.current.play();
+          videoRef.current.play().catch(() => setSupported(false));
         }
         // @ts-expect-error - BarcodeDetector not in lib.dom.d.ts
         const detector = new BarcodeDetector({
@@ -128,6 +130,11 @@ export default function ScanPage() {
         <div className="absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 px-page text-center">
           <p className="text-cream text-body">Camera scanning isn't supported on this browser.</p>
           <p className="text-sand text-xs mt-2">Use manual entry or photo upload below instead.</p>
+        </div>
+      )}
+      {scanError && (
+        <div className="absolute inset-x-0 top-16 z-10 px-page text-center">
+          <p className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(192,64,40,0.9)', color: '#fff' }}>{scanError}</p>
         </div>
       )}
 

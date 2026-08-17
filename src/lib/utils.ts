@@ -18,3 +18,7 @@ export function scoreToRating(score: number): 'healthy' | 'moderate' | 'unhealth
 export function ratingColor(rating: 'healthy' | 'moderate' | 'unhealthy') {
   return { healthy: '#8FB878', moderate: '#E49030', unhealthy: '#E06B52' }[rating]
 }
+
+export function escapeIlike(str: string): string {
+  return str.replace(/[%_\\]/g, '\\$&')
+}

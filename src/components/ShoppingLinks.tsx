@@ -1,16 +1,15 @@
 import { ExternalLink } from 'lucide-react'
+import { AMAZON_AFFILIATE_TAG } from '@/lib/config'
 
 interface ShoppingLinksProps {
   productName: string
   variant?: 'compact' | 'grid'
 }
 
-const AMAZON_TAG = 'healthox-21'
-
 function buildLinks(productName: string) {
   const q = encodeURIComponent(productName)
   return [
-    { name: 'Amazon', href: `https://www.amazon.in/s?k=${q}&tag=${AMAZON_TAG}`, color: '#E49030' },
+    { name: 'Amazon', href: `https://www.amazon.in/s?k=${q}&tag=${AMAZON_AFFILIATE_TAG}`, color: '#E49030' },
     { name: 'Flipkart', href: `https://www.flipkart.com/search?q=${q}`, color: '#4A6B3A' },
     { name: 'Blinkit', href: `https://blinkit.com/s/?q=${q}`, color: '#D4853B' },
     { name: 'Instamart', href: `https://www.swiggy.com/instamart/search?custom_back=true&query=${q}`, color: '#C04028' },

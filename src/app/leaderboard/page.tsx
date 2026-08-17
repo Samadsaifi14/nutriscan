@@ -8,7 +8,7 @@ import { Award, Trophy, Medal } from 'lucide-react'
 const RANK_ICONS = [<Trophy key={0} size={16} color="var(--amber)" />, <Medal key={1} size={16} color="var(--sand)" />, <Medal key={2} size={16} color="var(--muted)" />]
 
 export default function Leaderboard() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['leaderboard'],
     queryFn: async () => {
       const res = await fetch('/api/leaderboard')
@@ -23,6 +23,11 @@ export default function Leaderboard() {
     <PageShell title="Leaderboard" showBack>
       {isLoading ? (
         <div className="stack--sm">{Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}</div>
+      ) : error ? (
+        <div className="empty-state" style={{ minHeight: '60dvh', justifyContent: 'center' }}>
+          <p className="text-sm" style={{ fontWeight: 600, color: 'var(--rust)' }}>Failed to load leaderboard</p>
+          <p className="text-xs text-sand">Please try again later</p>
+        </div>
       ) : (
         <div className="stack--sm">
           {users.length === 0 ? (
@@ -38,7 +43,9 @@ export default function Leaderboard() {
                   <div style={{ width: 28, textAlign: 'center', fontSize: 13, fontWeight: 700, color: i < 3 ? 'var(--clay)' : 'var(--muted)' }}>
                     {RANK_ICONS[i] ?? <span style={{ color: 'var(--muted)' }}>{i + 1}</span>}
                   </div>
-                  <div className="avatar avatar--sm" style={{ background: 'var(--surface-3)' }} />
+                  <div className="avatar avatar--sm" style={{ background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--sand)' }}>
+                    {String(u.name ?? '?')[0]?.toUpperCase() ?? '?'}
+                  </div>
                   <span className="text-sm" style={{ fontWeight: 600 }}>{String(u.name ?? '')}</span>
                 </div>
                 <span className="text-sm text-mono" style={{ fontWeight: 700, color: 'var(--clay)' }}>{String(u.score ?? '')}</span>

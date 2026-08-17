@@ -99,5 +99,5 @@ export function getImpactMessage(contributions: number): string {
   if (contributions < 5) return `You've helped ${contributions * 1000}+ people make better food choices!`
   if (contributions < 25) return `Your contributions are helping ${contributions * 1000}+ Indians!`
   if (contributions < 100) return `Amazing! You've impacted ${contributions * 1000}+ lives!`
-  return `🇮india Champion! Your database contributions help millions!`
+  return `India Champion! Your database contributions help millions!`
 }

@@ -1,13 +1,10 @@
 'use client'
 
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import { PageShell } from '@/components/PageShell'
 import { Camera } from 'lucide-react'
 
 export default function SignIn() {
-  const router = useRouter()
-
   return (
     <PageShell variant="bare">
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80dvh', textAlign: 'center' }}>
@@ -18,24 +15,12 @@ export default function SignIn() {
         <p className="text-sm" style={{ color: 'var(--sand)', marginBottom: 32, maxWidth: 280 }}>
           Sign in to scan products, track your health scores, and discover better alternatives.
         </p>
-        <div className="stack--sm" style={{ width: '100%', maxWidth: 300 }}>
+        <div style={{ width: '100%', maxWidth: 300 }}>
           <button
             className="btn btn--primary btn--full"
             onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
           >
             Continue with Google
-          </button>
-          <button
-            className="btn btn--secondary btn--full"
-            onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
-          >
-            Continue with GitHub
-          </button>
-          <button
-            className="btn btn--outline btn--full"
-            onClick={() => signIn('credentials', { callbackUrl: '/dashboard' })}
-          >
-            Continue with Email
           </button>
         </div>
         <p className="text-xs" style={{ color: 'var(--muted)', marginTop: 24 }}>

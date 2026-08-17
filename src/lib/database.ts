@@ -1,6 +1,7 @@
 // BioYou - Database helpers for products and additives tables
 
 import { supabaseAdmin } from './supabaseAdmin'
+import { escapeIlike } from './utils'
 
 // Products table matches your Supabase schema
 export interface Product {
@@ -148,7 +149,7 @@ export async function getAdditiveByName(name: string): Promise<Additive | null> 
   const { data, error } = await supabaseAdmin
     .from('additives')
     .select('*')
-    .ilike('name', `%${name}%`)
+    .ilike('name', `%${escapeIlike(name)}%`)
     .limit(1)
     .single()
 
@@ -182,7 +183,7 @@ export async function searchAdditives(query: string): Promise<Additive[]> {
   const { data, error } = await supabaseAdmin
     .from('additives')
     .select('*')
-    .or(`name.ilike.%${query}%,ins_code.ilike.%${query}%,e_code.ilike.%${query}%`)
+    .or(`name.ilike.%${escapeIlike(query)}%,ins_code.ilike.%${escapeIlike(query)}%,e_code.ilike.%${escapeIlike(query)}%`)
     .limit(20)
 
   if (error) throw error

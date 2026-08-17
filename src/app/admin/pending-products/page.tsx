@@ -20,6 +20,8 @@ export default function AdminPendingProducts() {
   const items = data?.pending ?? []
 
   async function handleAction(id: string, action: 'approve' | 'reject') {
+    const actionLabel = action === 'approve' ? 'approve' : 'reject'
+    if (!confirm(`Are you sure you want to ${actionLabel} this product?`)) return
     try {
       const res = await fetch(`/api/log/${action}`, {
         method: 'POST',

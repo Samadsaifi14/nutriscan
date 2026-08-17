@@ -28,7 +28,7 @@ export default function Profile() {
 
   const menuItems = [
     { label: 'Profile Setup', icon: <User size={16} />, href: '/profile-setup' },
-    { label: 'Badges', icon: <Award size={16} />, href: '/profile-setup' },
+    { label: 'Leaderboard', icon: <Award size={16} />, href: '/leaderboard' },
     { label: 'Settings', icon: <Settings size={16} />, href: '/settings' },
     { label: 'Export Data', icon: <Download size={16} />, href: '/settings' },
     { label: 'Delete Account', icon: <Trash size={16} />, href: '/settings', dangerous: true },
