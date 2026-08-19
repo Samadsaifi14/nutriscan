@@ -138,7 +138,7 @@ export async function runUnifiedAnalysis(
     const localHealthRating = local.grade === 'A' || local.grade === 'B' ? 'healthy' : local.grade === 'C' ? 'moderate' : 'unhealthy'
     const localDetectedAdditives = local.detected_additives.map((a: any) => ({
       name: a.name,
-      also_known_as: a.aliases,
+      also_known_as: Array.isArray(a.aliases) ? a.aliases.join(', ') : a.aliases,
       found_in_product: true,
       concern: a.concern,
       reason: a.concern,
@@ -244,7 +244,7 @@ export async function runUnifiedAnalysis(
   const localHealthRating = localResult.grade === 'A' || localResult.grade === 'B' ? 'healthy' : localResult.grade === 'C' ? 'moderate' : 'unhealthy'
   const localDetectedAdditives = fullAnalysisWarnings.map((a: any) => ({
     name: a.name,
-    also_known_as: a.aliases,
+    also_known_as: Array.isArray(a.aliases) ? a.aliases.join(', ') : a.aliases,
     found_in_product: true,
     concern: a.concern,
     reason: a.concern,

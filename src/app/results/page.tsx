@@ -109,7 +109,8 @@ export default function ResultsPage() {
       for (const ing of analysis.harmful_ingredients) {
         map.set(ing.name.toLowerCase(), { status: 'harmful', reason: ing.reason });
         if (ing.also_known_as) {
-          for (const alias of ing.also_known_as.split(',').map((a: string) => a.trim().toLowerCase())) {
+          const aliases = Array.isArray(ing.also_known_as) ? ing.also_known_as : ing.also_known_as.split(',');
+          for (const alias of aliases.map((a: string) => a.trim().toLowerCase())) {
             map.set(alias, { status: 'harmful', reason: ing.reason });
           }
         }
