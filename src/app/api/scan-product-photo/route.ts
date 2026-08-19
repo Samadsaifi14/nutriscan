@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ANONYMOUS_USER_ID } from '@/lib/config'
+import { getAuthSession, getUserId, enforceRateLimit } from '@/lib/api-auth'
 import { callGemini, GeminiError } from '@/lib/gemini'
 import { formatProduct } from '@/lib/scan-helpers'
 import { runUnifiedAnalysis, toUnifiedInput } from '@/lib/analysis-runner'
@@ -14,7 +14,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const userId = ANONYMOUS_USER_ID
+    const session = await getAuthSession()
+    const userId = getUserId(session)
+
+    const rate = await enforceRateLimit(userId, 'scan', req)
+    if ('response' in rate) return rate.response
 
     // Accept both FormData and JSON body for backward compat
     let imageBase64: string | null = null

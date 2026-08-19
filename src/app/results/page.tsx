@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { AlertTriangle, Info, Heart, ExternalLink } from "lucide-react";
+import { AlertTriangle, Info, Heart, ExternalLink, ClipboardCheck } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { TiltCard } from "@/components/TiltCard";
 import { HealthScoreRing } from "@/components/HealthScoreRing";
@@ -15,6 +15,14 @@ import toast from "react-hot-toast";
 
 const TABS = ["Overview", "Nutrition", "Ingredients", "Alternatives"] as const;
 type Tab = (typeof TABS)[number];
+
+function defaultMealType(): "breakfast" | "lunch" | "dinner" | "snack" {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 11) return "breakfast";
+  if (h >= 11 && h < 16) return "lunch";
+  if (h >= 16 && h < 21) return "dinner";
+  return "snack";
+}
 
 function loadFromStorage(): ScanResultPayload | null {
   try {
@@ -46,6 +54,11 @@ export default function ResultsPage() {
   const [data, setData] = useState<ScanResultPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logged, setLogged] = useState(false);
+  const [mealType, setMealType] = useState<"breakfast" | "lunch" | "dinner" | "snack">(defaultMealType());
+  const [quantityG, setQuantityG] = useState(100);
+  const [logging, setLogging] = useState(false);
 
   useEffect(() => {
     const stored = loadFromStorage();
@@ -199,20 +212,64 @@ export default function ResultsPage() {
     }
   }
 
+  async function logMeal() {
+    if (!product || !nutrition) return;
+    setLogging(true);
+    try {
+      const res = await fetch("/api/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_name: product.name,
+          barcode: product.barcode || undefined,
+          quantity_g: quantityG,
+          calories_per_100g: nutrition.calories ?? 0,
+          protein_per_100g: nutrition.protein ?? 0,
+          carbs_per_100g: nutrition.carbs ?? 0,
+          fat_per_100g: nutrition.fat ?? 0,
+          sodium_per_100g: nutrition.sodium ?? undefined,
+          meal_type: mealType,
+        }),
+      });
+      if (res.ok) {
+        setLogged(true);
+        setLogOpen(false);
+        toast.success("Logged");
+      } else {
+        const d = await res.json().catch(() => null);
+        toast.error(d?.error || "Could not log this");
+      }
+    } catch {
+      toast.error("Could not log this");
+    } finally {
+      setLogging(false);
+    }
+  }
+
   return (
     <PageShell
       variant="default"
       title={product.name}
       showBack
       topBarRight={
-        <button
-          onClick={saveFavorite}
-          aria-label="Save to favorites"
-          className="icon-btn glass rounded-full"
-          style={{ color: saved ? "var(--clay)" : "var(--cream)" }}
-        >
-          <Heart size={18} fill={saved ? "var(--clay)" : "none"} />
-        </button>
+        <div className="row" style={{ gap: 8 }}>
+          <button
+            onClick={() => setLogOpen(true)}
+            aria-label="Log this meal"
+            className="icon-btn glass rounded-full"
+            style={{ color: logged ? "var(--clay)" : "var(--cream)" }}
+          >
+            <ClipboardCheck size={18} />
+          </button>
+          <button
+            onClick={saveFavorite}
+            aria-label="Save to favorites"
+            className="icon-btn glass rounded-full"
+            style={{ color: saved ? "var(--clay)" : "var(--cream)" }}
+          >
+            <Heart size={18} fill={saved ? "var(--clay)" : "none"} />
+          </button>
+        </div>
       }
     >
       <div className="stack">
@@ -450,6 +507,46 @@ export default function ResultsPage() {
           </div>
         </div>
       </div>
+
+      {logOpen && (
+        <div className="fixed inset-0 z-20 flex items-end bg-black/60" onClick={() => setLogOpen(false)}>
+          <div className="glass w-full rounded-t-2xl p-page pb-8" onClick={(e) => e.stopPropagation()}>
+            <p className="text-h3 text-cream mb-4">Log this meal</p>
+
+            <p className="text-xs text-sand mb-2">Meal</p>
+            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              {(["breakfast", "lunch", "dinner", "snack"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMealType(m)}
+                  className={cn("chip", mealType === m && "chip--active")}
+                  style={{ textTransform: "capitalize" }}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs text-sand mt-4 mb-2">Amount (g)</p>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={5000}
+              value={quantityG}
+              onChange={(e) => setQuantityG(Number(e.target.value) || 100)}
+            />
+
+            <button
+              onClick={logMeal}
+              disabled={logging}
+              className="btn btn--primary w-full mt-4"
+            >
+              {logging ? "Logging…" : "Confirm"}
+            </button>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }

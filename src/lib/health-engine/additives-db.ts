@@ -502,7 +502,13 @@ export const ADDITIVES_DB: Additive[] = [
 const COMPILED: Array<{ additive: Additive; patterns: RegExp[] }> = ADDITIVES_DB.map(
   (additive) => ({
     additive,
-    patterns: additive.aliases.map((alias) => new RegExp(alias, "i")),
+    patterns: additive.aliases.map((alias) => {
+      const needsBoundaries = /^[a-zA-Z0-9 ]+$/.test(alias)
+      return new RegExp(
+        needsBoundaries ? `(?:^|\\b)${alias}(?:\\b|$)` : alias,
+        "i"
+      )
+    }),
   })
 );
 

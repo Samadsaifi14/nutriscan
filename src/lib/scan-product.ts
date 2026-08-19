@@ -56,7 +56,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
         const nutriments = p.nutriments || {}
 
         const product = {
-          barcode,
+          barcode: trimmedBarcode,
           name: p.product_name || p.product_name_en || p.abbreviated_product_name || 'Unknown Product',
           brand: p.brands || null,
           category: p.categories || null,
@@ -118,6 +118,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
       const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchBrand + ' ' + searchCategory)}&search_simple=1&action=process&json=1&page_size=5`
       const offSearchRes = await fetch(searchUrl, {
         headers: { 'User-Agent': 'BioYou/1.0 (BioYou@example.com)' },
+        signal: AbortSignal.timeout(3000),
       })
 
       if (offSearchRes.ok) {
@@ -174,7 +175,9 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
 
   // Layer 4 â€” UPC Item DB
   try {
-    const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${trimmedBarcode}`)
+    const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${trimmedBarcode}`, {
+      signal: AbortSignal.timeout(3000),
+    })
     if (upcRes.ok) {
       const upcData = await upcRes.json()
       if (upcData.items && upcData.items.length > 0) {
@@ -183,7 +186,7 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
         const nutrition = extractNutrition(desc)
 
         const product: any = {
-          barcode,
+          barcode: trimmedBarcode,
           name: item.title || 'Unknown Product',
           brand: item.brand || null,
           category: null,
@@ -246,43 +249,6 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
       return { success: true, source: webResult.source, confidence: 'estimated', product: webResult }
     }
   }
-
-  // Layer 6 â€” community_products
-  try {
-    const { data: community } = await supabaseAdmin
-      .from('community_products')
-      .select('*')
-      .eq('barcode', trimmedBarcode)
-      .eq('status', 'approved')
-      .single()
-
-    if (community) {
-      const nut = community.nutrition as Record<string, any> || {}
-      const product = {
-        barcode,
-        name: community.name || 'Unknown Product',
-        brand: community.brand || null,
-        category: null,
-        country_of_origin: 'India',
-        image_url: community.front_label_url || null,
-        calories_per_100g: parseFloat(nut.calories) || null,
-        protein_per_100g: parseFloat(nut.protein) || null,
-        carbs_per_100g: parseFloat(nut.carbs) || null,
-        fat_per_100g: parseFloat(nut.fat) || null,
-        saturated_fat_per_100g: null,
-        sugar_per_100g: parseFloat(nut.sugar) || null,
-        sodium_per_100g: parseFloat(nut.sodium) || null,
-        fiber_per_100g: parseFloat(nut.fiber) || null,
-        serving_size_g: null,
-        ingredients_text: community.ingredients_text || null,
-        allergens: [],
-        additives: [],
-        source: 'community',
-      }
-      cacheProduct(product)
-      return { success: true, source: 'community', confidence: 'high', product }
-    }
-  } catch { /* continue */ }
 
   // Layer 7 â€” Category nutrition estimation
   try {

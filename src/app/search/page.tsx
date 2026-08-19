@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { PageShell } from '@/components/PageShell'
 import { ProductCard } from '@/components/ProductCard'
@@ -13,13 +13,17 @@ export default function SearchPage() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const requestIdRef = useRef(0)
 
   const doSearch = useCallback(async (q: string) => {
     if (!q.trim()) { setResults([]); return }
     setLoading(true)
     try {
+      const myId = ++requestIdRef.current
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
       const data = await res.json()
+      if (myId !== requestIdRef.current) return
       setResults(data?.products ?? data?.results ?? [])
     } catch {
       setResults([])
@@ -39,8 +43,10 @@ export default function SearchPage() {
           placeholder="Search products..."
           value={query}
           onChange={(e) => {
-            setQuery(e.target.value)
-            doSearch(e.target.value)
+            const val = e.target.value
+            setQuery(val)
+            clearTimeout(debounceRef.current)
+            debounceRef.current = setTimeout(() => doSearch(val), 300)
           }}
         />
         {query && (

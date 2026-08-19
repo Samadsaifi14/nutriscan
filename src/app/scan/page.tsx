@@ -24,6 +24,8 @@ export default function ScanPage() {
   const lastScanRef = useRef<string>("");
   const lastScanTimeRef = useRef(0);
   const streamRef = useRef<MediaStream | null>(null);
+  const pendingCodeRef = useRef<string>("");
+  const pendingCountRef = useRef(0);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -34,7 +36,7 @@ export default function ScanPage() {
   const handleDetected = useCallback(async (barcode: string) => {
     const normalizedBarcode = normalizeBarcode(barcode);
     if (!isValidRetailBarcode(normalizedBarcode)) {
-      setScanError("That scan was incomplete. Keep the full barcode inside the frame and try again.");
+      setScanError("Couldn't get a clean read — hold steady and try again.");
       return;
     }
     const now = Date.now();
@@ -121,11 +123,24 @@ export default function ScanPage() {
             lastFrameAt = now;
             try {
               const codes = await detector.detect(videoRef.current);
-              const validCode = codes.find((code: { rawValue: string }) => isValidIndianEan13(code.rawValue));
-              if (validCode) {
-                stopCamera();
-                handleDetected(validCode.rawValue);
-                return;
+              const raw = codes[0]?.rawValue;
+              if (raw) {
+                const normalized = normalizeBarcode(raw);
+                if (!isValidRetailBarcode(normalized)) {
+                  pendingCodeRef.current = "";
+                  pendingCountRef.current = 0;
+                } else if (normalized === pendingCodeRef.current) {
+                  pendingCountRef.current += 1;
+                } else {
+                  pendingCodeRef.current = normalized;
+                  pendingCountRef.current = 1;
+                }
+
+                if (pendingCountRef.current >= 2) {
+                  stopCamera();
+                  handleDetected(pendingCodeRef.current);
+                  return;
+                }
               }
             } catch {
               /* frame not ready — keep polling */
@@ -253,7 +268,7 @@ export default function ScanPage() {
 
       <div className="absolute inset-x-0 bottom-0 z-10 stack--md px-page pb-[calc(var(--safe-bottom)+28px)]">
         <p className="text-center text-cream text-sm">{cameraReady ? "Align the barcode within the frame" : "Starting camera…"}</p>
-        <p className="text-center text-sand text-xs">Only a complete, checksum-valid Indian EAN‑13 barcode (890…) will be accepted.</p>
+        <p className="text-center text-sand text-xs">Any checksum-valid retail barcode will be accepted.</p>
 
         <div className="row" style={{ justifyContent: "center", gap: 12 }}>
           <button

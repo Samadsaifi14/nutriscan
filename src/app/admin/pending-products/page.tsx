@@ -28,9 +28,12 @@ export default function AdminPendingProducts() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       })
-      if (res.ok) {
-        toast.success(action === 'approve' ? 'Approved' : 'Rejected')
+      const d = await res.json().catch(() => null)
+      if (res.ok && d?.success) {
+        toast.success(action === 'approve' ? 'Approved and applied' : 'Rejected')
         refetch()
+      } else {
+        toast.error(d?.error || 'Action failed')
       }
     } catch {
       toast.error('Action failed')

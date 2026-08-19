@@ -52,6 +52,7 @@ export async function searchOFFByIngredients(
     const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=${maxAlternatives * 2}&tagtype_0=countries&tag_contains_0=contains&tag_0=india`
     const response = await fetch(url, {
       headers: { 'User-Agent': 'BioYou/1.0' },
+      signal: AbortSignal.timeout(1500),
     })
 
     if (!response.ok) return []
@@ -168,6 +169,7 @@ async function fetchFromOpenFoodFacts(category: string, limit: number = 20): Pro
       headers: {
         'User-Agent': 'BioYou/1.0',
       },
+      signal: AbortSignal.timeout(1500),
     })
 
     if (!response.ok) {

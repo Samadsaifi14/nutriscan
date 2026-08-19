@@ -88,13 +88,20 @@ export async function GET(req: NextRequest) {
 
     const trend = computeTrend(currentWeekAvg, priorWeekAvg)
 
-    // Best week = highest avg_score across any week in the daily stats
+    // Best week = highest avg daily score across any calendar week in the stats
+    const weekBuckets = new Map<number, { total: number; count: number }>()
+    for (const d of dailyStats) {
+      const dayNum = Math.floor(new Date(d.log_date + 'T00:00:00').getTime() / 86_400_000)
+      const weekKey = Math.floor(dayNum / 7)
+      const bucket = weekBuckets.get(weekKey) || { total: 0, count: 0 }
+      bucket.total += d.avg_score
+      bucket.count += 1
+      weekBuckets.set(weekKey, bucket)
+    }
     let bestWeek = 0
-    for (let i = 0; i < dailyStats.length; i += 7) {
-      const chunk = dailyStats.slice(i, i + 7)
-      if (chunk.length === 0) continue
-      const weekAvg = chunk.reduce((s, d) => s + d.avg_score, 0) / chunk.length
-      if (weekAvg > bestWeek) bestWeek = Math.round(weekAvg * 10) / 10
+    for (const { total, count } of weekBuckets.values()) {
+      const avg = total / count
+      if (avg > bestWeek) bestWeek = Math.round(avg * 10) / 10
     }
 
     // Transform recent logs into product/analysis CardItem shape
