@@ -315,9 +315,9 @@ html, body {
   border: 1px solid var(--border-2);
 }
 .chip--active { background: var(--clay-bg); color: var(--clay); border-color: var(--clay-dim); }
-.chip--healthy { background: var(--moss-bg); color: #8fb87a; border-color: rgba(74,107,58,0.4); }
+.chip--healthy { background: var(--moss-bg); color: var(--moss); border-color: rgba(74,107,58,0.4); }
 .chip--warning { background: var(--amber-bg); color: var(--amber); border-color: rgba(228,144,48,0.4); }
-.chip--harmful { background: var(--rust-bg); color: #e37a63; border-color: rgba(192,64,40,0.4); }
+.chip--harmful { background: var(--rust-bg); color: var(--rust); border-color: rgba(192,64,40,0.4); }
 
 .icon-btn {
   width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
@@ -386,7 +386,7 @@ html, body {
 
 .alert { display: flex; gap: var(--sp-3); padding: var(--sp-4); border-radius: var(--r-md); font-size: var(--fs-sm); }
 .alert--warning { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(228,144,48,0.3); }
-.alert--danger { background: var(--rust-bg); color: #e37a63; border: 1px solid rgba(192,64,40,0.3); }
+.alert--danger { background: var(--rust-bg); color: var(--rust); border: 1px solid rgba(192,64,40,0.3); }
 .alert--info { background: var(--clay-bg); color: var(--clay); border: 1px solid var(--clay-dim); }
 
 .progress { width: 100%; height: 6px; border-radius: var(--r-full); background: var(--surface-3); overflow: hidden; }

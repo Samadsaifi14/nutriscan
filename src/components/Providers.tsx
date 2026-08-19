@@ -34,8 +34,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
               fontSize: 14,
               fontWeight: 500,
             },
-            success: { iconTheme: { primary: '#4A6B3A', secondary: 'white' } },
-            error: { iconTheme: { primary: '#C04028', secondary: 'white' } },
+            success: { iconTheme: { primary: 'var(--moss)', secondary: 'white' } },
+            error: { iconTheme: { primary: 'var(--rust)', secondary: 'white' } },
           }}
         />
       </ThemeProvider>

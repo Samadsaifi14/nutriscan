@@ -341,13 +341,13 @@ export default function ResultsPage() {
                 </p>
                 <div className="stack--sm">
                   {analysis.harmful_ingredients.map((ing: any) => (
-                    <div key={ing.name} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: 'rgba(192,64,40,0.08)' }}>
+                    <div key={ing.name} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: 'var(--rust-bg)' }}>
                       <AlertTriangle size={14} className="text-amber shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-semibold" style={{ color: 'var(--risk-red, #c0392b)' }}>{ing.name}</p>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--rust)' }}>{ing.name}</p>
                         <p className="text-xs text-sand mt-0.5">{ing.reason}</p>
                         {ing.severity === 'high' && (
-                          <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold" style={{ background: 'rgba(192,64,40,0.15)', color: 'var(--risk-red, #c0392b)' }}>
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold" style={{ background: 'var(--rust-bg)', color: 'var(--rust)' }}>
                             HIGH RISK
                           </span>
                         )}
@@ -370,10 +370,10 @@ export default function ResultsPage() {
                 </div>
                 {analysis.ingredient_report.map((item, index) => {
                   const colors = item.status === 'high_concern'
-                    ? { background: 'rgba(192,64,40,0.10)', border: 'rgba(192,64,40,0.3)', text: 'var(--risk-red, #c0392b)' }
+                    ? { background: 'var(--rust-bg)', border: 'var(--rust)', text: 'var(--rust)' }
                     : item.status === 'watch'
-                    ? { background: 'rgba(196,113,74,0.10)', border: 'rgba(196,113,74,0.25)', text: 'var(--clay, #c1714a)' }
-                    : { background: 'rgba(61,92,46,0.08)', border: 'rgba(61,92,46,0.2)', text: 'var(--moss, #3d5c2e)' };
+                    ? { background: 'var(--clay-bg)', border: 'var(--clay)', text: 'var(--clay)' }
+                    : { background: 'var(--moss-bg)', border: 'var(--moss)', text: 'var(--moss)' };
                   return (
                     <div key={`${item.name}-${index}`} className="rounded-lg p-3" style={{ background: colors.background, border: `1px solid ${colors.border}` }}>
                       <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
@@ -400,9 +400,9 @@ export default function ResultsPage() {
                         ? 'border'
                         : ''
                     }`} style={{
-                      ...(ing.status === 'harmful' ? { background: 'rgba(192,64,40,0.12)', borderColor: 'rgba(192,64,40,0.3)', color: 'var(--risk-red, #c0392b)' } : {}),
-                      ...(ing.status === 'concern' ? { background: 'rgba(196,113,74,0.1)', borderColor: 'rgba(196,113,74,0.25)', color: 'var(--clay, #c1714a)' } : {}),
-                      ...(ing.status === 'safe' ? { background: 'rgba(61,92,46,0.08)', color: 'var(--moss, #3d5c2e)' } : {}),
+                      ...(ing.status === 'harmful' ? { background: 'var(--rust-bg)', borderColor: 'var(--rust)', color: 'var(--rust)' } : {}),
+                      ...(ing.status === 'concern' ? { background: 'var(--clay-bg)', borderColor: 'var(--clay)', color: 'var(--clay)' } : {}),
+                      ...(ing.status === 'safe' ? { background: 'var(--moss-bg)', color: 'var(--moss)' } : {}),
                     }}>
                       {ing.status === 'harmful' && <span className="mr-1">⚠</span>}
                       {ing.status === 'concern' && <span className="mr-1">●</span>}
@@ -411,9 +411,9 @@ export default function ResultsPage() {
                   ))}
                 </div>
                 <p className="text-[10px] text-sand mt-3 flex gap-3">
-                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'rgba(192,64,40,0.4)' }} />Harmful</span>
-                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'rgba(196,113,74,0.4)' }} />Concern</span>
-                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'rgba(61,92,46,0.3)' }} />Safe</span>
+                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'var(--rust)' }} />Harmful</span>
+                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'var(--clay)' }} />Concern</span>
+                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'var(--moss)' }} />Safe</span>
                 </p>
               </div>
             )}
