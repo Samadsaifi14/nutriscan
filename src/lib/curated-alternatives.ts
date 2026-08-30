@@ -24,7 +24,7 @@ const CATEGORY_KEYWORDS: [RegExp, string][] = [
   [/noodle|maggi|yippee|top.ramen/i, 'noodles'],
   [/biscuit|cookie|cracker|parle|britannia|nutrichoice|digestive|marie|glucose|cream.biscuit/i, 'biscuits'],
   [/chips|kur|lay|pringle|namkeen|bhujia|chevda|snack|wafers/i, 'chips'],
-  [/cold.drink|soda|coke|pepsi|sprite|fanta|thums.up|coca.cola|mountain.dew/i, 'cold_drink'],
+  [/cold.drink|carbonated|soft.drink|\bcola\b|\bcolas\b|soda|coke|pepsi|sprite|fanta|thums.up|coca.cola|mountain.dew/i, 'cold_drink'],
   [/juice|fruit.drink|paper.boat|frooti|maaza|slice|real|b.natural/i, 'juice'],
   [/bread|brown.bread|white.bread|sandwich/i, 'bread'],
   [/butter|cheese|paneer|dairy|amul|gouda|mozzarella|processed.cheese/i, 'dairy'],
@@ -271,28 +271,28 @@ export function getScoreBasedAlternatives(currentScore: number): CuratedAlternat
 
 // Main lookup function
 export function findCuratedAlternatives(productName: string, productCategory?: string | null, currentScore?: number): CuratedAlternative[] {
-  // Try category first
+  const searchable = `${productName} ${productCategory || ''}`
+
+  // Product databases use free-form category strings (for example
+  // "beverages, carbonated drinks"), so run the same robust patterns over both
+  // category and name before attempting exact internal keys.
+  for (const [regex, categoryKey] of CATEGORY_KEYWORDS) {
+    if (regex.test(searchable) && curated[categoryKey]) return curated[categoryKey]
+  }
+
+  // Try exact internal category keys next.
   if (productCategory) {
     const lower = productCategory.toLowerCase()
     for (const keyword of Object.keys(curated)) {
-      if (lower.includes(keyword)) {
+      if (lower.includes(keyword) || lower.includes(keyword.replace(/_/g, ' '))) {
         return curated[keyword]!
       }
     }
   }
 
-  // Try matching by product name keywords
-  for (const [regex, categoryKey] of CATEGORY_KEYWORDS) {
-    if (regex.test(productName) && curated[categoryKey]) {
-      return curated[categoryKey]
-    }
-  }
-
-  // Fallback to score-based
-  if (currentScore !== undefined) return getScoreBasedAlternatives(currentScore)
-
-  // Universal fallback
-  return UNIVERSAL_FALLBACK
+  // Do not present unrelated foods as like-for-like alternatives. The UI renders
+  // a useful category-comparison guide when no verified match exists.
+  return []
 }
 
 // Get all category keys for debugging

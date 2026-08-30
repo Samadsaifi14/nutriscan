@@ -4,10 +4,14 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { generateUnifiedAnalysis } from '@/lib/groq'
-import { scoreProduct, detectAdditives, getCategoryWarnings, type NutritionPer100g } from '@/lib/health-engine'
+import { scoreProduct, detectAdditives, type NutritionPer100g } from '@/lib/health-engine'
 import { findHealthierAlternatives } from '@/lib/alternatives'
 import { findCuratedAlternatives } from '@/lib/curated-alternatives'
 import { buildIngredientReport } from '@/lib/ingredient-report'
+import { describeDetectedAdditive } from '@/lib/ingredient-evidence'
+import { buildConsumptionGuidance } from '@/lib/consumption-guidance'
+import { computeHealthRating } from '@/lib/frontend-transform'
+import { getAmazonLink } from '@/lib/shopping-links'
 
 export interface UnifiedProductInput {
   barcode?: string
@@ -29,6 +33,7 @@ export interface UnifiedProductInput {
   ingredients_text?: string
   allergens?: string[]
   additives?: string[]
+  serving_size_g?: number
 }
 
 // Normalize the varied product shapes (calories_per_100g vs calories) into one input.
@@ -53,6 +58,7 @@ export function toUnifiedInput(p: any): UnifiedProductInput {
     ingredients_text: p?.ingredients_text,
     allergens: p?.allergens,
     additives: p?.additives,
+    serving_size_g: p?.serving_size_g ?? p?.serving_quantity,
   }
 }
 
@@ -69,8 +75,6 @@ export async function runUnifiedAnalysis(
 
   const harmfulFromIngredients = detectAdditives(product.ingredients_text || '')
   const ingredientReport = buildIngredientReport(product.ingredients_text)
-  const categoryWarnings = getCategoryWarnings(product.category || '')
-  const combinedHarmful = harmfulFromIngredients.length > 0 ? harmfulFromIngredients : categoryWarnings.length > 0 ? categoryWarnings : harmfulFromIngredients
 
   // Fetch user profile from DB if not passed (needed by the no-nutrition Groq
   // enrichment below and by the main personalized path).
@@ -118,7 +122,7 @@ export async function runUnifiedAnalysis(
 
     const nutritionScore = 5
     let additiveScore = 10
-    const activeWarnings = combinedHarmful.length > 0 ? combinedHarmful : harmfulFromIngredients
+    const activeWarnings = harmfulFromIngredients
     if (activeWarnings.length > 0) additiveScore = Math.max(1, 10 - activeWarnings.length * 2)
 
     const overallScore = Math.round(nutritionScore * 0.4 + additiveScore * 0.4 + 5 * 0.2)
@@ -131,25 +135,12 @@ export async function runUnifiedAnalysis(
       additive_score: additiveScore,
       nova_score: 5,
       detected_additives: activeWarnings,
-      summary: `${product.name} has limited nutrition data available. Ingredient analysis shows ${activeWarnings.length} harmful additive(s) detected. Score based on ingredient safety only.`,
+      summary: `${product.name} has limited nutrition data available. The label parser found ${activeWarnings.length} additive${activeWarnings.length === 1 ? '' : 's'} to review. This is an ingredient-only estimate.`,
     }
 
     const localHealthScore = local.score
-    const localHealthRating = local.grade === 'A' || local.grade === 'B' ? 'healthy' : local.grade === 'C' ? 'moderate' : 'unhealthy'
-    const localDetectedAdditives = local.detected_additives.map((a: any) => ({
-      name: a.name,
-      also_known_as: Array.isArray(a.aliases) ? a.aliases.join(', ') : a.aliases,
-      found_in_product: true,
-      concern: a.concern,
-      reason: a.concern,
-      severity: SEVERITY(a.risk),
-      scientific_source: 'WHO/FSSAI/EFSA',
-      source_url: '',
-      global_safe_limit: '',
-      amount_in_this_product: '',
-      personalized_safe_limit: '',
-      percentage_of_daily_limit: '',
-    }))
+    const localHealthRating = computeHealthRating(local.score)
+    const localDetectedAdditives = local.detected_additives.map(describeDetectedAdditive)
 
     // Even without nutrition data, try Groq enrichment from the ingredient list so
     // the results page still renders AI insights (the user asked for AI to run when
@@ -201,17 +192,17 @@ export async function runUnifiedAnalysis(
         processing_level: 'unknown',
         overall_nutrient_density: 'unknown',
       },
-      safe_consumption: aiEnh?.safe_consumption || { amount: null, frequency: 'Verify with label', notes: 'Nutrition data is incomplete. Check the actual product label for accurate information.', personalized_for_user: profile ? 'Based on your profile' : null },
+      safe_consumption: buildConsumptionGuidance(product, local.score, !!profile),
       harmful_ingredients: localDetectedAdditives,
       ingredient_warnings: activeWarnings.map((a: any) => ({ ingredient: a.name, concern: a.concern || a.description, reason: a.concern, severity: SEVERITY(a.risk) })),
-      positives: aiEnh?.positives || ['Ingredient analysis completed - see harmful ingredients above'],
-      long_term_risks: aiEnh?.long_term_risks || (activeWarnings.length > 0 ? [`Contains ${activeWarnings.length} harmful additive(s)`] : ['No harmful additives detected in ingredient list']),
+      positives: aiEnh?.positives || ['Ingredient label parsed with cautious, source-linked explanations'],
+      long_term_risks: aiEnh?.long_term_risks || (activeWarnings.length > 0 ? [`Review ${activeWarnings.length} detected additive${activeWarnings.length === 1 ? '' : 's'} and the cited evidence.`] : ['No database-listed additive was detected; this is not proof that every ingredient is risk-free.']),
       concerns: aiEnh?.concerns || [],
       recommendations: aiEnh?.recommendations || [],
       personalizedWarnings: aiEnh?.personalizedWarnings || [],
       ai_ingredients: aiEnh?.ai_ingredients || [],
       ingredient_report: ingredientReport,
-      fssai_compliance: activeWarnings.length > 0 ? 'concern' : 'unknown',
+      fssai_compliance: 'unknown',
       diabetic_suitability: activeWarnings.some((a: any) => ['Monosodium Glutamate', 'Sodium Benzoate', 'Potassium Sorbate', 'TBHQ', 'BHA', 'BHT', 'Aspartame', 'Acesulfame K', 'Saccharin', 'Sucralose'].includes(a.name)) ? 'consume_with_caution' : 'suitable',
       bp_suitability: activeWarnings.some((a: any) => ['Sodium Benzoate', 'Sodium Nitrite', 'MSG/E621'].includes(a.name)) ? 'consume_with_caution' : 'suitable',
       child_suitability: activeWarnings.some((a: any) => ['Tartrazine', 'Sunset Yellow', 'Carmoisine', 'Ponceau 4R', 'Allura Red', 'Sodium Benzoate'].includes(a.name)) ? 'consume_with_caution' : 'suitable',
@@ -238,32 +229,18 @@ export async function runUnifiedAnalysis(
   const localResult = scoreProduct(localNutrition, product.ingredients_text || '')
   console.log(`📊 Local scoring: ${product.name} → ${localResult.grade} (${localResult.score}/10)`)
 
-  const fullAnalysisWarnings = localResult.detected_additives.length === 0 && product.category ? getCategoryWarnings(product.category) : localResult.detected_additives
+  const fullAnalysisWarnings = localResult.detected_additives
 
   const localHealthScore = localResult.score
-  const localHealthRating = localResult.grade === 'A' || localResult.grade === 'B' ? 'healthy' : localResult.grade === 'C' ? 'moderate' : 'unhealthy'
-  const localDetectedAdditives = fullAnalysisWarnings.map((a: any) => ({
-    name: a.name,
-    also_known_as: Array.isArray(a.aliases) ? a.aliases.join(', ') : a.aliases,
-    found_in_product: true,
-    concern: a.concern,
-    reason: a.concern,
-    severity: SEVERITY(a.risk),
-    scientific_source: 'WHO/FSSAI/EFSA',
-    source_url: '',
-    global_safe_limit: '',
-    amount_in_this_product: '',
-    personalized_safe_limit: '',
-    percentage_of_daily_limit: '',
-  }))
+  const localHealthRating = computeHealthRating(localResult.score)
+  const localDetectedAdditives = fullAnalysisWarnings.map(describeDetectedAdditive)
 
   // ── Cache read ──
-  // For NON-personalized scans we can serve the cached analysis directly (fast).
-  // For PERSONALIZED scans (logged-in user with a profile) we MUST run Groq so the
-  // AI insights + medical-condition warnings are tailored to the user — the cached
-  // analysis is non-personalized and would otherwise show empty recommendations.
-  const CACHE_DURATION_MS = 30 * 24 * 60 * 60 * 1000
+  // Reuse only the optional prose enrichment. Deterministic score, evidence,
+  // consumption guidance and alternatives are rebuilt on every request so a
+  // partial/stale cache can never produce an incomplete results page.
   const isPersonalizedScan = !!opts?.userId && opts.userId !== 'anonymous'
+  let cachedAiEnhancement: any = null
   if (product.barcode && !isPersonalizedScan) {
     let cached: any = null
     try {
@@ -277,50 +254,14 @@ export async function runUnifiedAnalysis(
       console.warn('Cache check skipped:', cacheErr?.message || cacheErr)
     }
 
-    if (cached?.health_score && cached?.cached_at && Date.now() - new Date(cached.cached_at).getTime() < CACHE_DURATION_MS) {
-      console.log(`📦 Returning cached local score: ${cached.health_score}/10`)
-      return {
-        health_score: localHealthScore,
-        health_rating: localHealthRating,
-        health_score_breakdown: { nutrition_score: localResult.nutrition_score, ingredient_safety_score: localResult.additive_score, processing_score: localResult.nova_score, overall: localResult.score },
-        harmful_ingredients: localDetectedAdditives,
-        ingredient_warnings: localResult.detected_additives.map((a: any) => ({ ingredient: a.name, concern: a.concern || a.description, reason: a.concern, severity: SEVERITY(a.risk) })),
-        summary: localResult.summary,
-        concerns: [],
-        recommendations: [],
-        personalizedWarnings: [],
-        ai_ingredients: [],
-        analyzed_at: new Date().toISOString(),
-        personalized: false,
-        scoring_method: 'local_cached',
-        _from_cache: true,
-      }
-    }
-
     if (cached?.ai_analysis_json && cached?.ai_analyzed_at && Date.now() - new Date(cached.ai_analyzed_at).getTime() < 7 * 24 * 60 * 60 * 1000) {
-      const cachedAnalysis = cached.ai_analysis_json
-      return {
-        ...cachedAnalysis,
-        health_score: localHealthScore,
-        health_rating: localHealthRating,
-        health_score_breakdown: { nutrition_score: localResult.nutrition_score, ingredient_safety_score: localResult.additive_score, processing_score: localResult.nova_score, overall: localResult.score },
-        harmful_ingredients: localDetectedAdditives.length > 0 ? localDetectedAdditives : cachedAnalysis.harmful_ingredients || [],
-        ingredient_warnings: localResult.detected_additives.map((a: any) => ({ ingredient: a.name, concern: a.concern || a.description, reason: a.concern, severity: SEVERITY(a.risk) })),
-        summary: cachedAnalysis.summary || localResult.summary,
-        concerns: cachedAnalysis.concerns || [],
-        recommendations: cachedAnalysis.recommendations || [],
-        personalizedWarnings: cachedAnalysis.personalizedWarnings || [],
-        ai_ingredients: cachedAnalysis.ai_ingredients || [],
-        analyzed_at: new Date().toISOString(),
-        personalized: false,
-        scoring_method: 'hybrid_local_cache',
-      }
+      cachedAiEnhancement = cached.ai_analysis_json
     }
   }
 
   // ── PHASE 4 + PHASE 3: run Groq enrichment and healthier-alternatives lookup
   // in PARALLEL (they are independent) so a scan isn't slowed by waiting for both. ──
-  const groqPromise = opts?.fast ? Promise.resolve(null) : Promise.race([
+  const groqPromise = opts?.fast ? Promise.resolve(null) : cachedAiEnhancement ? Promise.resolve(cachedAiEnhancement) : Promise.race([
     generateUnifiedAnalysis({
       product_name: product.name,
       score: localResult.score,
@@ -416,23 +357,18 @@ export async function runUnifiedAnalysis(
       processing_level: localResult.nova_label,
       overall_nutrient_density: localResult.score >= 7 ? 'high' : localResult.score >= 5 ? 'medium' : 'low',
     },
-    safe_consumption: aiEnhancement?.safe_consumption || {
-      amount: null,
-      frequency: localResult.grade === 'A' ? 'Unlimited' : localResult.grade === 'B' ? 'Daily' : localResult.grade === 'C' ? 'Occasional' : 'Limit',
-      notes: localResult.label,
-      personalized_for_user: profile ? 'Based on your profile' : null,
-    },
+    safe_consumption: buildConsumptionGuidance(product, localResult.score, !!profile),
     harmful_ingredients: localDetectedAdditives,
     ingredient_warnings: fullAnalysisWarnings.map((a: any) => ({ ingredient: a.name, concern: a.concern || a.description, reason: a.concern, severity: SEVERITY(a.risk) })),
     positives: aiEnhancement?.positives || [`Local scoring: ${localResult.score}/10 (${localResult.grade})`],
-    long_term_risks: aiEnhancement?.long_term_risks || (localDetectedAdditives.length > 0 ? [`Contains ${localDetectedAdditives.length} potentially harmful additive(s)`] : ['See score breakdown for details']),
+    long_term_risks: aiEnhancement?.long_term_risks || (localDetectedAdditives.length > 0 ? [`Review ${localDetectedAdditives.length} detected additive${localDetectedAdditives.length === 1 ? '' : 's'} and the linked evidence.`] : ['No database-listed additive was detected; this is not proof that every ingredient is risk-free.']),
     concerns: aiEnhancement?.concerns || generateLocalConcerns(localDetectedAdditives, localResult),
     recommendations: aiEnhancement?.recommendations || generateLocalRecommendations(localResult, profile),
     personalizedWarnings: aiEnhancement?.personalizedWarnings || generateLocalPersonalizedWarnings(localResult, profile),
     ai_ingredients: aiEnhancement?.ai_ingredients || [],
     ingredient_report: ingredientReport,
     healthier_alternatives: aiEnhancement?.healthier_alternatives || [],
-    fssai_compliance: aiEnhancement?.fssai_compliance || (localResult.score >= 7 ? 'compliant' : localResult.score >= 5 ? 'concern' : 'unknown'),
+    fssai_compliance: 'unknown',
     diabetic_suitability: aiEnhancement?.diabetic_suitability || (localResult.breakdown.some((b: any) => b.factor === 'sugar' && b.impact === 'critical') ? 'avoid' : localResult.breakdown.some((b: any) => b.factor === 'sugar' && b.impact === 'negative') ? 'consume_with_caution' : 'suitable'),
     bp_suitability: aiEnhancement?.bp_suitability || (localResult.breakdown.some((b: any) => b.factor === 'sodium' && b.impact === 'critical') ? 'avoid' : localResult.breakdown.some((b: any) => b.factor === 'sodium' && b.impact === 'negative') ? 'consume_with_caution' : 'suitable'),
     child_suitability: aiEnhancement?.child_suitability || (localDetectedAdditives.some((a: any) => a.severity === 'high') ? 'avoid' : 'consume_with_caution'),
@@ -457,7 +393,7 @@ export async function runUnifiedAnalysis(
         grade: ca.grade || 'B',
         reason: ca.reason,
         availability: ca.availability,
-        shopping_url: ca.shopping_url,
+        shopping_url: ca.type === 'branded' ? getAmazonLink(ca.name) : undefined,
       }))
       // Merge: curated first (Indian, with prices), then existing dynamic
       const existingNames = new Set(
@@ -507,8 +443,8 @@ function generateLocalConcerns(additives: any[], localResult: any): string[] {
   const concerns: string[] = []
   const harmful = additives.filter((a) => a.severity === 'high')
   const moderate = additives.filter((a) => a.severity === 'medium')
-  if (harmful.length > 0) concerns.push(`Contains ${harmful.length} potentially harmful additive(s): ${harmful.map((a) => a.name).join(', ')}`)
-  if (moderate.length > 0) concerns.push(`Contains ${moderate.length} moderate-risk additives: ${moderate.map((a) => a.name).join(', ')}`)
+  if (harmful.length > 0) concerns.push(`Contains ${harmful.length} high-concern additive${harmful.length === 1 ? '' : 's'}: ${harmful.map((a) => a.name).join(', ')}`)
+  if (moderate.length > 0) concerns.push(`Contains ${moderate.length} additive${moderate.length === 1 ? '' : 's'} to watch: ${moderate.map((a) => a.name).join(', ')}`)
   if (localResult.nova_group >= 4) concerns.push('Ultra-processed product (NOVA Group 4) — linked to increased health risks')
   if (localResult.breakdown.some((b: any) => b.factor === 'sugar' && b.impact === 'critical')) concerns.push('Very high sugar content')
   if (localResult.breakdown.some((b: any) => b.factor === 'sodium' && b.impact === 'critical')) concerns.push('Very high sodium content')

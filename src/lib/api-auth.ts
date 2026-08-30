@@ -19,7 +19,11 @@ export async function requireAuth(): Promise<
 }
 
 export function getRateLimitKey(req: NextRequest, _userId: string | null): string {
-  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const forwarded = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const verifiedProxyIp = req.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim()
+  const realIp = req.headers.get('x-real-ip')?.trim()
+  const ip = verifiedProxyIp || realIp || forwarded || 'unknown'
+  return `ip:${ip.slice(0, 80)}`
 }
 
 export async function enforceRateLimit(

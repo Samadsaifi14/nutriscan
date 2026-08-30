@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { AlertTriangle, Info, Heart, ExternalLink, ClipboardCheck } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { AlertTriangle, Info, Heart, ExternalLink, ClipboardCheck, RefreshCw, Search, Activity, Shield } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { TiltCard } from "@/components/TiltCard";
 import { HealthScoreRing } from "@/components/HealthScoreRing";
@@ -49,6 +49,14 @@ function cnCard(rating: string) {
   return "card--harmful";
 }
 
+function productSourceLabel(source: string | undefined) {
+  if (!source) return 'Product label data'
+  if (source.includes('open_food_facts')) return 'Open Food Facts'
+  if (source.includes('community')) return 'NutriScan community'
+  if (source.includes('ai') || source.includes('estimated')) return 'Estimated data — verify the pack'
+  return 'NutriScan product database'
+}
+
 export default function ResultsPage() {
   const [tab, setTab] = useState<Tab>("Overview");
   const [data, setData] = useState<ScanResultPayload | null>(null);
@@ -59,6 +67,9 @@ export default function ResultsPage() {
   const [mealType, setMealType] = useState<"breakfast" | "lunch" | "dinner" | "snack">(defaultMealType());
   const [quantityG, setQuantityG] = useState(100);
   const [logging, setLogging] = useState(false);
+  const [ingredientResearch, setIngredientResearch] = useState<Array<{ ingredient: string; matchedName: string; description: string; sourceName: string; sourceUrl: string }>>([]);
+  const [researchingIngredients, setResearchingIngredients] = useState(false);
+  const researchRequestedRef = useRef(false);
 
   useEffect(() => {
     const stored = loadFromStorage();
@@ -107,11 +118,12 @@ export default function ResultsPage() {
     // From harmful_ingredients (additive detection)
     if (analysis.harmful_ingredients) {
       for (const ing of analysis.harmful_ingredients) {
-        map.set(ing.name.toLowerCase(), { status: 'harmful', reason: ing.reason });
+        const status = ing.severity === 'high' ? 'harmful' : 'concern';
+        map.set(ing.name.toLowerCase(), { status, reason: ing.reason });
         if (ing.also_known_as) {
           const aliases = Array.isArray(ing.also_known_as) ? ing.also_known_as : ing.also_known_as.split(',');
           for (const alias of aliases.map((a: string) => a.trim().toLowerCase())) {
-            map.set(alias, { status: 'harmful', reason: ing.reason });
+            map.set(alias, { status, reason: ing.reason });
           }
         }
       }
@@ -148,9 +160,32 @@ export default function ResultsPage() {
           return { text: item, status: val.status, reason: val.reason };
         }
       }
-      return { text: item, status: 'safe' as const, reason: undefined };
+      return { text: item, status: 'information' as const, reason: undefined };
     });
   }, [product?.ingredients_text, ingredientSeverityMap]);
+
+  useEffect(() => {
+    if (tab !== 'Ingredients' || researchRequestedRef.current || !analysis?.ingredient_report?.length) return;
+    const candidates = analysis.ingredient_report
+      .filter((item) => !item.sourceUrl && item.evidence === 'label')
+      .map((item) => item.name)
+      .slice(0, 8);
+    if (!candidates.length) return;
+    researchRequestedRef.current = true;
+    setResearchingIngredients(true);
+    fetch('/api/ingredients/research', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ingredients: candidates }),
+    })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body?.error || 'Ingredient research failed');
+        setIngredientResearch(body?.results || []);
+      })
+      .catch(() => setIngredientResearch([]))
+      .finally(() => setResearchingIngredients(false));
+  }, [tab, analysis?.ingredient_report]);
 
   if (loading) {
     return (
@@ -292,6 +327,7 @@ export default function ResultsPage() {
             </div>
           </div>
           <p className="text-sm text-sand mt-4">{analysis.summary}</p>
+          <p className="text-[10px] text-muted mt-2">Data source: {productSourceLabel(product.source)}</p>
         </TiltCard>
 
         <div className="tab-bar">
@@ -338,18 +374,30 @@ export default function ResultsPage() {
             {analysis.harmful_ingredients && analysis.harmful_ingredients.length > 0 ? (
               <div className="card card--sm">
                 <p className="text-xs font-bold text-amber mb-2" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  ⚠ {analysis.harmful_ingredients.length} Harmful Ingredient{analysis.harmful_ingredients.length > 1 ? 's' : ''} Detected
+                  <span className="inline-flex items-center gap-1"><AlertTriangle size={12} /> {analysis.harmful_ingredients.length} Ingredient{analysis.harmful_ingredients.length > 1 ? 's' : ''} to review</span>
                 </p>
                 <div className="stack--sm">
                   {analysis.harmful_ingredients.map((ing: any) => (
-                    <div key={ing.name} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: 'var(--rust-bg)' }}>
-                      <AlertTriangle size={14} className="text-amber shrink-0 mt-0.5" />
+                    <div key={ing.name} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: ing.severity === 'high' ? 'var(--rust-bg)' : ing.severity === 'medium' ? 'var(--clay-bg)' : 'var(--surface-2)' }}>
+                      {ing.severity === 'low' ? <Info size={14} className="text-sand shrink-0 mt-0.5" /> : <AlertTriangle size={14} className="text-amber shrink-0 mt-0.5" />}
                       <div>
-                        <p className="text-sm font-semibold" style={{ color: 'var(--rust)' }}>{ing.name}</p>
+                        <p className="text-sm font-semibold" style={{ color: ing.severity === 'high' ? 'var(--rust)' : ing.severity === 'medium' ? 'var(--clay)' : 'var(--cream)' }}>{ing.name}</p>
                         <p className="text-xs text-sand mt-0.5">{ing.reason}</p>
+                        {ing.global_safe_limit && <p className="text-xs text-cream mt-1"><strong>Reference limit:</strong> {ing.global_safe_limit}</p>}
+                        {ing.amount_in_this_product && <p className="text-[10px] text-sand mt-1">Amount here: {ing.amount_in_this_product}</p>}
+                        {ing.source_url && (
+                          <a className="inline-flex items-center gap-1 text-[10px] mt-1" style={{ color: 'var(--clay)' }} href={ing.source_url} target="_blank" rel="noopener noreferrer">
+                            {ing.scientific_source || 'View evidence'} <ExternalLink size={10} />
+                          </a>
+                        )}
                         {ing.severity === 'high' && (
                           <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold" style={{ background: 'var(--rust-bg)', color: 'var(--rust)' }}>
-                            HIGH RISK
+                            HIGH CONCERN
+                          </span>
+                        )}
+                        {ing.severity === 'medium' && (
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold" style={{ background: 'var(--clay-bg)', color: 'var(--clay)' }}>
+                            WATCH
                           </span>
                         )}
                       </div>
@@ -383,10 +431,37 @@ export default function ResultsPage() {
                       </div>
                       <p className="text-xs text-cream mt-1">{item.plainLanguage}</p>
                       <p className="text-xs text-sand mt-1">{item.note}</p>
+                      {item.safeLimit && <p className="text-xs text-cream mt-1"><strong>Reference limit:</strong> {item.safeLimit}</p>}
+                      {item.sourceUrl && (
+                        <a className="inline-flex items-center gap-1 text-[10px] mt-1" style={{ color: 'var(--clay)' }} href={item.sourceUrl} target="_blank" rel="noopener noreferrer">
+                          {item.sourceName || 'Official source'} <ExternalLink size={10} />
+                        </a>
+                      )}
                     </div>
                   );
                 })}
-                <p className="text-[10px] text-sand">Reference framework: product label, FSSAI food-additive rules, and public-health guidance. This is food information, not medical advice.</p>
+                <p className="text-[10px] text-sand">Reference framework: the product label and linked public toxicology sources. A numerical ADI is a lifetime population-level reference, not a per-product guarantee or personal prescription.</p>
+              </div>
+            )}
+            {(researchingIngredients || ingredientResearch.length > 0) && (
+              <div className="card stack--sm">
+                <div className="row" style={{ gap: 8 }}>
+                  {researchingIngredients ? <RefreshCw size={16} className="animate-spin text-clay" /> : <Search size={16} className="text-moss" />}
+                  <div>
+                    <p className="text-sm text-cream font-semibold">Live ingredient identity research</p>
+                    <p className="text-[10px] text-sand">Official NIH PubChem lookup for label terms without a toxicology match.</p>
+                  </div>
+                </div>
+                {ingredientResearch.map((item) => (
+                  <div key={item.ingredient} className="rounded-lg p-3" style={{ background: 'var(--surface-2)' }}>
+                    <p className="text-xs text-cream font-semibold">{item.ingredient} <span className="text-sand">· matched to {item.matchedName}</span></p>
+                    <p className="text-xs text-sand mt-1">{item.description}</p>
+                    <a className="inline-flex items-center gap-1 text-[10px] mt-1" style={{ color: 'var(--clay)' }} href={item.sourceUrl} target="_blank" rel="noopener noreferrer">
+                      {item.sourceName} <ExternalLink size={10} />
+                    </a>
+                  </div>
+                ))}
+                {!researchingIngredients && <p className="text-[10px] text-sand">Identity information does not establish harm at the amount used in this product.</p>}
               </div>
             )}
             {parsedIngredients.length > 0 && (
@@ -403,18 +478,16 @@ export default function ResultsPage() {
                     }`} style={{
                       ...(ing.status === 'harmful' ? { background: 'var(--rust-bg)', borderColor: 'var(--rust)', color: 'var(--rust)' } : {}),
                       ...(ing.status === 'concern' ? { background: 'var(--clay-bg)', borderColor: 'var(--clay)', color: 'var(--clay)' } : {}),
-                      ...(ing.status === 'safe' ? { background: 'var(--moss-bg)', color: 'var(--moss)' } : {}),
+                      ...(ing.status === 'information' ? { background: 'var(--surface-2)', color: 'var(--sand)' } : {}),
                     }}>
-                      {ing.status === 'harmful' && <span className="mr-1">⚠</span>}
-                      {ing.status === 'concern' && <span className="mr-1">●</span>}
                       {ing.text}
                     </span>
                   ))}
                 </div>
                 <p className="text-[10px] text-sand mt-3 flex gap-3">
-                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'var(--rust)' }} />Harmful</span>
-                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'var(--clay)' }} />Concern</span>
-                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'var(--moss)' }} />Safe</span>
+                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'var(--rust)' }} />High concern</span>
+                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'var(--clay)' }} />Watch</span>
+                  <span><span className="inline-block w-2 h-2 rounded mr-1" style={{ background: 'var(--muted)' }} />Not assessed</span>
                 </p>
               </div>
             )}
@@ -491,9 +564,22 @@ export default function ResultsPage() {
                 ))}
               </>
             ) : (
-              <div className="empty-state">
-                <p className="text-sm text-sand">No alternatives found</p>
-                <p className="text-xs text-sand mt-1">Try scanning a different product</p>
+              <div className="card stack--md">
+                <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
+                  <Shield size={20} className="text-moss shrink-0" />
+                  <div>
+                    <p className="text-sm text-cream font-semibold">No verified like-for-like match yet</p>
+                    <p className="text-xs text-sand mt-1">We will not label unrelated foods as direct alternatives. Use these checks when comparing the same product category.</p>
+                  </div>
+                </div>
+                <div className="stack--sm">
+                  <div className="row text-xs text-sand" style={{ gap: 8 }}><Activity size={14} className="text-clay" /> Compare per 100 g/ml, not package totals.</div>
+                  <div className="row text-xs text-sand" style={{ gap: 8 }}><Search size={14} className="text-clay" /> Prefer lower sugar, sodium and saturated fat with more fibre or protein.</div>
+                </div>
+                <div>
+                  <p className="text-[10px] text-sand mb-2">Search marketplaces for comparable products</p>
+                  <ShoppingLinks productName={`${product.category || product.name} healthier`} variant="compact" />
+                </div>
               </div>
             )}
           </div>

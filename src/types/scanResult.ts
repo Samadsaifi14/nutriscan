@@ -31,6 +31,7 @@ export interface HarmfulIngredient {
   concern?: string
   severity: 'low' | 'medium' | 'high'
   scientific_source?: string
+  source_url?: string
   global_safe_limit?: string
   personalized_safe_limit?: string
 }
@@ -55,6 +56,9 @@ export interface IngredientReportItem {
   status: 'information' | 'watch' | 'high_concern'
   note: string
   evidence: 'label' | 'additive_database'
+  sourceName?: string
+  sourceUrl?: string
+  safeLimit?: string
 }
 
 export interface Alternative {

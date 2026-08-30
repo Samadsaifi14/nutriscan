@@ -1,4 +1,5 @@
 import { detectAdditives } from '@/lib/health-engine'
+import { getIngredientEvidence } from '@/lib/ingredient-evidence'
 
 export type IngredientStatus = 'information' | 'watch' | 'high_concern'
 
@@ -8,6 +9,9 @@ export interface IngredientReportItem {
   status: IngredientStatus
   note: string
   evidence: 'label' | 'additive_database'
+  sourceName?: string
+  sourceUrl?: string
+  safeLimit?: string
 }
 
 const COMMON_INGREDIENTS: Array<{ pattern: RegExp; plainLanguage: string; note: string }> = [
@@ -51,15 +55,19 @@ export function buildIngredientReport(text: string | null | undefined): Ingredie
       return aliases.some((alias) => new RegExp(`(?:^|\\b)${alias.replace(/\\\\s\*/g, '\\s*')}(?:\\b|$)`, 'i').test(name))
     })
     if (additive) {
-      const status: IngredientStatus = additive.risk === 'harmful' || additive.risk === 'high'
+      const evidence = getIngredientEvidence(additive.id)
+      const status: IngredientStatus = evidence?.level || (additive.risk === 'harmful' || additive.risk === 'high'
         ? 'high_concern'
-        : additive.risk === 'moderate' ? 'watch' : 'information'
+        : additive.risk === 'moderate' ? 'watch' : 'information')
       return {
         name,
         plainLanguage: additive.category.replace(/_/g, ' '),
         status,
-        note: additive.concern,
+        note: evidence?.effect || additive.concern,
         evidence: 'additive_database',
+        sourceName: evidence?.sourceName,
+        sourceUrl: evidence?.sourceUrl,
+        safeLimit: evidence?.safeLimit,
       }
     }
     const common = COMMON_INGREDIENTS.find((item) => item.pattern.test(name))

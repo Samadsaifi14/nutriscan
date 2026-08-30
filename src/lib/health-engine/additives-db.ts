@@ -200,8 +200,8 @@ export const ADDITIVES_DB: Additive[] = [
   {
     id: "E150d", name: "Caramel Colour (Sulphite Ammonia)", eNumber: "E150d", insCode: "INS 150d",
     aliases: ["caramel colour", "caramel color", "sulphite ammonia caramel", "e150d", "ins\\s*150d", "e150"],
-    risk: "moderate", category: "color",
-    concern: "Class IV caramel contains 4-MEI, a possible carcinogen. Ubiquitous in Indian colas and sauces.",
+    risk: "low", category: "color",
+    concern: "EFSA set a group ADI for caramel colours and its refined assessment did not identify 4-MEI exposure from these colours as a safety concern.",
   },
   {
     id: "E160a", name: "Beta-Carotene", eNumber: "E160a", insCode: "INS 160a",
@@ -474,8 +474,8 @@ export const ADDITIVES_DB: Additive[] = [
   {
     id: "PERMITTED_COLOUR", name: "Permitted Food Colours",
     aliases: ["permitted colour", "permitted color", "food colour", "food color", "artificial colour", "artificial color", "colour \\(", "color \\("],
-    risk: "moderate", category: "color",
-    concern: "Vague declaration. May include azo dyes linked to hyperactivity and allergies.",
+    risk: "low", category: "color",
+    concern: "This declaration is too vague for a safety conclusion. The specific colour or INS/E number is needed.",
   },
   {
     id: "EDIBLE_GUM", name: "Edible Gum / Acacia",

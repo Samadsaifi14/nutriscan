@@ -1,5 +1,5 @@
 import { ExternalLink } from 'lucide-react'
-import { AMAZON_AFFILIATE_TAG } from '@/lib/config'
+import { getAllShoppingLinks } from '@/lib/shopping-links'
 
 interface ShoppingLinksProps {
   productName: string
@@ -7,13 +7,10 @@ interface ShoppingLinksProps {
 }
 
 function buildLinks(productName: string) {
-  const q = encodeURIComponent(productName)
-  return [
-    { name: 'Amazon', href: `https://www.amazon.in/s?k=${q}&tag=${AMAZON_AFFILIATE_TAG}`, color: 'var(--amber)' },
-    { name: 'Flipkart', href: `https://www.flipkart.com/search?q=${q}`, color: 'var(--moss)' },
-    { name: 'Blinkit', href: `https://blinkit.com/s/?q=${q}`, color: 'var(--clay)' },
-    { name: 'Instamart', href: `https://www.swiggy.com/instamart/search?custom_back=true&query=${q}`, color: 'var(--rust)' },
-  ]
+  const colors = { amazon: 'var(--amber)', flipkart: 'var(--moss)', blinkit: 'var(--clay)', instamart: 'var(--rust)' }
+  return getAllShoppingLinks(productName)
+    .filter((link) => link.platform in colors)
+    .map((link) => ({ name: link.platform === 'instamart' ? 'Instamart' : link.platform[0]!.toUpperCase() + link.platform.slice(1), href: link.url, color: colors[link.platform as keyof typeof colors] }))
 }
 
 export function ShoppingLinks({ productName, variant = 'grid' }: ShoppingLinksProps) {

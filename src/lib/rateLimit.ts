@@ -6,6 +6,28 @@ const LIMITS = {
   log:        { max: 50, windowMinutes: 60    },
   analyze_ai: { max: 15, windowMinutes: 60    },
   enrich:     { max: 30, windowMinutes: 60    },
+  search:     { max: 90, windowMinutes: 60    },
+  ingredient_research: { max: 20, windowMinutes: 60 },
+}
+
+const localWindows = new Map<string, number[]>()
+
+function checkLocalWindow(userId: string, action: keyof typeof LIMITS) {
+  const limit = LIMITS[action]
+  const now = Date.now()
+  const cutoff = now - limit.windowMinutes * 60 * 1000
+  const key = `${action}:${userId}`
+  const recent = (localWindows.get(key) || []).filter((timestamp) => timestamp >= cutoff)
+  const allowed = recent.length < limit.max
+  if (allowed) recent.push(now)
+  localWindows.set(key, recent)
+
+  if (localWindows.size > 5000) {
+    for (const [entryKey, timestamps] of localWindows) {
+      if (!timestamps.some((timestamp) => timestamp >= cutoff)) localWindows.delete(entryKey)
+    }
+  }
+  return { allowed, remaining: Math.max(0, limit.max - recent.length), resetIn: limit.windowMinutes }
 }
 
 export async function checkRateLimit(
@@ -15,6 +37,9 @@ export async function checkRateLimit(
   const limit       = LIMITS[action]
   const windowStart = new Date(Date.now() - limit.windowMinutes * 60 * 1000).toISOString()
   const now         = new Date().toISOString()
+
+  const local = checkLocalWindow(userId, action)
+  if (!local.allowed) return local
 
   try {
     const { count } = await supabaseAdmin
@@ -40,7 +65,7 @@ export async function checkRateLimit(
     return { allowed, remaining, resetIn: limit.windowMinutes }
   } catch (e) {
     console.error('Rate limit check failed:', e)
-    // Fail open so a DB outage does not block all users
-    return { allowed: true, remaining: limit.max, resetIn: limit.windowMinutes }
+    // The per-instance guard above still limits bursts if the shared store is down.
+    return local
   }
 }

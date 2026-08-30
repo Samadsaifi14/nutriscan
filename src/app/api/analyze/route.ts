@@ -4,6 +4,7 @@ import { ANONYMOUS_USER_ID } from '@/lib/config'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { GeminiError } from '@/lib/gemini'
 import { runUnifiedAnalysis } from '@/lib/analysis-runner'
+import { getRateLimitKey } from '@/lib/api-auth'
 
 const ProductSchema = z.object({
   barcode: z.string().optional(),
@@ -25,6 +26,7 @@ const ProductSchema = z.object({
   ingredients_text: z.string().optional(),
   allergens: z.array(z.string()).optional(),
   additives: z.array(z.string()).optional(),
+  serving_size_g: z.number().positive().optional(),
 })
 
 const RequestSchema = z.object({
@@ -47,7 +49,7 @@ export async function POST(req: NextRequest) {
     const session = { userId: ANONYMOUS_USER_ID }
     const userId = ANONYMOUS_USER_ID
 
-    const rateLimitKey = userId || req.headers.get('x-forwarded-for') || 'anonymous'
+    const rateLimitKey = getRateLimitKey(req, userId)
     const rateCheck = await checkRateLimit(rateLimitKey, 'analyze')
     if (!rateCheck.allowed) {
       return NextResponse.json(

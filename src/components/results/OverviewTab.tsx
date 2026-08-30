@@ -1,11 +1,12 @@
 "use client"
 import type { Analysis } from '@/types/scanResult'
+import { Activity, AlertTriangle, Clock, Heart, Info, Search, Shield, TrendingUp } from 'lucide-react'
 
-function Panel({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+function Panel({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--card-border)' }}>
       <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: 'var(--card-border)', background: 'color-mix(in oklab, var(--card), black 4%)' }}>
-        <span className="text-base">{icon}</span>
+        <Icon size={16} aria-hidden="true" style={{ color: 'var(--clay)' }} />
         <h2 className="text-sm font-bold" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-display)' }}>{title}</h2>
       </div>
       <div className="p-4">{children}</div>
@@ -30,7 +31,7 @@ export default function OverviewTab({ analysis }: Props) {
   return (
     <div className="space-y-4">
       {s.summary && (
-        <Panel title="AI Summary" icon="🤖">
+        <Panel title="Analysis Summary" icon={Info}>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--foreground)' }}>{s.summary}</p>
           {s.recommendation && (
             <div className="mt-3 px-3 py-2 rounded-xl" style={{ background: 'rgba(61,92,46,0.08)', border: '1px solid rgba(61,92,46,0.15)' }}>
@@ -41,7 +42,7 @@ export default function OverviewTab({ analysis }: Props) {
           {s.confidence && s.confidence !== 'high' && (
             <div className="mt-3 px-3 py-2 rounded-xl" style={{ background: 'rgba(196,113,74,0.08)', border: '1px solid rgba(196,113,74,0.15)' }}>
               <p className="text-[11px]" style={{ color: 'var(--clay)' }}>
-                ⚠ {s.confidence === 'medium' ? 'Some fields were unreadable — verify manually' : 'Low confidence result'}
+                {s.confidence === 'medium' ? 'Some fields were unreadable — verify manually' : 'Low confidence result'}
               </p>
             </div>
           )}
@@ -49,7 +50,7 @@ export default function OverviewTab({ analysis }: Props) {
       )}
 
       {s.health_score !== undefined && (
-        <Panel title="Health Score Breakdown" icon="📊">
+        <Panel title="Health Score Breakdown" icon={Activity}>
           <div className="space-y-2">
             {s.health_score_breakdown ? (
               <>
@@ -74,11 +75,11 @@ export default function OverviewTab({ analysis }: Props) {
       )}
 
       {isArr(s.personalizedWarnings) && (
-        <Panel title="Personalized For You" icon="⚠️">
+        <Panel title="Personalized For You" icon={Info}>
           <div className="space-y-2">
             {s.personalizedWarnings!.map((w: string, i: number) => (
               <div key={i} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: 'rgba(196,113,74,0.08)' }}>
-                <span style={{ color: 'var(--clay)' }}>→</span>
+                <Info size={13} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--clay)' }} />
                 <span className="text-xs" style={{ color: 'var(--foreground)' }}>{w}</span>
               </div>
             ))}
@@ -87,7 +88,7 @@ export default function OverviewTab({ analysis }: Props) {
       )}
 
       {isArr(s.ai_ingredients) && (
-        <Panel title="Ingredient Breakdown" icon="🔬">
+        <Panel title="Ingredient Breakdown" icon={Search}>
           <div className="space-y-2">
             {s.ai_ingredients!.slice(0, 12).map((ing: any, i: number) => (
               <div key={i} className="flex items-start gap-2 py-1.5 border-b last:border-0" style={{ borderColor: 'var(--card-border)' }}>
@@ -115,11 +116,11 @@ export default function OverviewTab({ analysis }: Props) {
       )}
 
       {isArr(s.long_term_risks) && (
-        <Panel title="Long-Term Risks" icon="⏳">
+        <Panel title="Long-Term Risks" icon={Clock}>
           <div className="space-y-2">
             {s.long_term_risks!.map((risk: string, i: number) => (
               <div key={i} className="flex items-start gap-2 p-3 rounded-xl" style={{ background: 'rgba(180,60,40,0.05)', border: '1px solid rgba(180,60,40,0.1)' }}>
-                <span className="flex-shrink-0 text-sm mt-0.5" style={{ color: 'var(--risk-red)' }}>⚠</span>
+                <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--risk-red)' }} />
                 <p className="text-sm" style={{ color: 'var(--foreground)' }}>{risk}</p>
               </div>
             ))}
@@ -128,21 +129,24 @@ export default function OverviewTab({ analysis }: Props) {
       )}
 
       {isArr(s.recommendations) && (
-        <Panel title="Recommendations" icon="💡">
+        <Panel title="Recommendations" icon={TrendingUp}>
           <div className="space-y-1">
             {s.recommendations!.slice(0, 4).map((rec: string, i: number) => (
-              <p key={i} className="text-xs" style={{ color: 'var(--muted-2)' }}>• {rec}</p>
+              <div key={i} className="flex items-start gap-2 text-xs" style={{ color: 'var(--muted-2)' }}>
+                <TrendingUp size={12} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--moss)' }} />
+                <span>{rec}</span>
+              </div>
             ))}
           </div>
         </Panel>
       )}
 
       {isArr(s.concerns) && (
-        <Panel title="Concerns" icon="⚡">
+        <Panel title="Concerns" icon={AlertTriangle}>
           <div className="space-y-2">
             {s.concerns!.map((c: string, i: number) => (
               <div key={i} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: 'rgba(196,113,74,0.08)' }}>
-                <span style={{ color: 'var(--clay)' }}>•</span>
+                <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--clay)' }} />
                 <span className="text-sm" style={{ color: 'var(--foreground)' }}>{c}</span>
               </div>
             ))}
@@ -151,11 +155,11 @@ export default function OverviewTab({ analysis }: Props) {
       )}
 
       {isArr(s.positives) && (
-        <Panel title="What's Good" icon="👍">
+        <Panel title="What's Good" icon={Heart}>
           <div className="space-y-2">
             {s.positives!.map((p: string, i: number) => (
               <div key={i} className="flex items-start gap-2.5 py-2 border-b last:border-0" style={{ borderColor: 'var(--card-border)' }}>
-                <span className="flex-shrink-0 mt-0.5" style={{ color: 'var(--moss)' }}>•</span>
+                <Heart size={12} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--moss)' }} />
                 <p className="text-sm" style={{ color: 'var(--foreground)' }}>{p}</p>
               </div>
             ))}
@@ -164,7 +168,7 @@ export default function OverviewTab({ analysis }: Props) {
       )}
 
       {s.safe_consumption && (
-        <Panel title="Safe Consumption" icon="✅">
+        <Panel title="Consumption Guide" icon={Shield}>
           <div className="space-y-2">
             {s.safe_consumption.amount && (
               <Row label="Amount" value={s.safe_consumption.amount} />
@@ -174,12 +178,12 @@ export default function OverviewTab({ analysis }: Props) {
             )}
             {s.safe_consumption.notes && (
               <div className="pt-2 mt-2 border-t" style={{ borderColor: 'var(--card-border)' }}>
-                <p className="text-[11px] leading-relaxed" style={{ color: 'var(--muted-2)' }}>💡 {s.safe_consumption.notes}</p>
+                <p className="text-[11px] leading-relaxed" style={{ color: 'var(--muted-2)' }}>{s.safe_consumption.notes}</p>
               </div>
             )}
             {s.safe_consumption.personalized_for_user && (
               <div className="pt-2 mt-2 border-t rounded-xl p-3" style={{ borderColor: 'var(--card-border)', background: 'rgba(61,92,46,0.05)' }}>
-                <p className="text-[11px] font-bold mb-1" style={{ color: 'var(--moss)' }}>✨ Personalised for you</p>
+                <p className="text-[11px] font-bold mb-1" style={{ color: 'var(--moss)' }}>Personalised for you</p>
                 <p className="text-xs" style={{ color: 'var(--foreground)' }}>{s.safe_consumption.personalized_for_user}</p>
               </div>
             )}
@@ -188,7 +192,7 @@ export default function OverviewTab({ analysis }: Props) {
       )}
 
       {s.detailed_breakdown && (
-        <Panel title="Nutrition Details" icon="📊">
+        <Panel title="Nutrition Details" icon={Activity}>
           <div className="space-y-0">
             {(['calories', 'protein', 'sugar', 'sodium', 'fat', 'fiber'] as const).map(key => {
               const val = s.detailed_breakdown![key]
@@ -214,7 +218,7 @@ export default function OverviewTab({ analysis }: Props) {
             borderColor: s.fssai_compliance === 'compliant' ? 'rgba(61,92,46,0.15)' : 'rgba(196,113,74,0.15)',
             color: s.fssai_compliance === 'compliant' ? 'var(--moss)' : 'var(--clay)',
           }}>
-          <span className="text-xl">🛡️</span>
+          <Shield size={20} aria-hidden="true" />
           <div>
             <p className="font-bold">FSSAI Compliance</p>
             <p className="text-[11px] opacity-80">
