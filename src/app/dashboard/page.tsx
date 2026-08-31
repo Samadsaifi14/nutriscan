@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Flame, ChevronRight, ScanLine, Search, Heart, Activity, Trophy, Plus } from "lucide-react";
 import { motion } from "framer-motion";
@@ -35,14 +34,14 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <PageShell title="BioYou">
+      <PageShell title="NutriScan">
         <SkeletonDashboard />
       </PageShell>
     );
   }
 
   return (
-    <PageShell title="BioYou">
+    <PageShell title="NutriScan">
       <div className="stack">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div>
@@ -56,7 +55,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <TiltCard intensity={5} className="card--xl">
+        <TiltCard intensity={3} className="card--xl dashboard-score">
           <div className="row--lg">
             <HealthScoreRing score={dashboard?.overallScore ?? 7} size="xl" />
             <div className="flex-1">

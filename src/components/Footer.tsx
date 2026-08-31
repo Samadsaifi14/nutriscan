@@ -23,7 +23,7 @@ export function Footer() {
         ))}
       </div>
       <p className="text-2xs" style={{ color: 'var(--muted)' }}>
-        &copy; {new Date().getFullYear()} HealthOX. Not medical advice.
+        &copy; {new Date().getFullYear()} NutriScan. Not medical advice.
       </p>
     </footer>
   )

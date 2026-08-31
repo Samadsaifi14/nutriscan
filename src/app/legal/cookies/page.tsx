@@ -3,7 +3,7 @@ export default function Cookies() {
     <div>
       <h1 className="text-h1" style={{ marginBottom: 16 }}>Cookie Policy</h1>
       <div className="stack--md text-sm" style={{ color: 'var(--sand)', lineHeight: 1.7 }}>
-        <p>HealthOX uses cookies and similar technologies to improve your experience and measure usage.</p>
+        <p>NutriScan uses cookies and similar technologies to improve your experience and measure usage.</p>
         <h2 className="text-h3" style={{ color: 'var(--cream)', marginTop: 16 }}>Essential Cookies</h2>
         <p>These are required for the app to function: session tokens, CSRF protection, and local storage for scan results.</p>
         <h2 className="text-h3" style={{ color: 'var(--cream)', marginTop: 16 }}>Analytics Cookies</h2>

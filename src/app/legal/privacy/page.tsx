@@ -3,7 +3,7 @@ export default function Privacy() {
     <div>
       <h1 className="text-h1" style={{ marginBottom: 16 }}>Privacy Policy</h1>
       <div className="stack--md text-sm" style={{ color: 'var(--sand)', lineHeight: 1.7 }}>
-        <p>Your privacy matters to us. This policy explains how HealthOX collects, uses, and protects your data.</p>
+        <p>Your privacy matters to us. This policy explains how NutriScan collects, uses, and protects your data.</p>
         <h2 className="text-h3" style={{ color: 'var(--cream)', marginTop: 16 }}>What We Collect</h2>
         <ul style={{ listStyle: 'disc', paddingLeft: 20 }}>
           <li>Account information (name, email) via OAuth providers</li>

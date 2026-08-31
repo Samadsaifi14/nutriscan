@@ -34,7 +34,7 @@ export default function Profile() {
   return (
     <PageShell title="Profile" showBack>
       <div className="card row--md" style={{ marginBottom: 24 }}>
-        <div className="avatar avatar--lg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 24, background: 'linear-gradient(135deg, var(--clay), var(--clay-dim))', color: '#fff' }}>
+        <div className="avatar avatar--lg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 24, background: 'var(--clay)', color: 'var(--ink)' }}>
           {initials}
         </div>
         <div className="stack--sm flex-1">

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { GrainOverlay } from "@/components/GrainOverlay";
@@ -9,19 +9,27 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CookieBanner } from "@/components/CookieBanner";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
-const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", display: "swap" });
+const geist = localFont({
+  src: "./fonts/GeistVF.woff",
+  variable: "--font-geist",
+  display: "swap",
+});
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  display: "swap",
+});
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: "HealthOX — Scan. Understand. Choose better.",
+  title: "NutriScan — Scan. Understand. Choose better.",
   description: "Scan any packaged food and get an instant, India-specific health verdict.",
   manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0907",
+  themeColor: "#050505",
   viewportFit: "cover",
   width: "device-width",
   initialScale: 1,
@@ -30,7 +38,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://www.googletagmanager.com" />
         <link rel="preconnect" href="https://www.google-analytics.com" />

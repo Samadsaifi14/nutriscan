@@ -6,13 +6,13 @@ import { scoreToRating, ratingColor } from "@/lib/utils";
 
 type Size = "xs" | "sm" | "md" | "lg" | "xl";
 
-const SIZES: Record<Size, number> = { xs: 32, sm: 44, md: 64, lg: 80, xl: 96 };
+const SIZES: Record<Size, number> = { xs: 32, sm: 44, md: 64, lg: 84, xl: 128 };
 const FONT: Record<Size, string> = {
   xs: "text-[10px]",
   sm: "text-xs",
   md: "text-body",
   lg: "text-h3",
-  xl: "text-h1",
+  xl: "text-[40px]",
 };
 
 interface HealthScoreRingProps {
@@ -44,7 +44,7 @@ export function HealthScoreRing({ score, size = "md", showLabel = true, classNam
           cy={diameter / 2}
           r={radius}
           fill="none"
-          stroke="var(--surface-3)"
+          stroke="var(--surface-4)"
           strokeWidth={stroke}
         />
         <motion.circle

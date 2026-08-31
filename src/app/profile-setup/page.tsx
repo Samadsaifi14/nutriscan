@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PageShell } from '@/components/PageShell'
-import { ChevronRight, Leaf, Heart, SlidersHorizontal } from 'lucide-react'
+import { Check, ChevronRight, Leaf, Heart, SlidersHorizontal } from 'lucide-react'
 
 type Diet = 'vegetarian' | 'vegan' | 'jain' | 'non_veg'
 
@@ -111,7 +111,7 @@ export default function ProfileSetup() {
                 ...(i === step ? { background: 'var(--clay)', borderColor: 'var(--clay)', color: '#fff' } : {}),
               }}
             >
-              {i < step ? '✓' : i + 1}
+              {i < step ? <Check size={15} /> : i + 1}
             </div>
             <span className='step-bar__label' style={{ ...(i === step ? { color: 'var(--clay)', fontWeight: 600 } : {}) }}>{s.title}</span>
           </div>

@@ -34,6 +34,8 @@ export interface HarmfulIngredient {
   source_url?: string
   global_safe_limit?: string
   personalized_safe_limit?: string
+  amount_in_this_product?: string
+  percentage_of_daily_limit?: string
 }
 
 export interface AiIngredient {

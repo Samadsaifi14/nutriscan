@@ -44,8 +44,7 @@ export default function SearchPage() {
         <Search size={16} />
         <input
           autoFocus
-          className="flex-1"
-          style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--cream)', fontSize: 14 }}
+          className="input flex-1"
           placeholder="Search products..."
           value={query}
           onChange={(e) => {
@@ -56,7 +55,7 @@ export default function SearchPage() {
           }}
         />
         {query && (
-          <button aria-label="Clear search" onClick={() => { setQuery(''); setResults([]); setError('') }} style={{ color: 'var(--muted)' }}>
+          <button className="icon-btn" aria-label="Clear search" onClick={() => { setQuery(''); setResults([]); setError('') }} style={{ position: 'absolute', right: 4, width: 40, height: 40 }}>
             <X size={16} />
           </button>
         )}

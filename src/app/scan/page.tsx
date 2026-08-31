@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { X, Zap, ZapOff, Image as ImageIcon, Keyboard, RefreshCw } from "lucide-react";
+import { X, Zap, ZapOff, Image as ImageIcon, Keyboard, RefreshCw, Camera } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { cn } from "@/lib/utils";
 import { isValidIndianEan13, isValidRetailBarcode, normalizeBarcode } from "@/lib/barcode-intelligence";
@@ -268,7 +268,7 @@ export default function ScanPage() {
 
       <div className="absolute inset-x-0 bottom-0 z-10 stack--md px-page pb-[calc(var(--safe-bottom)+28px)]">
         <p className="text-center text-cream text-sm">{cameraReady ? "Align the barcode within the frame" : "Starting camera…"}</p>
-        <p className="text-center text-sand text-xs">Any checksum-valid retail barcode will be accepted.</p>
+        <p className="text-center text-sand text-xs">Best results with Indian EAN-13 food barcodes beginning with 890.</p>
 
         <div className="row" style={{ justifyContent: "center", gap: 12 }}>
           <button
@@ -317,12 +317,10 @@ export default function ScanPage() {
               }
             }}
             className="icon-btn glass rounded-full"
-            style={{ width: 64, height: 64 }}
+            style={{ width: 64, height: 64, background: 'var(--clay)', color: 'var(--ink)', borderColor: 'var(--clay)' }}
             aria-label="Capture"
           >
-            <div style={{ width: 52, height: 52, borderRadius: "9999px", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ width: 44, height: 44, borderRadius: "9999px", border: "2px solid rgba(0,0,0,0.15)" }} />
-            </div>
+            <Camera size={28} strokeWidth={2.3} />
           </button>
           <button
             onClick={() => setManualOpen(true)}

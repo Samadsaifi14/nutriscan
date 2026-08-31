@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
+import { Camera, Lightbulb, ScanLine, X } from 'lucide-react'
 
 interface BarcodeScannerProps {
   onDetected: (barcode: string) => void
@@ -76,7 +77,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         if (barcodes.length > 0 && mountedRef.current) {
           const barcode = barcodes[0].rawValue
           console.log('Live barcode detected:', barcode)
-          setStatus('✅ Barcode found!')
+          setStatus('Barcode found')
           stopCamera()
           onDetected(barcode)
           return
@@ -121,7 +122,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         s = await navigator.mediaDevices.getUserMedia({ video: true })
         front = true
       } catch {
-        if (mountedRef.current) setStatus('❌ Camera access denied.')
+        if (mountedRef.current) setStatus('Camera access denied')
         return
       }
     }
@@ -148,13 +149,13 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
   async function handleManualCapture() {
     if (!videoRef.current) return
     
-    setStatus('📸 Checking for barcode...')
+    setStatus('Checking for barcode...')
     
     // Try client-side detection first
     const barcode = await detectBarcode(videoRef.current)
     
     if (barcode) {
-      setStatus('✅ Barcode found!')
+      setStatus('Barcode found')
       stopCamera()
       onDetected(barcode)
       return
@@ -172,12 +173,12 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
 
         {/* Header */}
         <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--card-border)]">
-          <h2 className="text-base font-bold text-[var(--foreground)]">📷 Scan Food Product</h2>
+          <h2 className="text-base font-bold text-[var(--foreground)] flex items-center gap-2"><Camera size={18} /> Scan food product</h2>
           <button
             onClick={() => { stopCamera(); onClose() }}
             className="text-[var(--muted)] hover:text-[var(--foreground)] text-lg transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-[color-mix(in_oklab,var(--card),black_8%)]"
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 
@@ -207,7 +208,7 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         {/* Failure tip */}
         {failureTip && (
           <div className="px-4 py-3 bg-[color-mix(in_oklab,var(--card),black_6%)] border-b border-amber-500/30">
-            <p className="text-xs text-amber-300 text-center">💡 {failureTip}</p>
+            <p className="text-xs text-amber-300 text-center flex items-center justify-center gap-2"><Lightbulb size={14} /> {failureTip}</p>
           </div>
         )}
 
@@ -215,9 +216,9 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
         <div className="p-4 bg-[var(--card)]">
           <button
             onClick={handleManualCapture}
-            className="w-full py-4 bg-[var(--clay)] hover:bg-[color-mix(in_oklab,var(--clay),black_15%)] text-white font-semibold rounded-xl transition-colors text-sm"
+            className="w-full py-4 bg-[var(--clay)] hover:bg-[color-mix(in_oklab,var(--clay),black_15%)] text-black font-semibold rounded-full transition-colors text-sm flex items-center justify-center gap-2"
           >
-            📸 Manual Scan (Tap if auto-detect fails)
+            <ScanLine size={18} /> Manual scan
           </button>
         </div>
 

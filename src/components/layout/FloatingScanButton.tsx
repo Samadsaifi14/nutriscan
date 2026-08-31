@@ -22,18 +22,12 @@ export function FloatingScanButton() {
         height: "var(--fab-size)",
         bottom: "calc(var(--nav-h) - var(--fab-lift) + var(--safe-bottom))",
         marginLeft: "calc(var(--fab-size) / -2)",
-        background: "linear-gradient(155deg, var(--clay), var(--clay-dim))",
-        boxShadow: "0 8px 24px -6px var(--clay-glow), 0 2px 6px rgba(0,0,0,0.4)",
+        background: "var(--clay)",
+        border: "6px solid var(--bg)",
+        boxShadow: "0 12px 30px rgba(0,0,0,0.45)",
       }}
       whileTap={{ scale: 0.88 }}
-      animate={{
-        boxShadow: [
-          "0 8px 24px -6px var(--clay-glow), 0 2px 6px rgba(0,0,0,0.4)",
-          "0 8px 30px -4px var(--clay-glow), 0 2px 6px rgba(0,0,0,0.4)",
-          "0 8px 24px -6px var(--clay-glow), 0 2px 6px rgba(0,0,0,0.4)",
-        ],
-      }}
-      transition={{ boxShadow: { duration: 2.4, repeat: Infinity, ease: "easeInOut" } }}
+      whileHover={{ scale: 1.04 }}
     >
       <Camera size={24} color="#1a1108" strokeWidth={2.3} />
     </motion.button>

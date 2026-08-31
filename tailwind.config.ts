@@ -23,8 +23,8 @@ const config: Config = {
         'border-3': 'var(--border-3)',
       },
       fontFamily: {
-        sans: ['var(--font-dm-sans)', 'sans-serif'],
-        mono: ['var(--font-jetbrains-mono)', 'monospace'],
+        sans: ['var(--font-geist)', 'sans-serif'],
+        mono: ['var(--font-geist-mono)', 'monospace'],
       },
       borderRadius: {
         xs: 'var(--r-xs)',

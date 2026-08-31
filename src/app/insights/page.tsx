@@ -26,7 +26,7 @@ export default function Insights() {
 
   return (
     <PageShell title="Insights" showBack>
-      <div className="card row--md" style={{ marginBottom: 16, background: 'linear-gradient(135deg, var(--clay-bg), var(--surface-2))' }}>
+      <div className="card row--md" style={{ marginBottom: 16, background: 'var(--clay-bg)', borderColor: 'rgba(255,107,36,.38)' }}>
         <HealthScoreRing score={data?.overallScore ?? 7} size="md" />
         <div className="stack--sm">
           <span className="text-sm" style={{ fontWeight: 700 }}>Monthly Overview</span>

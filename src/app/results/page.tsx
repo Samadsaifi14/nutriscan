@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { AlertTriangle, Info, Heart, ExternalLink, ClipboardCheck, RefreshCw, Search, Activity, Shield } from "lucide-react";
+import { AlertTriangle, Info, Heart, ExternalLink, ClipboardCheck, RefreshCw, Search, Activity, Shield, Leaf, ArrowRight, CheckCircle2 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { TiltCard } from "@/components/TiltCard";
 import { HealthScoreRing } from "@/components/HealthScoreRing";
-import { Pill } from "@/components/Pill";
 import { ShoppingLinks } from "@/components/ShoppingLinks";
 import OverviewTab from "@/components/results/OverviewTab";
 import { cn } from "@/lib/utils";
@@ -35,18 +33,6 @@ function loadFromStorage(): ScanResultPayload | null {
     // silent
   }
   return null;
-}
-
-function ratingVariant(rating: string) {
-  if (rating === "healthy") return "healthy" as const;
-  if (rating === "moderate") return "warning" as const;
-  return "harmful" as const;
-}
-
-function cnCard(rating: string) {
-  if (rating === "healthy") return "card--healthy";
-  if (rating === "moderate") return "card--warning";
-  return "card--harmful";
 }
 
 function productSourceLabel(source: string | undefined) {
@@ -221,6 +207,9 @@ export default function ResultsPage() {
     );
   }
 
+  const primaryConcern = analysis.harmful_ingredients?.[0];
+  const remainingConcerns = analysis.harmful_ingredients?.slice(1) ?? [];
+
   async function saveFavorite() {
     if (!product || !nutrition) return;
     try {
@@ -285,14 +274,14 @@ export default function ResultsPage() {
   return (
     <PageShell
       variant="default"
-      title={product.name}
+      title="NutriScan"
       showBack
       topBarRight={
         <div className="row" style={{ gap: 8 }}>
           <button
             onClick={() => setLogOpen(true)}
             aria-label="Log this meal"
-            className="icon-btn glass rounded-full"
+            className="icon-btn"
             style={{ color: logged ? "var(--clay)" : "var(--cream)" }}
           >
             <ClipboardCheck size={18} />
@@ -300,7 +289,7 @@ export default function ResultsPage() {
           <button
             onClick={saveFavorite}
             aria-label="Save to favorites"
-            className="icon-btn glass rounded-full"
+            className="icon-btn"
             style={{ color: saved ? "var(--clay)" : "var(--cream)" }}
           >
             <Heart size={18} fill={saved ? "var(--clay)" : "none"} />
@@ -309,26 +298,27 @@ export default function ResultsPage() {
       }
     >
       <div className="stack">
-        <TiltCard intensity={5} className={cnCard(analysis.health_rating)}>
-          <div className="row--lg">
+        <section className="result-hero" aria-labelledby="result-product-name">
+          <div className="result-hero__grid">
             <HealthScoreRing score={analysis.health_score} size="xl" />
-            <div className="flex-1">
-              <p className="text-h3 text-cream leading-tight">{product.name}</p>
-              <p className="text-xs text-sand mt-1">
-                {product.brand ? (
-                  <>by <span style={{ color: 'var(--cream)', fontWeight: 600 }}>{product.brand}</span></>
-                ) : (
-                  <>Brand not listed</>
-                )}
+            <div className="result-hero__product">
+              <h2 id="result-product-name" className="text-h1 text-cream leading-tight">{product.name}</h2>
+              <p className="text-body text-sand mt-2">
+                {product.brand ? <>by <span className="text-cream font-semibold">{product.brand}</span></> : <>Brand not listed</>}
               </p>
-              <Pill variant={ratingVariant(analysis.health_rating)} className="mt-2">
-                {analysis.health_rating}
-              </Pill>
+              <div className="result-verdict">
+                <AlertTriangle size={18} />
+                {analysis.health_rating === "healthy" ? "Lower concern" : analysis.health_rating === "moderate" ? "Review this choice" : "High concern"}
+              </div>
+              <p className="text-sm text-sand mt-3">
+                <strong className="text-clay">{analysis.harmful_ingredients?.length ?? 0}</strong>{" "}
+                ingredient{analysis.harmful_ingredients?.length === 1 ? "" : "s"} to review
+              </p>
             </div>
           </div>
-          <p className="text-sm text-sand mt-4">{analysis.summary}</p>
-          <p className="text-[10px] text-muted mt-2">Data source: {productSourceLabel(product.source)}</p>
-        </TiltCard>
+          <p className="result-hero__summary">{analysis.summary}</p>
+          <p className="result-hero__source">Data source: {productSourceLabel(product.source)}</p>
+        </section>
 
         <div className="tab-bar">
           {TABS.map((t) => (
@@ -371,43 +361,61 @@ export default function ResultsPage() {
 
         {tab === "Ingredients" && (
           <div className="stack--md">
-            {analysis.harmful_ingredients && analysis.harmful_ingredients.length > 0 ? (
-              <div className="card card--sm">
-                <p className="text-xs font-bold text-amber mb-2" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  <span className="inline-flex items-center gap-1"><AlertTriangle size={12} /> {analysis.harmful_ingredients.length} Ingredient{analysis.harmful_ingredients.length > 1 ? 's' : ''} to review</span>
-                </p>
-                <div className="stack--sm">
-                  {analysis.harmful_ingredients.map((ing: any) => (
-                    <div key={ing.name} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: ing.severity === 'high' ? 'var(--rust-bg)' : ing.severity === 'medium' ? 'var(--clay-bg)' : 'var(--surface-2)' }}>
-                      {ing.severity === 'low' ? <Info size={14} className="text-sand shrink-0 mt-0.5" /> : <AlertTriangle size={14} className="text-amber shrink-0 mt-0.5" />}
+            {primaryConcern ? (
+              <>
+                <section className="result-panel" aria-labelledby="primary-concern-title">
+                  <div className="result-panel__header">
+                    <span className="chip chip--harmful">Highest concern</span>
+                    <h2 id="primary-concern-title" className="text-h1 mt-3">{primaryConcern.name}</h2>
+                  </div>
+                  <div className="evidence-row">
+                    <div className="evidence-row__icon"><Activity size={20} /></div>
+                    <div>
+                      <p className="text-sm font-semibold text-cream">Why it matters</p>
+                      <p className="text-sm text-sand mt-1 evidence-row__summary">{primaryConcern.reason}</p>
+                    </div>
+                  </div>
+                  <div className="evidence-row">
+                    <div className="evidence-row__icon"><Info size={20} /></div>
+                    <div>
+                      <p className="text-sm font-semibold text-cream">Amount in this product</p>
+                      <p className="text-sm text-clay mt-1">{primaryConcern.amount_in_this_product || "Not declared on the product label"}</p>
+                      {primaryConcern.global_safe_limit && <p className="text-xs text-sand mt-2"><strong className="text-cream">Reference limit:</strong> {primaryConcern.global_safe_limit}</p>}
+                    </div>
+                  </div>
+                  {primaryConcern.source_url && (
+                    <div className="evidence-row evidence-row--source">
+                      <div className="evidence-row__icon"><ExternalLink size={20} /></div>
                       <div>
-                        <p className="text-sm font-semibold" style={{ color: ing.severity === 'high' ? 'var(--rust)' : ing.severity === 'medium' ? 'var(--clay)' : 'var(--cream)' }}>{ing.name}</p>
-                        <p className="text-xs text-sand mt-0.5">{ing.reason}</p>
-                        {ing.global_safe_limit && <p className="text-xs text-cream mt-1"><strong>Reference limit:</strong> {ing.global_safe_limit}</p>}
-                        {ing.amount_in_this_product && <p className="text-[10px] text-sand mt-1">Amount here: {ing.amount_in_this_product}</p>}
-                        {ing.source_url && (
-                          <a className="inline-flex items-center gap-1 text-[10px] mt-1" style={{ color: 'var(--clay)' }} href={ing.source_url} target="_blank" rel="noopener noreferrer">
-                            {ing.scientific_source || 'View evidence'} <ExternalLink size={10} />
-                          </a>
-                        )}
-                        {ing.severity === 'high' && (
-                          <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold" style={{ background: 'var(--rust-bg)', color: 'var(--rust)' }}>
-                            HIGH CONCERN
-                          </span>
-                        )}
-                        {ing.severity === 'medium' && (
-                          <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold" style={{ background: 'var(--clay-bg)', color: 'var(--clay)' }}>
-                            WATCH
-                          </span>
-                        )}
+                        <p className="text-sm font-semibold text-cream">Evidence</p>
+                        <p className="text-xs text-sand mt-1">Regulatory and toxicology reference</p>
+                        <a className="inline-flex items-center gap-1 text-xs mt-2" style={{ color: 'var(--cobalt)' }} href={primaryConcern.source_url} target="_blank" rel="noopener noreferrer">
+                          {primaryConcern.scientific_source || "View evidence"} <ExternalLink size={12} />
+                        </a>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  )}
+                </section>
+                {remainingConcerns.length > 0 && (
+                  <details className="ingredient-more">
+                    <summary>{remainingConcerns.length} more ingredient{remainingConcerns.length === 1 ? "" : "s"} to review</summary>
+                    <div className="stack--sm mt-3">
+                      {remainingConcerns.map((ingredient) => (
+                        <div key={ingredient.name} className="ingredient-more__row">
+                          <AlertTriangle size={15} />
+                          <div>
+                            <p className="text-sm font-semibold text-cream">{ingredient.name}</p>
+                            <p className="text-xs text-sand mt-1">{ingredient.reason}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </>
             ) : (
               <div className="card card--healthy">
-                <p className="text-sm text-moss font-semibold">✓ No high-concern additives matched</p>
+                <p className="text-sm text-moss font-semibold inline-flex items-center gap-2"><CheckCircle2 size={16} /> No high-concern additives matched</p>
                 <p className="text-xs text-sand mt-1">This is not a guarantee that every ingredient is suitable for every person.</p>
               </div>
             )}
@@ -491,6 +499,11 @@ export default function ResultsPage() {
                 </p>
               </div>
             )}
+            <button className="safer-cta" onClick={() => setTab("Alternatives")}>
+              <Leaf size={20} />
+              Compare {data.alternatives?.length || 5} safer choices
+              <ArrowRight size={20} />
+            </button>
           </div>
         )}
 

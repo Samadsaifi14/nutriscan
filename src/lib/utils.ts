@@ -16,7 +16,7 @@ export function scoreToRating(score: number): 'healthy' | 'moderate' | 'unhealth
 }
 
 export function ratingColor(rating: 'healthy' | 'moderate' | 'unhealthy') {
-  return { healthy: '#8FB878', moderate: '#E49030', unhealthy: '#E06B52' }[rating]
+  return { healthy: 'var(--moss)', moderate: 'var(--clay)', unhealthy: 'var(--rust)' }[rating]
 }
 
 export function escapeIlike(str: string): string {

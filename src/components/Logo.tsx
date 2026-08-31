@@ -10,7 +10,7 @@ export default function Logo({ size = 80, className = '', priority = false }: Lo
   return (
     <Image
       src="/icon-512.png"
-      alt="Bio You — Scan. Know. Choose Better"
+      alt="NutriScan — Scan. Understand. Choose Better"
       width={size}
       height={size}
       priority={priority}

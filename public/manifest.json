@@ -1,11 +1,11 @@
 {
-  "name": "Bio You — Scan. Know. Choose Better.",
-  "short_name": "Bio You",
-  "description": "Scan any packaged food and get an instant AI health rating",
+  "name": "NutriScan — Scan. Understand. Choose Better.",
+  "short_name": "NutriScan",
+  "description": "Scan packaged food for a clear health rating, ingredient evidence, and safer alternatives.",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#0A0806",
-  "theme_color": "#0A0806",
+  "background_color": "#050505",
+  "theme_color": "#050505",
   "orientation": "portrait",
   "icons": [
     {
