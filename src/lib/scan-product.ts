@@ -2,6 +2,7 @@ import { supabaseAdmin } from './supabaseAdmin'
 import { analyzeBarcode, inferCategory } from './barcode-intelligence'
 import { formatProduct, cacheProduct, searchIndianProductWeb, estimateProductWithAI, parseNum, parseSodium, parseList, extractNutrition } from './scan-helpers'
 import { fillNutritionIfMissing, getCategoryNutrition } from './nutrition-helpers'
+import { scrapeOffEnrichment } from './scraper-client'
 
 type Confidence = 'exact' | 'high' | 'estimated' | 'low' | 'none'
 
@@ -108,7 +109,38 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   } catch { /* continue */ }
 
-  // Layer 3 â€” OFF keyword search
+  // Layer 2b — OFF HTML enrichment (Scrapling fallback when JSON API is incomplete)
+  if (offFallback && !offFallback.calories_per_100g && !offFallback.protein_per_100g) {
+    try {
+      const enriched = await scrapeOffEnrichment(trimmedBarcode, offFallback.name)
+      if (enriched) {
+        const n = enriched.nutrition_per_100g
+        const hasNewNutrition = n.calories || n.protein || n.carbs || n.fat
+        if (hasNewNutrition) {
+          offFallback = {
+            ...offFallback,
+            name: enriched.name || offFallback.name,
+            brand: enriched.brand || offFallback.brand,
+            image_url: enriched.image_url || offFallback.image_url,
+            ingredients_text: enriched.ingredients_text || offFallback.ingredients_text,
+            calories_per_100g: parseNum(n.calories) || offFallback.calories_per_100g,
+            protein_per_100g: parseNum(n.protein) || offFallback.protein_per_100g,
+            carbs_per_100g: parseNum(n.carbs) || offFallback.carbs_per_100g,
+            fat_per_100g: parseNum(n.fat) || offFallback.fat_per_100g,
+            saturated_fat_per_100g: parseNum(n.saturated_fat) || offFallback.saturated_fat_per_100g,
+            sugar_per_100g: parseNum(n.sugar) || offFallback.sugar_per_100g,
+            sodium_per_100g: parseNum(n.sodium) || offFallback.sodium_per_100g,
+            fiber_per_100g: parseNum(n.fiber) || offFallback.fiber_per_100g,
+            source: 'open_food_facts_html_enriched',
+          }
+          cacheProduct(offFallback)
+          return { success: true, source: 'open_food_facts_html_enriched', confidence: 'high', product: offFallback }
+        }
+      }
+    } catch { /* continue */ }
+  }
+
+  // Layer 3 — OFF keyword search
   try {
     const barcodeAnalysis = analyzeBarcode(trimmedBarcode)
     const searchBrand = barcodeAnalysis.brand

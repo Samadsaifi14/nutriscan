@@ -43,3 +43,14 @@ PROJECT_FILE_MAP.txt
 
 # logs
 dev.log
+
+# Python / Scraper
+scraper/__pycache__/
+scraper/**/__pycache__/
+scraper/*.egg-info/
+scraper/.venv/
+scraper/venv/
+*.pyc
+*.pyo
+bigbasket_*.json
+blinkit_*.json

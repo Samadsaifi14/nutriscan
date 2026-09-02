@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabaseAdmin'
 import { scoreProduct, type NutritionPer100g } from './health-engine'
 import { callGemini } from './gemini'
+import { scrapeIndianProduct } from './scraper-client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -156,6 +157,39 @@ export function detectHarmfulAdditives(ingredientsText: string): string[] {
 // ── Web Search ────────────────────────────────────────────────────────────────
 
 export async function searchIndianProductWeb(searchHint: string, brand: string | null): Promise<any | null> {
+  // Primary: Scrapling-powered scraper (StealthyFetcher bypasses Cloudflare)
+  try {
+    console.log('Trying Scrapling scraper for Indian product:', searchHint)
+    const scraped = await scrapeIndianProduct(searchHint, brand)
+    if (scraped) {
+      console.log('Scraping succeeded via Scrapling:', scraped.source)
+      return {
+        barcode: '',
+        name: scraped.name,
+        brand: scraped.brand || brand,
+        category: null,
+        country_of_origin: 'India',
+        image_url: scraped.image_url,
+        calories_per_100g: scraped.calories_per_100g,
+        protein_per_100g: scraped.protein_per_100g,
+        carbs_per_100g: scraped.carbs_per_100g,
+        fat_per_100g: scraped.fat_per_100g,
+        sugar_per_100g: scraped.sugar_per_100g,
+        sodium_per_100g: scraped.sodium_per_100g,
+        fiber_per_100g: scraped.fiber_per_100g,
+        serving_size_g: null,
+        ingredients_text: scraped.ingredients_text,
+        allergens: [],
+        additives: [],
+        source: `scrapling_${scraped.source}`,
+        web_url: scraped.source_url,
+      }
+    }
+  } catch (err) {
+    console.warn('Scrapling scraper failed, falling back to Tavily:', err)
+  }
+
+  // Fallback: Tavily web search (only returns metadata, not full nutrition data)
   const tavilyKey = process.env.TAVILY_API_KEY
 
   if (!tavilyKey) {
