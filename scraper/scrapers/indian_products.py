@@ -1,7 +1,11 @@
 """
-Scrape Indian grocery product pages from bigbasket, blinkit, and amazon.in
-using Scrapling's StealthyFetcher to bypass Cloudflare and other anti-bot
-systems. Returns structured nutrition data.
+Scrape Indian grocery product pages using Scrapling.
+- bigbasket: parses the server-rendered application/json state for full
+  nutrition, ingredients, and barcode (primary, richest data).
+- amazon.in: returns name/brand/image/ingredients as a fallback (Amazon does
+  not publish a structured nutrition table in its HTML).
+
+Both are wrapped so the FastAPI service can run them in a thread executor.
 """
 
 import re
@@ -92,58 +96,6 @@ def _parse_nutrition_text(text: str) -> dict:
                 break
 
     return result
-
-
-def _extract_ingredients(page, selectors: list[str]) -> str | None:
-    """Try multiple selectors to find ingredients text."""
-    for sel in selectors:
-        els = page.css(sel)
-        if els:
-            text = els[0].get_all_text(separator=" ").strip()
-            if len(text) > 10:
-                return text
-    return None
-
-
-def _extract_nutrition_table(page) -> str:
-    """Attempt to extract the full nutrition table text for parsing."""
-    selectors = [
-        "table.nutrition-table",
-        "table[class*='nutrition']",
-        "div[class*='nutrition'] table",
-        "div[class*='nutrition-info']",
-        "div[class*='nutrition_info']",
-        "div[class*='nutritional']",
-        "section[class*='nutrition']",
-        "[data-testid*='nutrition']",
-        "table",
-    ]
-    for sel in selectors:
-        els = page.css(sel)
-        if els:
-            text = els[0].get_all_text(separator=" ").strip()
-            if any(kw in text.lower() for kw in ("calor", "protein", "fat", "carb")):
-                return text
-    return ""
-
-
-def _extract_image(page) -> str | None:
-    """Extract the main product image URL."""
-    selectors = [
-        "img[class*='product']",
-        "img[class*='main']",
-        "img[class*='hero']",
-        "img[data-testid*='product']",
-        "meta[property='og:image']",
-    ]
-    for sel in selectors:
-        els = page.css(sel)
-        if els:
-            el = els[0]
-            if el.tag == "meta":
-                return el.attrib.get("content")
-            return el.attrib.get("src") or el.attrib.get("data-src")
-    return None
 
 
 # ── BigBasket scraper ────────────────────────────────────────────────────────
@@ -346,82 +298,26 @@ def _scrape_bigbasket(search_hint: str, brand: str | None = None) -> dict | None
         return None
 
 
-# ── Blinkit scraper ──────────────────────────────────────────────────────────
-
-def _scrape_blinkit(search_hint: str, brand: str | None = None) -> dict | None:
-    """Search and scrape a product from blinkit.com."""
-    query = f"{brand} {search_hint}" if brand else search_hint
-    search_url = f"https://blinkit.com/search?q={quote_plus(query)}"
-
-    logger.info(f"Blinkit search: {search_url}")
-
-    try:
-        page = StealthyFetcher.fetch(search_url, headless=True)
-
-        if not page or not page.status or page.status >= 400:
-            return None
-
-        product_links = page.css("a[href*='/product/']")
-        if not product_links:
-            product_links = page.css("a[href*='/pn/']")
-
-        if not product_links:
-            logger.info("No Blinkit product links found")
-            return None
-
-        href = product_links[0].attrib.get("href", "")
-        if not href.startswith("http"):
-            href = f"https://blinkit.com{href}"
-
-        product_page = StealthyFetcher.fetch(href, headless=True)
-        if not product_page:
-            return None
-
-        name = None
-        for sel in ["h1", "[class*='product-name']", "[class*='title']"]:
-            els = product_page.css(sel)
-            if els:
-                name = els[0].get_all_text(separator=" ").strip()
-                if name:
-                    break
-
-        brand_name = brand
-        if not brand_name:
-            for sel in ["[class*='brand']", "[class*='manufacturer']"]:
-                els = product_page.css(sel)
-                if els:
-                    brand_name = els[0].get_all_text(separator=" ").strip()
-                    if brand_name:
-                        break
-
-        nutrition_text = _extract_nutrition_table(product_page)
-        nutrition = _parse_nutrition_text(nutrition_text)
-
-        ingredients = _extract_ingredients(product_page, [
-            "[class*='ingredients']",
-            "[class*='ingredient']",
-        ])
-
-        image = _extract_image(product_page)
-
-        return {
-            "name": name,
-            "brand": brand_name,
-            "image_url": image,
-            "ingredients_text": ingredients,
-            "nutrition_per_100g": nutrition,
-            "source": "blinkit",
-            "source_url": href,
-        }
-    except Exception:
-        logger.exception("Blinkit scrape failed")
-        return None
-
-
 # ── Amazon.in scraper ────────────────────────────────────────────────────────
 
+def _amz_clean_url(href: str) -> str:
+    """Return a clean https://www.amazon.in/dp/{ASIN} URL from any product link."""
+    m = re.search(r"/dp/([A-Z0-9]{10})", href)
+    if m:
+        return f"https://www.amazon.in/dp/{m.group(1)}"
+    if href.startswith("http"):
+        return href.split("?")[0]
+    return f"https://www.amazon.in{href}"
+
+
 def _scrape_amazon_in(search_hint: str, brand: str | None = None) -> dict | None:
-    """Search and scrape a product from amazon.in."""
+    """Search and scrape a product from amazon.in.
+
+    Amazon.in does not publish a structured nutrition table in its server HTML
+    for most grocery items, so this returns name/brand/image/ingredients only.
+    The NutriScan pipeline fills missing nutrition via AI estimation using the
+    product name (see fillNutritionIfMissing), so this still adds real coverage.
+    """
     query = f"{brand} {search_hint}" if brand else search_hint
     search_url = f"https://www.amazon.in/s?k={quote_plus(query)}&i=grocery"
 
@@ -429,48 +325,66 @@ def _scrape_amazon_in(search_hint: str, brand: str | None = None) -> dict | None
 
     try:
         page = Fetcher.get(search_url)
-
         if not page or not page.status or page.status >= 400:
             return None
 
         product_links = page.css("a.a-link-normal[href*='/dp/']")
         if not product_links:
             product_links = page.css("a[href*='/dp/']")
-
         if not product_links:
             logger.info("No Amazon.in product links found")
             return None
 
-        href = product_links[0].attrib.get("href", "")
-        if not href.startswith("http"):
-            href = f"https://www.amazon.in{href}"
-
-        product_page = Fetcher.get(href)
+        href = _amz_clean_url(product_links[0].attrib.get("href", ""))
+        product_page = Fetcher.get(
+            href,
+            extra_headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+                )
+            },
+        )
         if not product_page:
             return None
 
+        raw = product_page.body
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", errors="ignore")
+
         name = None
-        for sel in ["#productTitle", "h1.a-size-large", "h1"]:
-            els = product_page.css(sel)
-            if els:
-                name = els[0].get_all_text(separator=" ").strip()
-                if name:
-                    break
+        m_name = re.search(r'<span[^>]*id="productTitle"[^>]*>(.*?)</span>', raw, re.S)
+        if m_name:
+            name = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", m_name.group(1))).strip()
+            name = htmllib.unescape(name) or None
+        if not name:
+            for sel in ["#productTitle", "h1.a-size-large", "h1"]:
+                els = product_page.css(sel)
+                if els:
+                    name = els[0].get_all_text(separator=" ").strip()
+                    if name:
+                        break
 
         brand_name = brand
         if not brand_name:
             els = product_page.css("#bylineInfo")
             if els:
                 brand_name = els[0].get_all_text(separator=" ").strip().replace("Brand: ", "")
+                # Amazon often renders brand as "Visit the X Store" / "Visit the X Brand Store"
+                m = re.search(r"Visit the (.+?)(?: Brand)? Store$", brand_name)
+                if m:
+                    brand_name = m.group(1)
+                brand_name = brand_name or None
 
-        nutrition_text = _extract_nutrition_table(product_page)
-        nutrition = _parse_nutrition_text(nutrition_text)
-
-        ingredients = _extract_ingredients(product_page, [
-            "[class*='ingredients']",
-            "#productDetails_techSpec_section_1",
-            "table.a-keyvalue",
-        ])
+        # Ingredients often live in the "About this item" feature bullets.
+        ingredients = None
+        for sel in ["#feature-bullets", "[class*='ingredients']", "#productDetails_techSpec_section_1"]:
+            els = product_page.css(sel)
+            if els:
+                text = els[0].get_all_text(separator=" ").strip()
+                if len(text) > 10:
+                    ingredients = text
+                    break
 
         image = None
         els = product_page.css("#landingImage")
@@ -486,7 +400,7 @@ def _scrape_amazon_in(search_hint: str, brand: str | None = None) -> dict | None
             "brand": brand_name,
             "image_url": image,
             "ingredients_text": ingredients,
-            "nutrition_per_100g": nutrition,
+            "nutrition_per_100g": {},
             "source": "amazon_in",
             "source_url": href,
         }
@@ -504,30 +418,49 @@ def scrape_indian_product_sync(
 ) -> dict | None:
     """
     Try scraping an Indian product from multiple grocery sites.
-    Returns the first successful result with nutrition data.
+
+    Prefers the result with the most complete data (full nutrition + ingredients
+    + barcode), but falls back to a name/ingredients-only result from another
+    source if no source returns structured nutrition. The NutriScan client then
+    fills missing nutrition via AI estimation, so returning a name+ingredients
+    result is still far more useful than returning nothing.
     """
     scrapers = [
         ("bigbasket", _scrape_bigbasket),
-        ("blinkit", _scrape_blinkit),
         ("amazon_in", _scrape_amazon_in),
     ]
 
+    best = None
+    best_score = -1.0
     for name, scraper in scrapers:
         logger.info(f"Trying {name} for: {search_hint}")
         result = scraper(search_hint, brand)
-        if result and result.get("name"):
-            if result.get("barcode") and not barcode:
-                barcode = result["barcode"]
-            has_nutrition = any(
-                v is not None
-                for v in result.get("nutrition_per_100g", {}).values()
-            )
-            if has_nutrition:
-                logger.info(f"Got nutrition data from {name}")
-                if barcode:
-                    result["barcode"] = barcode
-                return result
-            logger.info(f"{name} returned product but no nutrition data")
+        if not result or not result.get("name"):
+            continue
+        if result.get("barcode") and not barcode:
+            barcode = result["barcode"]
 
-    logger.info("No nutrition data found from any Indian grocery site")
-    return None
+        nutrition = result.get("nutrition_per_100g") or {}
+        has_nutrition = any(v is not None for v in nutrition.values())
+        score = 0.0
+        if has_nutrition:
+            score += 5.0
+        if result.get("ingredients_text"):
+            score += 2.0
+        if result.get("barcode"):
+            score += 1.0
+
+        if score > best_score:
+            best_score = score
+            best = result
+
+    if best is None:
+        logger.info("No product found from any Indian grocery site")
+        return None
+    if barcode:
+        best["barcode"] = barcode
+    logger.info(
+        f"Best result: {best['source']} | {best['name']} | "
+        f"nutrition={'yes' if any(v is not None for v in (best.get('nutrition_per_100g') or {}).values()) else 'no'}"
+    )
+    return best
