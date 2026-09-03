@@ -17,11 +17,25 @@ export interface ScanLookupResult {
   warning?: string
 }
 
+// Vercel Hobby (free) plan hard-kills serverless functions at ~10s no matter
+// what `maxDuration` says in code. This pipeline has up to 9 sequential
+// network-bound layers, so on a hard product (the exact case the AI layers
+// exist to rescue) it can get killed mid-chain before ever reaching the
+// layer that guarantees a result — which looks identical to "not found" to
+// the user. TIME_BUDGET_MS reserves enough headroom to always reach Layer 8
+// (Gemini estimation) before that happens, by skipping the slower/less
+// reliable optional layers once the budget is tight.
+const TIME_BUDGET_MS = 7500
+
 export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> {
   const trimmedBarcode = barcode?.trim()
   if (!trimmedBarcode || trimmedBarcode.length < 6) {
     return { success: false, error: 'Invalid barcode', source: '', confidence: 'none', barcode }
   }
+
+  const startedAt = Date.now()
+  const timeLeft = () => TIME_BUDGET_MS - (Date.now() - startedAt)
+  const budgetTight = () => timeLeft() < 2500
 
   let offFallback: any = null
 
@@ -140,8 +154,9 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     } catch { /* continue */ }
   }
 
-  // Layer 3 — OFF keyword search
+  // Layer 3 — OFF keyword search (skipped if budget is tight — see Layer 8)
   try {
+    if (budgetTight()) throw new Error('budget')
     const barcodeAnalysis = analyzeBarcode(trimmedBarcode)
     const searchBrand = barcodeAnalysis.brand
     const searchCategory = barcodeAnalysis.category || (searchBrand ? inferCategory(searchBrand, searchBrand) : null)
@@ -205,8 +220,9 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   } catch { /* continue */ }
 
-  // Layer 4 â€” UPC Item DB
+  // Layer 4 — UPC Item DB (skipped if budget is tight — see Layer 8)
   try {
+    if (budgetTight()) throw new Error('budget')
     const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${trimmedBarcode}`, {
       signal: AbortSignal.timeout(3000),
     })
@@ -260,9 +276,9 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   } catch { /* continue */ }
 
-  // Layer 5 â€” Indian web search
+  // Layer 5 — Indian web search (skipped if budget is tight — see Layer 8)
   const analysis = analyzeBarcode(trimmedBarcode)
-  if (analysis.isIndian) {
+  if (analysis.isIndian && !budgetTight()) {
     const webResult = await searchIndianProductWeb(analysis.searchHint, analysis.brand)
     if (webResult) {
       const formatted = formatProduct(webResult)
@@ -282,8 +298,10 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
     }
   }
 
-  // Layer 7 â€” Category nutrition estimation
+  // Layer 7 — Category nutrition estimation (skipped only if truly critical —
+  // Layer 8 below is the last-resort guarantee and must always get to run)
   try {
+    if (timeLeft() < 1500) throw new Error('budget')
     const analysis7 = analyzeBarcode(trimmedBarcode)
     const cat = analysis7.category || (analysis7.brand ? inferCategory(analysis7.brand, analysis7.brand) : null)
     const categorySearchName = analysis7.brand || offFallback?.name || trimmedBarcode
@@ -387,4 +405,3 @@ export async function lookupBarcode(barcode: string): Promise<ScanLookupResult> 
 
   return { success: false, error: 'PRODUCT_NOT_FOUND', source: '', confidence: 'none', barcode, message: 'This product is not in our database yet.' }
 }
-

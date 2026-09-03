@@ -64,16 +64,26 @@ export default function ScanPage() {
       }
       const data = await res.json();
       setScanning(false);
-      if (!res.ok || data?.error) {
-        setScanError(data?.error || "Scan failed. Please try again.");
-        return;
-      }
+
+      // A found product must win even if it's flagged "degraded" (analysis
+      // enrichment hiccuped but the core lookup succeeded) — show it rather
+      // than discarding a real result.
       if (data?.product && data?.analysis) {
         writeScanResult({ product: data.product, analysis: data.analysis, quantity: 1, alternatives: data.alternatives });
         router.replace("/results");
-      } else {
-        router.replace(`/correct-product?barcode=${normalizedBarcode}`);
+        return;
       }
+
+      if (data?.reason === "not_found") {
+        // Genuinely not in the database yet — send to the contribute flow.
+        router.replace(`/correct-product?barcode=${normalizedBarcode}`);
+        return;
+      }
+
+      // Anything else (5xx, timeout, unexpected shape) is a real failure,
+      // not "not found" — let the person retry instead of quietly routing
+      // them into "add this product" for something that likely does exist.
+      setScanError(data?.error || "Something went wrong on our end. Please try scanning again.");
     } catch (err: any) {
       clearTimeout(timeout);
       setScanning(false);
