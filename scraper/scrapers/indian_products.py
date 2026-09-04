@@ -637,6 +637,80 @@ def _scrape_aapkabaazar(search_hint: str, brand: str | None = None) -> dict | No
         return None
 
 
+# ── Rajmandir scraper ─────────────────────────────────────────────────────────
+#
+# Rajmandir (rajmandir.com) is a Shopify store. Shopify's /search/suggest.json
+# endpoint returns matching products directly as JSON (title, vendor, handle,
+# image) — a clean, server-rendered search that needs no headless browser.
+# Rajmandir does not publish ingredient lists or nutrition tables, so this only
+# contributes a real name/brand/image as a last-resort fallback.
+
+RAJMANDIR_SEARCH = "https://rajmandir.com/search/suggest.json"
+
+
+def _scrape_rajmandir(search_hint: str, brand: str | None = None) -> dict | None:
+    """Search and scrape the best-matching product name/brand/image from Rajmandir."""
+    try:
+        query = f"{brand} {search_hint}" if brand else search_hint
+        search_url = (
+            f"{RAJMANDIR_SEARCH}?q={quote_plus(query)}&resources[type]=product"
+        )
+
+        page = Fetcher.get(search_url)
+        if not page or not page.status or page.status >= 400:
+            return None
+
+        raw = page.body
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", errors="ignore")
+        try:
+            data = json.loads(raw)
+            products = data["resources"]["results"]["products"]
+        except Exception:
+            logger.exception("Failed to parse Rajmandir suggest JSON")
+            return None
+        if not products:
+            logger.info("No Rajmandir suggest results")
+            return None
+
+        query_tokens = _aapka_normalize_tokens(query)
+        best = None
+        best_score = 0
+        for p in products:
+            if not isinstance(p, dict):
+                continue
+            title = (p.get("title") or "").lower()
+            vendor = (p.get("vendor") or "").lower()
+            haystack = f"{title} {vendor}"
+            score = sum(1 for t in query_tokens if t in haystack)
+            if score > best_score:
+                best_score = score
+                best = p
+
+        if best is None or best_score < 1:
+            logger.info("Rajmandir: no strong product match")
+            return None
+
+        handle = best.get("handle")
+        if not handle:
+            return None
+
+        name = best.get("title") or None
+        return {
+            "name": name,
+            "brand": best.get("vendor") or brand or None,
+            "image_url": best.get("image") or None,
+            "ingredients_text": None,
+            "nutrition_per_100g": {},
+            "barcode": None,
+            "source": "rajmandir",
+            "source_url": f"https://rajmandir.com/products/{handle}",
+        }
+    except Exception:
+        logger.exception("Rajmandir scrape failed")
+        return None
+
+
 # ── Main entry point ─────────────────────────────────────────────────────────
 
 def scrape_indian_product_sync(
@@ -657,6 +731,7 @@ def scrape_indian_product_sync(
         ("bigbasket", _scrape_bigbasket),
         ("aapkabaazar", _scrape_aapkabaazar),
         ("amazon_in", _scrape_amazon_in),
+        ("rajmandir", _scrape_rajmandir),
     ]
 
     best = None

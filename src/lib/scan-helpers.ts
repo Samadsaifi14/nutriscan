@@ -164,7 +164,7 @@ export async function searchIndianProductWeb(searchHint: string, brand: string |
     if (scraped) {
       console.log('Scraping succeeded via Scrapling:', scraped.source)
       return {
-        barcode: '',
+        barcode: scraped.barcode || '',
         name: scraped.name,
         brand: scraped.brand || brand,
         category: null,
@@ -174,6 +174,7 @@ export async function searchIndianProductWeb(searchHint: string, brand: string |
         protein_per_100g: scraped.protein_per_100g,
         carbs_per_100g: scraped.carbs_per_100g,
         fat_per_100g: scraped.fat_per_100g,
+        saturated_fat_per_100g: scraped.saturated_fat_per_100g,
         sugar_per_100g: scraped.sugar_per_100g,
         sodium_per_100g: scraped.sodium_per_100g,
         fiber_per_100g: scraped.fiber_per_100g,

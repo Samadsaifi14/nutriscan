@@ -99,6 +99,7 @@ export async function scrapeIndianProduct(
 ): Promise<{
   name: string
   brand: string | null
+  barcode: string | null
   image_url: string | null
   ingredients_text: string | null
   calories_per_100g: number | null
@@ -126,6 +127,7 @@ export async function scrapeIndianProduct(
   return {
     name: p.name,
     brand: p.brand,
+    barcode: p.barcode,
     image_url: p.image_url,
     ingredients_text: p.ingredients_text,
     calories_per_100g: n.calories,
