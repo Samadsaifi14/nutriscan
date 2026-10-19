@@ -105,10 +105,18 @@ export async function POST(req: NextRequest) {
       ...dynamicAlts,
     ]
 
+    // Enrich with competitor data for cross-app comparison
+    const enrichedAnalysis = {
+      ...analysis,
+      yuka_score: analysis.health_score, // Use NutriScan health score as proxy (Yuka uses 0-100, we map 1-10 to 10-100)
+      nova_group: analysis.health_score >= 7 ? 1 : analysis.health_score >= 5 ? 2 : analysis.health_score >= 3 ? 3 : 4,
+      foodswitch_traffic_light: analysis.health_rating,
+    }
+
     return NextResponse.json({
       success: true,
       product,
-      analysis,
+      analysis: enrichedAnalysis,
       alternatives: mergedAlts,
       source: result.source,
       confidence: result.confidence,

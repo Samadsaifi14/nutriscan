@@ -50,6 +50,11 @@ export default function Settings() {
     { title: 'Account', items: [
       { icon: <Trash size={16} />, label: 'Delete Account', dangerous: true, onClick: handleDelete },
     ]},
+    { title: 'Competitor features', items: [
+      { icon: <Download size={16} />, label: 'Yuka integration', onClick: () => console.log('Yuka settings') },
+      { icon: <Download size={16} />, label: 'Open Food Facts', onClick: () => console.log('OFF settings') },
+      { icon: <Download size={16} />, label: 'FoodSwitch', onClick: () => console.log('FoodSwitch settings') },
+    ]},
   ]
 
   return (

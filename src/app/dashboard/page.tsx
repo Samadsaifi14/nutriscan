@@ -40,20 +40,19 @@ export default function DashboardPage() {
     );
   }
 
+  const hasScans = dashboard?.recentScans && dashboard.recentScans.length > 0;
+
   return (
     <PageShell title="NutriScan">
       <div className="stack">
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <div>
-            <p className="text-sand text-sm">{greeting},</p>
-            <h2 className="text-h2 text-cream">{name}</h2>
-          </div>
-          <div className="row--sm">
-            <Flame size={16} className="text-amber" />
-            <span className="text-mono text-body font-semibold text-cream">{dashboard?.streak ?? 0}</span>
-            <span className="text-xs text-sand">day streak</span>
-          </div>
-        </div>
+        <div className="relative min-h-[400px] overflow-hidden bg-black/50">
+          {hasScans && (
+            <Option1ImmersiveLanding
+              splineUrl="https://cdn.spline.build/scene/health-journey/scores-trend.splinescenefile"
+            />
+          )}
+          {hasScans || !hasScans && (
+            <div className="relative z-10 max-w-4xl mx-auto px-4 py-20 text-white">
 
         <TiltCard intensity={3} className="card--xl dashboard-score">
           <div className="row--lg">
@@ -144,6 +143,48 @@ export default function DashboardPage() {
         <div className="alert alert--info mt-section">
           <Heart size={16} />
           <span>Save products you scan often to your favorites for one-tap re-checks.</span>
+        </div>
+
+        {/* Competitor feature toggles */}
+        <div className="mt-section">
+          <div className="section-header">
+            <span className="section-header__title">Competitor features</span>
+          </div>
+          <div className="space-y-2 text-xs">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dashboard?.yuka_enabled ?? true}
+                onChange={(e) => {
+                  // Toggle Yuka feature
+                  console.log('Yuka enabled:', e.target.checked)
+                }}
+              />
+              <span>Yuka health scoring</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dashboard?.nova_enabled ?? true}
+                onChange={(e) => {
+                  // Toggle Open Food Facts NOVA
+                  console.log('NOVA enabled:', e.target.checked)
+                }}
+              />
+              <span>NOVA processing group</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dashboard?.foodswitch_enabled ?? true}
+                onChange={(e) => {
+                  // Toggle FoodSwitch
+                  console.log('FoodSwitch enabled:', e.target.checked)
+                }}
+              />
+              <span>FoodSwitch ratings</span>
+            </label>
+          </div>
         </div>
       </div>
     </PageShell>
