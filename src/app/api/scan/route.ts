@@ -105,7 +105,8 @@ export async function POST(req: NextRequest) {
       ...dynamicAlts,
     ]
 
-    // Enrich with competitor data for cross-app comparison
+    // Graceful competitor data enrichment — subtle cross-app reference values
+    // that augment (never replace) the primary NutriScan analysis.
     const enrichedAnalysis = {
       ...analysis,
       yuka_score: analysis.health_score, // Use NutriScan health score as proxy (Yuka uses 0-100, we map 1-10 to 10-100)

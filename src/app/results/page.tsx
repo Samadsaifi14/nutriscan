@@ -40,8 +40,6 @@ function productSourceLabel(source: string | undefined) {
   if (source.includes('open_food_facts')) return 'Open Food Facts'
   if (source.includes('community')) return 'NutriScan community'
   if (source.includes('ai') || source.includes('estimated')) return 'Estimated data — verify the pack'
-  if (source.includes('yuka')) return 'Yuka'
-  if (source.includes('foodswitch')) return 'FoodSwitch'
   return 'NutriScan product database'
 }
 
@@ -307,30 +305,6 @@ export default function ResultsPage() {
         <section className="result-hero" aria-labelledby="result-product-name">
 <div className="result-hero__grid">
             <HealthScoreRing score={analysis.health_score} size="xl" />
-            {/* Competitor comparison badges */}
-            <div className="result-hero__competitors flex gap-3 flex-wrap">
-              {/* Yuka health score badge */}
-              {analysis.yuka_score && (
-                <div className="competitor-badge competitor-badge--yuka" title="Yuka health score">
-                  <span className="text-xs font-bold">Yuka</span>
-                  <span className="text-sm font-medium">{analysis.yuka_score}/100</span>
-                </div>
-              )}
-              {/* Open Food Facts NOVA badge */}
-              {analysis.nova_group && (
-                <div className="competitor-badge competitor-badge--nova" title="NOVA processing group">
-                  <span className="text-xs font-bold">NOVA</span>
-                  <span className="text-sm font-medium">Group {analysis.nova_group}</span>
-                </div>
-              )}
-              {/* FoodSwitch traffic light badge */}
-              {analysis.foodswitch_traffic_light && (
-                <div className="competitor-badge competitor-badge--foodswitch" title="FoodSwitch traffic light">
-                  <span className="text-xs font-bold">FS</span>
-                  <span className="text-sm font-medium">{analysis.foodswitch_traffic_light}</span>
-                </div>
-              )}
-            </div>
             <div className="result-hero__product">
               <h2 id="result-product-name" className="text-h1 text-cream leading-tight">{product.name}</h2>
               <p className="text-body text-sand mt-2">
@@ -339,9 +313,9 @@ export default function ResultsPage() {
 <div className="result-verdict">
                 <AlertTriangle size={18} />
                 {analysis.health_rating === "healthy" ? "Lower concern" : analysis.health_rating === "moderate" ? "Review this choice" : "High concern"}
-                {analysis.yuka_score && <span className="text-xs ml-2">Yuka: {analysis.yuka_score >= 50 ? 'good' : analysis.yuka_score >= 30 ? 'fair' : 'poor'}</span>}
-                {analysis.nova_group && <span className="text-xs ml-2">NOVA Group {analysis.nova_group}</span>}
-                {analysis.foodswitch_traffic_light && <span className="text-xs ml-2">FS: {analysis.foodswitch_traffic_light}</span>}
+                {analysis.yuka_score != null && <span className="text-xs ml-2">· Yuka ref</span>}
+                {analysis.nova_group != null && <span className="text-xs ml-2">· NOVA Group {analysis.nova_group}</span>}
+                {analysis.foodswitch_traffic_light && <span className="text-xs ml-2">· FS</span>}
               </div>
               <p className="text-sm text-sand mt-3">
                 <strong className="text-clay">{analysis.harmful_ingredients?.length ?? 0}</strong>{" "}
