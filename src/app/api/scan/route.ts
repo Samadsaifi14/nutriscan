@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, enforceRateLimit } from '@/lib/api-auth'
+import { requireAuth } from '@/lib/api-auth'
 import { formatProduct } from '@/lib/scan-helpers'
 import { lookupBarcode } from '@/lib/scan-product'
 import { runUnifiedAnalysis, toUnifiedInput } from '@/lib/analysis-runner'
@@ -16,9 +16,6 @@ import { computeHealthRating } from '@/lib/frontend-transform'
 export async function POST(req: NextRequest) {
   const auth = await requireAuth()
   if ('response' in auth) return auth.response
-
-  const rate = await enforceRateLimit(auth.userId, 'scan', req)
-  if ('response' in rate) return rate.response
 
   try {
     const { barcode } = await req.json()

@@ -2,7 +2,6 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 const LIMITS = {
   analyze:    { max: 20, windowMinutes: 60    },
-  scan:       { max: 50, windowMinutes: 1440 }, // 50/day
   log:        { max: 50, windowMinutes: 60    },
   analyze_ai: { max: 15, windowMinutes: 60    },
   enrich:     { max: 30, windowMinutes: 60    },

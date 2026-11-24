@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthSession, getUserId, enforceRateLimit } from '@/lib/api-auth'
+import { getAuthSession, getUserId } from '@/lib/api-auth'
 import { callGemini, GeminiError } from '@/lib/gemini'
 import { formatProduct } from '@/lib/scan-helpers'
 import { runUnifiedAnalysis, toUnifiedInput } from '@/lib/analysis-runner'
@@ -16,9 +16,6 @@ export async function POST(req: NextRequest) {
 
     const session = await getAuthSession()
     const userId = getUserId(session)
-
-    const rate = await enforceRateLimit(userId, 'scan', req)
-    if ('response' in rate) return rate.response
 
     // Accept both FormData and JSON body for backward compat
     let imageBase64: string | null = null
@@ -216,7 +213,7 @@ IMPORTANT: Extract whatever is visible. Even if only partial information is avai
         return NextResponse.json({ success: false, error: 'AI timed out reading the photo. Please try again.' }, { status: 504 })
       }
       if (err.type === 'rate_limit') {
-        return NextResponse.json({ success: false, error: 'AI rate limit reached. Please wait a moment.' }, { status: 429 })
+        return NextResponse.json({ success: false, error: 'The AI label-reading service is temporarily at capacity. Please try again shortly.' }, { status: 503 })
       }
     } else {
       console.error('Photo scan error:', err.message)

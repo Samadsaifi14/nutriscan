@@ -57,10 +57,10 @@ Error codes follow HTTP status semantics:
 | Endpoint | Method | Auth | Rate Limit | Description |
 |---|---|---|---|---|
 | `/api/auth/[...nextauth]` | ALL | — | — | NextAuth handler |
-| `/api/scan` | GET | Required | 50/day | Product lookup chain |
+| `/api/scan` | POST | Required | None at app level | Product lookup chain |
 | `/api/scan-vision` | POST | Required | 20/60min | Gemini photo analysis |
 | `/api/scan-community` | POST | Required | 30/60min | Community product search |
-| `/api/scan-product-photo` | POST | Required | 20/60min | Photo + nutrition label OCR |
+| `/api/scan-product-photo` | POST | Required | None at app level | Photo + nutrition label OCR (subject to upstream AI provider availability) |
 | `/api/scan-session` | POST | Required | — | Create scan record |
 | `/api/background-scan` | POST | Required | — | Async scan job creation |
 | `/api/analyze` | POST | Required | 20/60min | Full analysis (engine + Groq) |
@@ -95,11 +95,10 @@ Error codes follow HTTP status semantics:
 ## Rate Limiting
 
 Implementation: `check_rate_limit()` Supabase function + `rate_limits` table.
-Sliding window per `{user_id}:{action}` key.
+Sliding window per `{user_id}:{action}` key for metered endpoints. Barcode and photo scan entry points do not impose an application-level scan-count cap; upstream provider quotas and infrastructure protections can still apply.
 
 | Action | Limit | Window |
 |---|---|---|
-| `scan` | 50 | 24 hours |
 | `analyze` | 20 | 60 minutes |
 | `analyze_ai` | 15 | 60 minutes |
 | `scan_vision` | 20 | 60 minutes |

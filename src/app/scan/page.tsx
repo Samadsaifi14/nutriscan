@@ -59,7 +59,7 @@ export default function ScanPage() {
       clearTimeout(timeout);
       if (res.status === 429) {
         setScanning(false);
-        setScanError("Too many scans. Please wait a moment and try again.");
+        setScanError("The scanning service is temporarily busy. Please try again shortly.");
         return;
       }
       const data = await res.json();
@@ -202,7 +202,7 @@ export default function ScanPage() {
       clearTimeout(timeout);
       if (res.status === 429) {
         setScanning(false);
-        toast.error("Too many scans. Please wait and try again.");
+        toast.error("The AI label-reading service is temporarily busy. Please try again shortly.");
         return;
       }
       const data = await res.json();
