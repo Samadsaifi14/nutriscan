@@ -298,10 +298,6 @@ export default function ResultsPage() {
       }
     >
 <div className="stack">
-        {/* Immersive 3D food analysis visualization */}
-        <Option2FullVisualRedesign
-          splineUrl="https://cdn.spline.build/scene/food-analysis/ingredients-breakdown.splinescenefile"
-        />
         <section className="result-hero" aria-labelledby="result-product-name">
 <div className="result-hero__grid">
             <HealthScoreRing score={analysis.health_score} size="xl" />
@@ -313,9 +309,6 @@ export default function ResultsPage() {
 <div className="result-verdict">
                 <AlertTriangle size={18} />
                 {analysis.health_rating === "healthy" ? "Lower concern" : analysis.health_rating === "moderate" ? "Review this choice" : "High concern"}
-                {analysis.yuka_score != null && <span className="text-xs ml-2">· Yuka ref</span>}
-                {analysis.nova_group != null && <span className="text-xs ml-2">· NOVA Group {analysis.nova_group}</span>}
-                {analysis.foodswitch_traffic_light && <span className="text-xs ml-2">· FS</span>}
               </div>
               <p className="text-sm text-sand mt-3">
                 <strong className="text-clay">{analysis.harmful_ingredients?.length ?? 0}</strong>{" "}

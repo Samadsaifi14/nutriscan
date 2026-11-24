@@ -1,71 +1,44 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 const LIMITS = {
-  analyze:    { max: 20, windowMinutes: 60    },
-  scan:       { max: 50, windowMinutes: 1440 }, // 50/day
-  log:        { max: 50, windowMinutes: 60    },
-  analyze_ai: { max: 15, windowMinutes: 60    },
-  enrich:     { max: 30, windowMinutes: 60    },
-  search:     { max: 90, windowMinutes: 60    },
+  analyze: { max: 20, windowMinutes: 60 },
+  scan: { max: 50, windowMinutes: 1440 },
+  log: { max: 50, windowMinutes: 60 },
+  analyze_ai: { max: 15, windowMinutes: 60 },
+  enrich: { max: 30, windowMinutes: 60 },
+  search: { max: 90, windowMinutes: 60 },
   ingredient_research: { max: 20, windowMinutes: 60 },
-}
+} as const
 
-const localWindows = new Map<string, number[]>()
-
-function checkLocalWindow(userId: string, action: keyof typeof LIMITS) {
-  const limit = LIMITS[action]
-  const now = Date.now()
-  const cutoff = now - limit.windowMinutes * 60 * 1000
-  const key = `${action}:${userId}`
-  const recent = (localWindows.get(key) || []).filter((timestamp) => timestamp >= cutoff)
-  const allowed = recent.length < limit.max
-  if (allowed) recent.push(now)
-  localWindows.set(key, recent)
-
-  if (localWindows.size > 5000) {
-    for (const [entryKey, timestamps] of localWindows) {
-      if (!timestamps.some((timestamp) => timestamp >= cutoff)) localWindows.delete(entryKey)
-    }
-  }
-  return { allowed, remaining: Math.max(0, limit.max - recent.length), resetIn: limit.windowMinutes }
-}
+export type RateLimitAction = keyof typeof LIMITS
 
 export async function checkRateLimit(
   userId: string,
-  action: keyof typeof LIMITS
+  action: RateLimitAction
 ): Promise<{ allowed: boolean; remaining: number; resetIn: number }> {
-  const limit       = LIMITS[action]
-  const windowStart = new Date(Date.now() - limit.windowMinutes * 60 * 1000).toISOString()
-  const now         = new Date().toISOString()
+  const limit = LIMITS[action]
+  const { data, error } = await supabaseAdmin.rpc('consume_rate_limit', {
+    p_user_id: userId,
+    p_action: action,
+    p_max_requests: limit.max,
+    p_window_seconds: limit.windowMinutes * 60,
+  })
 
-  const local = checkLocalWindow(userId, action)
-  if (!local.allowed) return local
+  // Fail closed. A database outage must not silently disable abuse protection.
+  if (error || !data) {
+    console.error('Atomic rate limit check failed:', error?.message || 'empty RPC response')
+    return { allowed: false, remaining: 0, resetIn: limit.windowMinutes }
+  }
 
-  try {
-    const { count } = await supabaseAdmin
-      .from('rate_limits')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('action', action)
-      .gte('created_at', windowStart)
+  const result = Array.isArray(data) ? data[0] : data
+  if (typeof result?.allowed !== 'boolean') {
+    console.error('Atomic rate limit RPC returned an invalid response')
+    return { allowed: false, remaining: 0, resetIn: limit.windowMinutes }
+  }
 
-    const used      = count || 0
-    const remaining = Math.max(0, limit.max - used)
-    const allowed   = used < limit.max
-
-    if (allowed) {
-      const { error: insertError } = await supabaseAdmin
-        .from('rate_limits')
-        .insert({ user_id: userId, action, created_at: now })
-      if (insertError) {
-        console.error('Rate limit insert failed:', insertError.message)
-      }
-    }
-
-    return { allowed, remaining, resetIn: limit.windowMinutes }
-  } catch (e) {
-    console.error('Rate limit check failed:', e)
-    // The per-instance guard above still limits bursts if the shared store is down.
-    return local
+  return {
+    allowed: result.allowed,
+    remaining: Number(result.remaining ?? 0),
+    resetIn: Math.max(1, Math.ceil(Number(result.reset_in_seconds ?? limit.windowMinutes * 60) / 60)),
   }
 }
