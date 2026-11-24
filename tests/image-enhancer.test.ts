@@ -64,7 +64,7 @@ describe('Image Processing Functions', () => {
   it('should handle grayscale conversion', () => {
     const data = createMockImageData()
     // All values are 128, so grayscale should also be 128
-    const gray = 0.299 * data[0] + 0.587 * data[1] + 0.114 * data[2]
+    const gray = 0.299 * data[0]! + 0.587 * data[1]! + 0.114 * data[2]!
     expect(Math.round(gray)).toBe(128)
   })
 
@@ -92,10 +92,10 @@ describe('Image Processing Functions', () => {
 
   it('should apply saturation', () => {
     const data = [200, 100, 50, 255]
-    const gray = 0.299 * data[0] + 0.587 * data[1] + 0.114 * data[2]
+    const gray = 0.299 * data[0]! + 0.587 * data[1]! + 0.114 * data[2]!
     const saturation = 1.5
-    const result = gray + saturation * (data[0] - gray)
-    expect(result).toBeGreaterThan(data[0]) // More saturated
+    const result = gray + saturation * (data[0]! - gray)
+    expect(result).toBeGreaterThan(data[0]!) // More saturated
   })
 })
 

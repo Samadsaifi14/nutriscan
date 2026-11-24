@@ -147,14 +147,14 @@ describe('generateAlternativesViaGroq', () => {
     })
 
     expect(out).toHaveLength(2)
-    expect(out[0].name).toBe('Yoga Atta Noodles')
-    expect(out[0].brand).toBe('Yoga')
-    expect(out[0].type).toBe('branded')
-    expect(out[0].price_band).toBe('similar')
-    expect(out[0].availability).toContain('Amazon India')
-    expect(out[0].shopping_platforms).toEqual(['Amazon India', 'BigBasket'])
-    expect(out[1].type).toBe('homemade')
-    expect(out[1].brand).toBeNull()
+    expect(out[0]!.name).toBe('Yoga Atta Noodles')
+    expect(out[0]!.brand).toBe('Yoga')
+    expect(out[0]!.type).toBe('branded')
+    expect(out[0]!.price_band).toBe('similar')
+    expect(out[0]!.availability).toContain('Amazon India')
+    expect(out[0]!.shopping_platforms).toEqual(['Amazon India', 'BigBasket'])
+    expect(out[1]!.type).toBe('homemade')
+    expect(out[1]!.brand).toBeNull()
   })
 
   it('limits to 4 alternatives', async () => {
@@ -210,8 +210,8 @@ describe('generateAlternativesViaGroq', () => {
     } as any)
 
     const out = await generateAlternativesViaGroq({ product_name: 'X' })
-    expect(out[0].type).toBe('branded')
-    expect(out[0].availability).toBeTruthy()
+    expect(out[0]!.type).toBe('branded')
+    expect(out[0]!.availability).toBeTruthy()
   })
 
   it('the prompt mentions availability, price, ingredients, and Indian platforms', async () => {

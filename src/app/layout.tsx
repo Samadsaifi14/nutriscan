@@ -20,8 +20,6 @@ const geistMono = localFont({
   display: "swap",
 });
 
-export const dynamic = 'force-dynamic'
-
 export const metadata: Metadata = {
   title: "NutriScan — Scan. Understand. Choose better.",
   description: "Scan any packaged food and get an instant, India-specific health verdict.",
@@ -33,7 +31,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // Do not disable pinch-to-zoom: users must be able to enlarge health information.
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

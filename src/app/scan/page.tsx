@@ -17,6 +17,7 @@ export default function ScanPage() {
   const [mode, setMode] = useState<Mode>("barcode");
   const [torchOn, setTorchOn] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState("");
   const [supported, setSupported] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -346,15 +347,34 @@ export default function ScanPage() {
         <div className="absolute inset-0 z-20 flex items-end bg-black/60" onClick={() => setManualOpen(false)}>
           <div className="glass w-full rounded-t-2xl p-page pb-8" onClick={(e) => e.stopPropagation()}>
             <p className="text-h3 text-cream mb-4">Enter barcode</p>
-            <input
-              className="input"
-              inputMode="numeric"
-              placeholder="e.g. 8901058851599"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleDetected((e.target as HTMLInputElement).value);
+            <form
+              className="stack--sm"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const value = manualBarcode.trim();
+                if (!isValidRetailBarcode(normalizeBarcode(value))) {
+                  toast.error("Enter a valid retail barcode (EAN/UPC).");
+                  return;
+                }
+                setManualOpen(false);
+                handleDetected(value);
               }}
-            />
+            >
+              <label htmlFor="manual-barcode" className="text-xs text-sand">Barcode number</label>
+              <input
+                id="manual-barcode"
+                className="input"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="e.g. 8901058851599"
+                autoFocus
+                value={manualBarcode}
+                onChange={(event) => setManualBarcode(event.target.value)}
+                aria-describedby="manual-barcode-help"
+              />
+              <p id="manual-barcode-help" className="text-xs text-sand">You can enter the number printed below the barcode.</p>
+              <button type="submit" className="btn btn--primary w-full">Find product</button>
+            </form>
           </div>
         </div>
       )}

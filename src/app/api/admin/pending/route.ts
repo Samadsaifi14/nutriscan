@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'node:crypto'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { transformLogToCard } from '@/lib/frontend-transform'
 
-export async function GET() {
+function isAuthorized(req: NextRequest): boolean {
+  const expected = process.env.ADMIN_API_SECRET
+  const supplied = req.headers.get('x-admin-secret')
+  if (!expected || !supplied) return false
+  const expectedBuffer = Buffer.from(expected)
+  const suppliedBuffer = Buffer.from(supplied)
+  return expectedBuffer.length === suppliedBuffer.length && timingSafeEqual(expectedBuffer, suppliedBuffer)
+}
 
-  // Query pending corrections joined with product info
+export async function GET(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { data: corrections, error } = await supabaseAdmin
     .from('product_corrections')
     .select('*')
@@ -14,32 +26,33 @@ export async function GET() {
 
   if (error) {
     console.error('Admin pending error:', error.message)
-    return NextResponse.json({ pending: [] })
+    return NextResponse.json({ error: 'Unable to load pending corrections' }, { status: 500 })
   }
 
-  // Fetch product data for corrections that have a barcode
   const barcodes = (corrections || []).map((c) => c.barcode).filter(Boolean) as string[]
   const productMap = new Map<string, { brand: string | null; image_url: string | null; health_score: number | null }>()
   if (barcodes.length > 0) {
-    const { data: products } = await supabaseAdmin
+    const { data: products, error: productsError } = await supabaseAdmin
       .from('products')
       .select('barcode, brand, image_url, health_score')
       .in('barcode', barcodes)
-    for (const p of products || []) {
-      productMap.set(p.barcode, p)
+    if (productsError) {
+      console.error('Admin product lookup error:', productsError.message)
+      return NextResponse.json({ error: 'Unable to load correction product details' }, { status: 500 })
     }
+    for (const product of products || []) productMap.set(product.barcode, product)
   }
 
-  const pending = (corrections || []).map((c: any) => {
-    const product = c.barcode ? productMap.get(c.barcode) : undefined
+  const pending = (corrections || []).map((correction: any) => {
+    const product = correction.barcode ? productMap.get(correction.barcode) : undefined
     return {
-      id: c.id,
+      id: correction.id,
       ...transformLogToCard(
-        { product_name: c.product_name, barcode: c.barcode, brand: c.brand, image_url: null, health_score: null },
+        { product_name: correction.product_name, barcode: correction.barcode, brand: correction.brand, image_url: null, health_score: null },
         product ? { brand: product.brand, image_url: product.image_url, health_score: product.health_score } : undefined
       ),
     }
   })
 
-  return NextResponse.json({ pending })
+  return NextResponse.json({ pending }, { headers: { 'Cache-Control': 'private, no-store' } })
 }
